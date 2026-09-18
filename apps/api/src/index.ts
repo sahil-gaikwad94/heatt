@@ -27,6 +27,9 @@ const profileSchema = z.object({
 })
 const fireSchema = z.object({ intensity: z.number().int().min(1).max(3).nullable() })
 const bookmarkSchema = z.object({ saved: z.boolean() })
+const preferencesSchema = z.object({ topics: z.array(z.string().trim().min(1).max(80)).max(30), styles: z.array(z.string().trim().min(1).max(40)).max(10), languages: z.array(z.string().trim().min(1).max(40)).max(10), sessionIntent: z.enum(['Reflect', 'Learn', 'Connect', 'Explore']), learnedTunes: z.array(z.string().trim().min(1).max(80)).max(20) })
+const journalSchema = z.object({ sourceType: z.enum(['wisdom', 'post', 'personal']), sourceId: z.string().uuid().nullable().optional(), quotedSpan: z.string().max(1000).default(''), note: z.string().max(5000).default('') })
+const roomSchema = z.object({ name: z.string().trim().min(2).max(80), description: z.string().trim().max(240).default(''), topic: z.string().trim().min(1).max(80), visibility: z.enum(['public', 'private']).default('public') })
 
 function graphemeCount(value: string) {
   if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
@@ -68,6 +71,73 @@ app.patch('/v1/me/profile', zValidator('json', profileSchema), async c => {
   const { data, error: queryError } = await c.get('db').from('profiles').update({ display_name: input.name, handle: input.handle.toLowerCase(), bio: input.bio, avatar_url: input.avatarUrl ?? null, updated_at: new Date().toISOString() }).eq('id', c.get('userId')).select('id, display_name, handle, bio, avatar_url, created_at').single()
   if (queryError) return error(c, queryError.code === '23505' ? 'HANDLE_TAKEN' : 'PROFILE_UPDATE_FAILED', queryError.code === '23505' ? 'That handle is already in use.' : 'Could not save your profile.', queryError.code === '23505' ? 409 : 500)
   return c.json({ profile: data })
+})
+
+app.get('/v1/preferences', async c => {
+  const { data, error: queryError } = await c.get('db').from('user_preferences').select('topics, styles, languages, session_intent, learned_tunes').eq('user_id', c.get('userId')).maybeSingle()
+  if (queryError) return error(c, 'PREFERENCES_READ_FAILED', 'Could not load your preferences.', 500)
+  return c.json({ preferences: data ?? { topics: [], styles: [], languages: ['English'], session_intent: 'Explore', learned_tunes: [] } })
+})
+
+app.patch('/v1/preferences', zValidator('json', preferencesSchema), async c => {
+  const input = c.req.valid('json')
+  const { data, error: queryError } = await c.get('db').from('user_preferences').upsert({ user_id: c.get('userId'), topics: input.topics, styles: input.styles, languages: input.languages, session_intent: input.sessionIntent, learned_tunes: input.learnedTunes, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }).select('topics, styles, languages, session_intent, learned_tunes').single()
+  if (queryError) return error(c, 'PREFERENCES_UPDATE_FAILED', 'Could not save your preferences.', 400)
+  return c.json({ preferences: data })
+})
+
+app.get('/v1/journal', async c => {
+  const { data, error: queryError } = await c.get('db').from('journal_entries').select('id, source_type, source_id, quoted_span, note, created_at, updated_at').eq('user_id', c.get('userId')).order('created_at', { ascending: false }).limit(100)
+  if (queryError) return error(c, 'JOURNAL_READ_FAILED', 'Could not load your journal.', 500)
+  return c.json({ entries: data ?? [] })
+})
+
+app.post('/v1/journal', zValidator('json', journalSchema), async c => {
+  const input = c.req.valid('json')
+  const { data, error: queryError } = await c.get('db').from('journal_entries').insert({ user_id: c.get('userId'), source_type: input.sourceType, source_id: input.sourceId ?? null, quoted_span: input.quotedSpan, note: input.note }).select('id, source_type, source_id, quoted_span, note, created_at, updated_at').single()
+  if (queryError) return error(c, 'JOURNAL_CREATE_FAILED', 'Could not save this private entry.', 400)
+  return c.json({ entry: data }, 201)
+})
+
+app.delete('/v1/journal/:id', async c => {
+  const { error: queryError } = await c.get('db').from('journal_entries').delete().eq('id', c.req.param('id')).eq('user_id', c.get('userId'))
+  if (queryError) return error(c, 'JOURNAL_DELETE_FAILED', 'Could not delete this private entry.', 400)
+  return c.body(null, 204)
+})
+
+app.get('/v1/rooms', async c => {
+  const { data, error: queryError } = await c.get('db').from('rooms').select('id, slug, name, description, topic, visibility, created_by, room_memberships(user_id)').is('deleted_at', null).order('created_at', { ascending: false }).limit(100)
+  if (queryError) return error(c, 'ROOMS_READ_FAILED', 'Could not load rooms.', 500)
+  return c.json({ rooms: data ?? [] })
+})
+
+app.post('/v1/rooms', zValidator('json', roomSchema), async c => {
+  const input = c.req.valid('json')
+  const slug = input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60)
+  const { data, error: queryError } = await c.get('db').from('rooms').insert({ name: input.name, slug: `${slug}-${crypto.randomUUID().slice(0, 6)}`, description: input.description, topic: input.topic, visibility: input.visibility, created_by: c.get('userId') }).select('id, slug, name, description, topic, visibility, created_by, created_at').single()
+  if (queryError) return error(c, 'ROOM_CREATE_FAILED', 'Could not create this room.', 400)
+  await c.get('db').from('room_memberships').insert({ room_id: data.id, user_id: c.get('userId'), role: 'owner' })
+  return c.json({ room: data }, 201)
+})
+
+app.put('/v1/rooms/:id/membership', zValidator('json', z.object({ joined: z.boolean() })), async c => {
+  const { joined } = c.req.valid('json')
+  const roomId = c.req.param('id')
+  const result = joined ? await c.get('db').from('room_memberships').upsert({ room_id: roomId, user_id: c.get('userId'), role: 'member' }, { onConflict: 'room_id,user_id' }) : await c.get('db').from('room_memberships').delete().eq('room_id', roomId).eq('user_id', c.get('userId'))
+  if (result.error) return error(c, 'ROOM_MEMBERSHIP_FAILED', 'Could not update room membership.', 400)
+  return c.json({ roomId, joined })
+})
+
+app.get('/v1/wisdom/today', async c => {
+  const language = c.req.query('language') ?? 'English'
+  const path = c.req.query('path')
+  let query = c.get('db').from('wisdom_entries').select('id, path, language, title, exact_text, attribution, source, rights_status, context, interpretation, practice').eq('language', language).not('approved_at', 'is', null).is('deleted_at', null).limit(100)
+  if (path && ['Gita', 'Stoic', 'Poetry', 'Creator', 'Blend'].includes(path)) query = query.eq('path', path)
+  const { data, error: queryError } = await query
+  if (queryError) return error(c, 'WISDOM_READ_FAILED', 'Could not load today\'s wisdom.', 500)
+  const entries = data ?? []
+  const selected = entries.length ? entries[Math.floor(Date.now() / 86_400_000) % entries.length] : null
+  return c.json({ entry: selected })
 })
 
 app.get('/v1/feed', async c => {

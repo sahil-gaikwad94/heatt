@@ -34,4 +34,13 @@ export const heattApi = {
   createReply: (postId: string, text: string) => request<{ reply: unknown }>(`/v1/posts/${postId}/replies`, { method: 'POST', body: JSON.stringify({ text }) }),
   getProfile: () => request<{ profile: unknown }>('/v1/me/profile'),
   updateProfile: (profile: ProfileInput) => request<{ profile: unknown }>('/v1/me/profile', { method: 'PATCH', body: JSON.stringify(profile) }),
+  getPreferences: () => request<{ preferences: unknown }>('/v1/preferences'),
+  updatePreferences: (preferences: { topics: string[]; styles: string[]; languages: string[]; sessionIntent: string; learnedTunes: string[] }) => request<{ preferences: unknown }>('/v1/preferences', { method: 'PATCH', body: JSON.stringify(preferences) }),
+  getJournal: () => request<{ entries: unknown[] }>('/v1/journal'),
+  createJournalEntry: (entry: { sourceType: 'wisdom' | 'post' | 'personal'; sourceId?: string | null; quotedSpan: string; note: string }) => request<{ entry: unknown }>('/v1/journal', { method: 'POST', body: JSON.stringify(entry) }),
+  deleteJournalEntry: (entryId: string) => request<void>(`/v1/journal/${entryId}`, { method: 'DELETE' }),
+  getRooms: () => request<{ rooms: unknown[] }>('/v1/rooms'),
+  createRoom: (room: { name: string; description: string; topic: string; visibility?: 'public' | 'private' }) => request<{ room: unknown }>('/v1/rooms', { method: 'POST', body: JSON.stringify(room) }),
+  setRoomMembership: (roomId: string, joined: boolean) => request<{ roomId: string; joined: boolean }>(`/v1/rooms/${roomId}/membership`, { method: 'PUT', body: JSON.stringify({ joined }) }),
+  getWisdomToday: (language = 'English', path?: string) => request<{ entry: unknown | null }>(`/v1/wisdom/today?language=${encodeURIComponent(language)}${path ? `&path=${encodeURIComponent(path)}` : ''}`),
 }

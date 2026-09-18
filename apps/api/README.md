@@ -26,6 +26,6 @@ npm run api:check
 
 ## Cloudflare deployment
 
-The Worker configuration is in `wrangler.toml`. Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` as secrets, and keep `CORS_ORIGIN` restricted to the deployed web origin. Apply `database/migrations/0001_foundation.sql` to a disposable Supabase project first, then run the authorization test matrix before enabling the online client.
+The Worker configuration is in `wrangler.toml`. Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` as secrets, and keep `CORS_ORIGIN` restricted to the deployed web origin. Apply `database/migrations/0001_foundation.sql` and then `0002_profile_relationships.sql` to a disposable Supabase project first, then run the authorization test matrix before enabling the online client.
 
 The API is deliberately thin: Postgres owns relationships, access, unique Fire reactions, and private data boundaries; the Worker validates requests, forwards the caller identity, ranks a bounded public candidate set, and returns compact responses.

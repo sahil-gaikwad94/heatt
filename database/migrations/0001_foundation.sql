@@ -250,23 +250,23 @@ alter table public.feed_events enable row level security;
 alter table public.reports enable row level security;
 alter table public.idempotency_keys enable row level security;
 
-create policy profiles_public_read on public.profiles for select using (true);
-create policy profiles_self_update on public.profiles for update using (id = auth.uid()) with check (id = auth.uid());
-create policy profiles_self_insert on public.profiles for insert with check (id = auth.uid());
+create policy profiles_public_read on public.profiles for select to authenticated using (true);
+create policy profiles_self_update on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
+create policy profiles_self_insert on public.profiles for insert to authenticated with check (id = auth.uid());
 
-create policy preferences_self_all on public.user_preferences for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy blocks_self_all on public.blocks for all using (blocker_id = auth.uid()) with check (blocker_id = auth.uid());
-create policy mutes_self_all on public.mutes for all using (muter_id = auth.uid()) with check (muter_id = auth.uid());
-create policy follows_read on public.follows for select using (follower_id = auth.uid() or following_id = auth.uid());
-create policy follows_self_write on public.follows for all using (follower_id = auth.uid()) with check (follower_id = auth.uid());
+create policy preferences_self_all on public.user_preferences for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy blocks_self_all on public.blocks for all to authenticated using (blocker_id = auth.uid()) with check (blocker_id = auth.uid());
+create policy mutes_self_all on public.mutes for all to authenticated using (muter_id = auth.uid()) with check (muter_id = auth.uid());
+create policy follows_read on public.follows for select to authenticated using (follower_id = auth.uid() or following_id = auth.uid());
+create policy follows_self_write on public.follows for all to authenticated using (follower_id = auth.uid()) with check (follower_id = auth.uid());
 
-create policy rooms_public_or_member_read on public.rooms for select using (visibility = 'public' or exists (select 1 from public.room_memberships m where m.room_id = id and m.user_id = auth.uid()));
-create policy rooms_authenticated_create on public.rooms for insert with check (created_by = auth.uid());
-create policy room_members_self_read on public.room_memberships for select using (user_id = auth.uid() or exists (select 1 from public.rooms r where r.id = room_id and r.created_by = auth.uid()));
-create policy room_members_self_join on public.room_memberships for insert with check (user_id = auth.uid());
-create policy room_members_self_leave on public.room_memberships for delete using (user_id = auth.uid());
+create policy rooms_public_or_member_read on public.rooms for select to authenticated using (visibility = 'public' or exists (select 1 from public.room_memberships m where m.room_id = id and m.user_id = auth.uid()));
+create policy rooms_authenticated_create on public.rooms for insert to authenticated with check (created_by = auth.uid());
+create policy room_members_self_read on public.room_memberships for select to authenticated using (user_id = auth.uid() or exists (select 1 from public.rooms r where r.id = room_id and r.created_by = auth.uid()));
+create policy room_members_self_join on public.room_memberships for insert to authenticated with check (user_id = auth.uid());
+create policy room_members_self_leave on public.room_memberships for delete to authenticated using (user_id = auth.uid());
 
-create policy posts_eligible_read on public.posts for select using (
+create policy posts_eligible_read on public.posts for select to authenticated using (
   deleted_at is null and (
     visibility = 'public'
     or (visibility = 'followers' and exists (select 1 from public.follows f where f.follower_id = auth.uid() and f.following_id = author_id))
@@ -276,24 +276,24 @@ create policy posts_eligible_read on public.posts for select using (
   and not exists (select 1 from public.blocks b where b.blocker_id = auth.uid() and b.blocked_id = author_id)
   and not exists (select 1 from public.blocks b where b.blocker_id = author_id and b.blocked_id = auth.uid())
 );
-create policy posts_self_create on public.posts for insert with check (author_id = auth.uid());
-create policy posts_self_update on public.posts for update using (author_id = auth.uid()) with check (author_id = auth.uid());
-create policy posts_self_delete on public.posts for delete using (author_id = auth.uid());
+create policy posts_self_create on public.posts for insert to authenticated with check (author_id = auth.uid());
+create policy posts_self_update on public.posts for update to authenticated using (author_id = auth.uid()) with check (author_id = auth.uid());
+create policy posts_self_delete on public.posts for delete to authenticated using (author_id = auth.uid());
 
-create policy replies_eligible_read on public.replies for select using (deleted_at is null and exists (select 1 from public.posts p where p.id = post_id));
-create policy replies_authenticated_create on public.replies for insert with check (author_id = auth.uid());
-create policy replies_self_update on public.replies for update using (author_id = auth.uid()) with check (author_id = auth.uid());
-create policy replies_self_delete on public.replies for delete using (author_id = auth.uid());
+create policy replies_eligible_read on public.replies for select to authenticated using (deleted_at is null and exists (select 1 from public.posts p where p.id = post_id));
+create policy replies_authenticated_create on public.replies for insert to authenticated with check (author_id = auth.uid());
+create policy replies_self_update on public.replies for update to authenticated using (author_id = auth.uid()) with check (author_id = auth.uid());
+create policy replies_self_delete on public.replies for delete to authenticated using (author_id = auth.uid());
 
-create policy fires_self_all on public.fires for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy fires_post_read on public.fires for select using (exists (select 1 from public.posts p where p.id = post_id));
-create policy bookmarks_self_all on public.bookmarks for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy journal_self_all on public.journal_entries for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy wisdom_approved_read on public.wisdom_entries for select using (approved_at is not null and deleted_at is null);
-create policy wisdom_delivery_self_all on public.wisdom_deliveries for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy feed_events_self_write on public.feed_events for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy reports_self_create on public.reports for insert with check (reporter_id = auth.uid());
-create policy idempotency_self_all on public.idempotency_keys for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy fires_self_all on public.fires for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy fires_post_read on public.fires for select to authenticated using (exists (select 1 from public.posts p where p.id = post_id));
+create policy bookmarks_self_all on public.bookmarks for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy journal_self_all on public.journal_entries for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy wisdom_approved_read on public.wisdom_entries for select to authenticated using (approved_at is not null and deleted_at is null);
+create policy wisdom_delivery_self_all on public.wisdom_deliveries for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy feed_events_self_write on public.feed_events for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy reports_self_create on public.reports for insert to authenticated with check (reporter_id = auth.uid());
+create policy idempotency_self_all on public.idempotency_keys for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- This function is intentionally narrow: it provides an eligible, bounded feed
 -- fallback, not privileged access to private content.
