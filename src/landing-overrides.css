@@ -1,0 +1,8 @@
+
+/* The story page is intentionally a clean front door, not the app chrome. */
+.app-shell:has(.landing-page) { display: block; max-width: none; }
+.app-shell:has(.landing-page) .sidebar,
+.app-shell:has(.landing-page) .topbar,
+.app-shell:has(.landing-page) .right-rail,
+.app-shell:has(.landing-page) .mobile-nav { display: none; }
+.app-shell:has(.landing-page) .main-column { border: 0; }

@@ -1,0 +1,65 @@
+/* Heatt's atmosphere layer: a quiet, luminous surface for the first decision. */
+.avatar { position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,.4); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 4px 12px rgba(48, 38, 27, .11); transition: transform .24s cubic-bezier(.22,1,.36,1), box-shadow .24s ease; }
+.avatar:before { position: absolute; inset: 0; content: ''; background: linear-gradient(135deg, rgba(255,255,255,.22), transparent 44%, rgba(0,0,0,.14)); pointer-events: none; }
+.avatar:hover { transform: translateY(-2px) rotate(-3deg); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 8px 16px rgba(48, 38, 27, .16); }
+.avatar-photo { background-position: center; background-size: cover; }
+.heatt-atmosphere { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(260px, .95fr); min-height: 318px; margin: -10px 0 30px; overflow: hidden; border: 1px solid rgba(213, 116, 79, .28); border-radius: 25px; color: #f8efe4; background: #252e2a; box-shadow: 0 24px 60px rgba(55, 45, 30, .15); }
+.heatt-atmosphere:before { position: absolute; inset: 0; z-index: -2; content: ''; background: radial-gradient(circle at 84% 42%, rgba(242, 173, 89, .31), transparent 23%), radial-gradient(circle at 64% 8%, rgba(210, 99, 70, .28), transparent 30%), linear-gradient(125deg, #222d2a 10%, #34443a 53%, #1e2725 100%); }
+.atmosphere-noise { position: absolute; inset: 0; z-index: -1; opacity: .16; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E"); mix-blend-mode: soft-light; pointer-events: none; }
+.atmosphere-copy { position: relative; z-index: 2; align-self: center; padding: 34px 10px 31px 34px; }
+.atmosphere-kicker { display: flex; align-items: center; gap: 8px; color: rgba(248, 239, 228, .65); font: 9px var(--mono); letter-spacing: .13em; }
+.pulse-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #eaa66d; box-shadow: 0 0 0 5px rgba(234, 166, 109, .12), 0 0 22px rgba(234, 166, 109, .7); }
+.atmosphere-copy h2 { margin: 17px 0 12px; font: 500 clamp(30px, 3.2vw, 43px)/.98 var(--display); letter-spacing: -.055em; }
+.atmosphere-copy h2 em { color: #f5b082; font-style: italic; }
+.atmosphere-copy > p { max-width: 300px; margin: 0; color: rgba(248, 239, 228, .68); font-size: 12px; line-height: 1.55; }
+.atmosphere-actions { display: flex; gap: 8px; margin-top: 22px; }
+.atmosphere-primary, .atmosphere-quiet { display: inline-flex; align-items: center; gap: 12px; min-height: 35px; padding: 0 12px; border-radius: 9px; font-size: 10px; font-weight: 600; transition: transform .2s ease, background .2s ease, border-color .2s ease; }
+.atmosphere-primary { color: #27302c; background: #f1d9b8; box-shadow: 0 3px 0 rgba(177, 104, 61, .55); }
+.atmosphere-primary:hover { background: #f7e5cc; transform: translateY(-2px); }
+.atmosphere-primary span { font-size: 14px; }
+.atmosphere-quiet { border: 1px solid rgba(248, 239, 228, .22); color: rgba(248, 239, 228, .82); background: rgba(255,255,255,.05); }
+.atmosphere-quiet:hover { border-color: rgba(248, 239, 228, .5); background: rgba(255,255,255,.1); transform: translateY(-2px); }
+.atmosphere-quiet span { font-size: 17px; line-height: 0; color: #f5b082; }
+.atmosphere-proof { display: flex; align-items: center; gap: 10px; margin-top: 25px; color: rgba(248, 239, 228, .47); font: 8px/1.25 var(--mono); letter-spacing: .025em; text-transform: uppercase; }
+.atmosphere-proof strong { color: rgba(248, 239, 228, .78); font-weight: 400; }
+.avatar-stack { display: flex; align-items: center; padding-left: 4px; }
+.avatar-stack .avatar { width: 25px; height: 25px; margin-left: -5px; border: 2px solid #2c3932; font-size: 7px; box-shadow: 0 3px 10px rgba(0,0,0,.18); }
+.avatar-stack b { display: grid; place-items: center; width: 25px; height: 25px; margin-left: -5px; border: 2px solid #2c3932; border-radius: 50%; color: #f7d5ac; background: #4a5b4b; font: 7px var(--mono); }
+.atmosphere-art { position: relative; min-height: 318px; overflow: hidden; }
+.atmosphere-art:after { position: absolute; right: 2%; bottom: -30%; width: 72%; height: 80%; content: ''; border-radius: 50%; background: rgba(245, 181, 111, .06); filter: blur(20px); }
+.atmosphere-orbit { position: absolute; left: 50%; top: 50%; border: 1px solid rgba(246, 210, 167, .18); border-radius: 50%; transform: translate(-50%, -50%); }
+.orbit-a { width: 292px; height: 190px; }
+.orbit-b { width: 232px; height: 282px; border-color: rgba(224, 135, 101, .2); }
+.atmosphere-glow { position: absolute; left: 50%; top: 50%; width: 180px; height: 180px; border-radius: 50%; background: #db7c56; opacity: .6; filter: blur(50px); transform: translate(-50%, -50%); }
+.atmosphere-core { position: absolute; left: 50%; top: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 96px; height: 96px; border: 1px solid rgba(255, 230, 190, .55); border-radius: 37% 63% 54% 46% / 52% 36% 64% 48%; color: #fff3df; background: linear-gradient(145deg, rgba(230, 145, 95, .88), rgba(148, 72, 57, .93)); box-shadow: 0 13px 30px rgba(20, 24, 22, .28), inset 0 0 20px rgba(255, 230, 190, .15); transform: translate(-50%, -50%) rotate(-8deg); }
+.atmosphere-core span { font: 700 19px var(--body); letter-spacing: -.09em; transform: rotate(8deg); }
+.atmosphere-core small { margin-top: 3px; color: rgba(255,243,223,.72); font: 7px var(--mono); letter-spacing: .13em; text-transform: uppercase; transform: rotate(8deg); }
+.atmosphere-float { position: absolute; z-index: 3; display: flex; align-items: center; gap: 8px; min-width: 138px; padding: 8px 10px; border: 1px solid rgba(255, 237, 210, .2); border-radius: 10px; color: rgba(255, 246, 231, .86); background: rgba(40, 48, 43, .62); box-shadow: 0 12px 25px rgba(17, 19, 17, .2); backdrop-filter: blur(12px); }
+.atmosphere-float span:not(.float-icon) { display: flex; flex-direction: column; gap: 2px; }
+.atmosphere-float b { font-size: 9px; font-weight: 500; }
+.atmosphere-float small { color: rgba(255, 246, 231, .48); font: 7px var(--mono); }
+.float-one { top: 17%; left: 3%; }
+.float-two { right: 1%; bottom: 15%; }
+.float-icon { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px; color: #f7c18c; background: rgba(228, 143, 99, .18); font-size: 13px; }
+.float-icon.leaf { color: #b7d4a8; background: rgba(135, 173, 121, .18); }
+.atmosphere-spark { position: absolute; color: #f7c18c; opacity: .7; }
+.spark-one { top: 18%; right: 17%; font-size: 15px; }.spark-two { left: 18%; bottom: 15%; font-size: 24px; color: #b7d4a8; }.spark-three { right: 23%; top: 74%; font-size: 18px; color: #f7dcae; }
+
+.route-stage { min-height: calc(100vh - 78px); }
+.nav-item { position: relative; overflow: hidden; }
+.nav-active-indicator { position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 4px 4px 0; background: var(--ember); }
+
+@media (max-width: 760px) {
+  .heatt-atmosphere { display: block; min-height: 0; margin: -7px -2px 26px; border-radius: 20px; }
+  .atmosphere-copy { padding: 25px 22px 20px; }
+  .atmosphere-copy h2 { font-size: 34px; }
+  .atmosphere-art { min-height: 215px; }
+  .atmosphere-art .atmosphere-orbit { transform: translate(-50%, -50%) scale(.72); }
+  .atmosphere-core { transform: translate(-50%, -50%) scale(.82) rotate(-8deg); }
+  .atmosphere-float { transform: scale(.87); }
+  .float-one { left: 4%; top: 13%; }.float-two { right: 1%; bottom: 13%; }
+  .route-stage { min-height: calc(100vh - 64px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atmosphere-orbit, .atmosphere-glow, .atmosphere-float { animation: none !important; }
+}

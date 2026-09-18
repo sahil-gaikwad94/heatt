@@ -1,0 +1,23 @@
+
+/* The product has three atmospheres, no theme sprawl. */
+.app-shell.theme-midnight {
+  --paper: #1b1e1c; --paper-deep: #252a26; --card: #252925; --ink: #f3eee5; --ink-soft: #c3c4ba; --muted: #8e948a; --line: #363c36; --line-dark: #4a524b; --shadow: 0 14px 35px rgba(0,0,0,.18); --shadow-lift: 0 18px 40px rgba(0,0,0,.45);
+}
+.app-shell.theme-paper { --paper: #fffdf9; --paper-deep: #f5f1e9; --card: #ffffff; --ink: #252624; --ink-soft: #67665f; --muted: #99958b; --line: #ebe6dd; --line-dark: #dcd5c9; --ember: #b55d43; --ember-deep: #90452f; }
+.app-shell.theme-midnight .topbar { background: rgba(27,30,28,.91); }
+.app-shell.theme-midnight .sidebar, .app-shell.theme-midnight .main-column { border-color: var(--line); }
+.app-shell.theme-midnight .nav-item.active, .app-shell.theme-midnight .quiet-card, .app-shell.theme-midnight .feed-explainer, .app-shell.theme-midnight .room-feature, .app-shell.theme-midnight .wisdom-library-link, .app-shell.theme-midnight .suggestion-strip { background: var(--paper-deep); }
+.app-shell.theme-midnight .search-box, .app-shell.theme-midnight .profile-stats div, .app-shell.theme-midnight .privacy-row-icon { background: var(--paper-deep); }
+.app-shell.theme-midnight .post-card, .app-shell.theme-midnight .room-card, .app-shell.theme-midnight .saved-row, .app-shell.theme-midnight .journal-entry, .app-shell.theme-midnight .large-create-card, .app-shell.theme-midnight .modal, .app-shell.theme-midnight .intensity-menu, .app-shell.theme-midnight .why-popover { background: var(--card); }
+.app-shell.theme-midnight .daily-card { background: #121513; }
+.app-shell.theme-midnight .outline-button, .app-shell.theme-midnight .search-box input, .app-shell.theme-midnight select, .app-shell.theme-midnight textarea { color: var(--ink); }
+.app-shell.theme-midnight .outline-button { background: transparent; }
+.app-shell.theme-midnight .type-label { background: #492f29; color: #f2ae98; }
+.app-shell.theme-midnight .type-question { background: #263b3d; color: #9bc8cb; }
+.app-shell.theme-midnight .type-practice { background: #483c27; color: #e2bc6c; }
+.app-shell.theme-midnight .type-poem { background: #382e45; color: #cfb7e8; }
+.app-shell.theme-midnight .type-check-in { background: #2f4233; color: #acd3af; }
+.app-shell.theme-midnight .modal-backdrop { background: rgba(0,0,0,.62); }
+.app-shell.theme-midnight .landing-page { background: var(--paper); }
+.app-shell.theme-midnight .orbit-card.card-main { background: #2d332e; color: var(--ink); }
+.app-shell.theme-midnight .landing-top .brand-name, .app-shell.theme-midnight .landing-hero h1, .app-shell.theme-midnight .landing-hero p, .app-shell.theme-midnight .landing-principles h2, .app-shell.theme-midnight .landing-principles h3, .app-shell.theme-midnight .landing-principles p { color: var(--ink); }

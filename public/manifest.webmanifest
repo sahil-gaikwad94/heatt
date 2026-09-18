@@ -1,0 +1,10 @@
+{
+  "name": "Heatt — worthwhile moments",
+  "short_name": "Heatt",
+  "description": "Where your mind catches fire.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f4ee",
+  "theme_color": "#d8613f",
+  "icons": []
+}
