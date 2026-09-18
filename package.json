@@ -11,7 +11,10 @@
     "check": "tsc -b --pretty false",
     "api:check": "tsc -p apps/api/tsconfig.json --pretty false",
     "test:recommendations": "node --experimental-strip-types scripts/recommendation-check.ts",
-    "test:content": "node --experimental-strip-types scripts/content-check.ts"
+    "test:content": "node --experimental-strip-types scripts/content-check.ts",
+    "test:e2e": "playwright test",
+    "test:blogs": "node --experimental-strip-types scripts/blog-catalog-check.ts",
+    "capture:ui": "node scripts/capture-ui.mjs"
   },
   "dependencies": {
     "@hono/zod-validator": "latest",
@@ -26,6 +29,8 @@
     "zod": "latest"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@sparticuz/chromium": "^153.0.0",
     "@types/node": "latest",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0"

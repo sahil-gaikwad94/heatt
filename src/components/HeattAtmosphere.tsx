@@ -21,12 +21,12 @@ export function HeattAtmosphere({ firstName, onWrite, onTune }: HeattAtmosphereP
       <div className="atmosphere-copy">
         <div className="atmosphere-kicker"><span className="pulse-dot" /> YOUR ATTENTION, TODAY</div>
         <h2 id="atmosphere-title">Good to have you,<br /><em>{firstName}.</em></h2>
-        <p>Three small doors are open. Choose the one that feels like a little more room.</p>
+        <p>Fifty-three free-reading doors are open. Follow one good idea back to its original home.</p>
         <div className="atmosphere-actions">
           <button className="atmosphere-primary" onClick={onWrite}>Leave a thought <span>↗</span></button>
           <button className="atmosphere-quiet" onClick={onTune}>Tune your day <span>⌁</span></button>
         </div>
-        <div className="atmosphere-proof"><span className="avatar-stack" aria-label="A few voices in your orbit"><i className="avatar avatar-coral">MC</i><i className="avatar avatar-sage">NB</i><i className="avatar avatar-lilac">LH</i><b>+ 12</b></span><span>small by intention<br /><strong>no rush, no endless scroll</strong></span></div>
+        <div className="atmosphere-proof"><span className="avatar-stack" aria-label="A few original publishers in your library"><i className="avatar avatar-coral">AK</i><i className="avatar avatar-sage">PF</i><i className="avatar avatar-lilac">CF</i><b>+50</b></span><span>curated by category<br /><strong>fresh reads load as you move</strong></span></div>
       </div>
       <div className="atmosphere-art" aria-hidden="true">
         <motion.div className="atmosphere-orbit orbit-a" animate={{ rotate: 360 }} transition={{ duration: 34, repeat: Infinity, ease: 'linear' }} />

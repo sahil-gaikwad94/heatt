@@ -61,5 +61,5 @@ Do not admit public users until these are true:
 - Deletion propagation has been verified.
 - Feed latency, quota, and error monitoring are in place.
 - The Wisdom library has provenance, translator/edition metadata, jurisdiction caveats, and a completed redistribution-rights decision for every published external entry. Research copies remain excluded or visibly marked until then.
-- Recommendation evaluation reports relevance, diversity, novelty, repeat rate, fallback rate, explicit-preference adherence, and finite-feed stopping-point completion against a deterministic baseline.
+- Feed evaluation reports relevance, diversity, novelty, repeat-loop rate, open-web link health, fallback rate, explicit-preference adherence, and bounded-community completion against a deterministic baseline.
 - Signups can be paused without corrupting existing writes.

@@ -8,7 +8,7 @@ Accepted — September 18, 2026.
 
 The original checkout contained the product and architecture specification but no application, API, schema, or authentication boundary. A polished client without a path to authorization, idempotency, moderation, and deletion propagation would be a static demo, which is not an acceptable launch plan for Heatt.
 
-The reference products provide useful interaction direction: clear content modes, visual cards, strong topic grouping, playful character, and fast navigation. Heatt keeps those strengths while preserving its own text-first, finite-feed, privacy-conscious identity.
+The reference products provide useful interaction direction: clear content modes, visual cards, strong topic grouping, playful character, and fast navigation. This ADR originally chose a finite default feed; ADR 0003 supersedes that choice for the open-web cold-start surface while keeping community post ranking bounded and privacy-conscious.
 
 ## Decision
 

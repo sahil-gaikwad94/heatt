@@ -49,7 +49,7 @@ Heatt is a thoughtful social network with a strong recommendation system — not
 ## 3. The six existing pillars (recap)
 
 1. **Micro-expression** — short posts, reflections, questions, poetry (500 grapheme-cluster limit, enforced client and server).
-2. **Intentional discovery** — a personalized feed with visible controls and an honest stopping point.
+2. **Intentional discovery** — a personalized feed with visible controls; ADR 0003 replaces the cold-start stopping point with an honest, continuously loading open-web catalog while keeping community pages bounded.
 3. **Daily wisdom** — sourced ideas with context, attribution, and a practical reflection.
 4. **Small communities** — rooms and private circles that lower the intimidation of posting.
 5. **Meaningful conversation** — replies, message requests, time-boxed Sparks.
@@ -144,8 +144,8 @@ The two-minute welcome (topics, styles, languages, optional session intent, priv
 ## 6. Feed (unchanged, plus two additions)
 
 For You / Following / Rooms views, the Feed Tuner, and "Why this appeared" are unchanged. Two additions:
-- A **Discovery Roulette** button sits beside the feed's stopping point ("You're caught up — want a surprise?").
-- A **Kindred Rooms** rail can appear below the stopping point, always opt-in and dismissible.
+- A **Discovery Roulette** button remains available on bounded community feeds; the open-web cold-start feed instead appends reviewed source batches automatically.
+- A **Kindred Rooms** rail can appear after bounded community results, always opt-in and dismissible; the open-web rail shows real publishers without fabricated member counts.
 
 ## 7. Posting (unchanged, plus two additions)
 
