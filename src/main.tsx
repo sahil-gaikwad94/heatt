@@ -10,6 +10,7 @@ import './profile.css'
 import './topic-strip.css'
 import './room-form.css'
 import './journey-capsules.css'
+import './atmosphere.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
