@@ -6,6 +6,8 @@ import './theme.css'
 import './extra.css'
 import './landing-overrides.css'
 import './follow.css'
+import './profile.css'
+import './topic-strip.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
