@@ -1,0 +1,3 @@
+
+.post-top-actions { display: flex; align-items: center; gap: 5px; }.follow-link { display: inline-flex; align-items: center; gap: 3px; min-height: 25px; padding: 0 7px; border: 1px solid #dfad99; border-radius: 6px; color: var(--ember-deep); background: transparent; font: 9px var(--mono); }.follow-link:hover, .follow-link.following { background: #fae9e1; }.follow-link.following { color: var(--sage); border-color: #abc1ae; }
+@media (max-width: 760px) { .follow-link { display: none; } }
