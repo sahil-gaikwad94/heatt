@@ -2,7 +2,7 @@
 
 > Where your mind catches fire.
 
-Heatt is a text-first social network for worthwhile expression, intentional discovery, and small communities. This repository now contains the working React/Vite client, an edge-compatible Hono API boundary, and the PostgreSQL/RLS foundation for a launchable product: responsive feed, Rooms, Create, Wisdom, private Journal, editable profiles, client-side share cards, recommendation explanations, Feed Tuner, Discovery Roulette, Curiosity Trail, Highlight & Annotate, Practice Journeys, Ask the Room helpful marks, private Time Capsules, and the Kindle editorial guide character.
+Heatt is a text-first social network for worthwhile expression, intentional discovery, and small communities. This repository now contains the working React/Vite client, an edge-compatible Hono API boundary, and the PostgreSQL/RLS foundation for a capped beta: responsive feed, Rooms, Create, Wisdom, private Journal, editable profiles, client-side share cards, deterministic finite recommendations, recommendation explanations, Feed Tuner, Discovery Roulette, Curiosity Trail, Highlight & Annotate, Practice Journeys, Ask the Room helpful marks, private Time Capsules, and the Kindle editorial guide character. Wisdom research and rights metadata live in `content/wisdom/`; external entries remain review-required until a jurisdiction-aware rights decision is recorded.
 
 ## Run locally
 

@@ -14,7 +14,7 @@ This short pass informed the first product surface in the repository. It is not 
 
 1. **Worthwhile sessions, not maximum session length.** A feed ends after a bounded batch and says why. Discovery Roulette is a deliberate next action, not autoplay.
 2. **Interest signals are hierarchical.** Explicit topics and session intent lead; follows and room membership are next; saves and Fires are bounded evidence; dwell is not a primary objective.
-3. **Quality is exposure-aware.** Seeded data demonstrates the product but the ranking function in `App.tsx` is intentionally small and interpretable. A production API will need impression-level events, smoothing, safety gates, and time-split evaluation before learned ranking.
+3. **Quality is exposure-aware.** Seeded data demonstrates the product and `src/lib/recommendation.ts` is intentionally small, deterministic, and interpretable. A production API will need impression-level events, smoothing, safety gates, and time-split evaluation before any learned ranking.
 4. **People need context.** Post type, invitation (“Advice welcome”, “Just sharing”, “Questions welcome”), room, source, and “Why this?” are first-class display elements.
 5. **Privacy is a product feature.** Journal content is shown as private by construction, share cards are rendered locally, and nothing in the client-side preference model reads the journal to rank public content.
 6. **Character without synthetic activity.** Kindle is a small editorial guide character that reacts to an explicit tap. It is not a fake user, does not publish, and does not pretend to be human.

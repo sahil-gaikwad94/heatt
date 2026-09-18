@@ -9,8 +9,8 @@ This checklist turns the repository into the capped public beta described in the
 3. Apply `database/migrations/0001_foundation.sql`.
 4. Apply `database/migrations/0002_profile_relationships.sql`.
 5. Apply `database/migrations/0003_delight_layer.sql`.
-6. Add three coherent, rights-cleared rooms and a small approved Wisdom library.
-6. Confirm that the Auth user trigger creates `profiles` and `user_preferences` rows.
+7. Add three coherent, rights-cleared rooms and a small approved Wisdom library. Every external Wisdom entry must have a completed rights decision; `public_domain_source_pending_review` is not launch-cleared.
+8. Confirm that the Auth user trigger creates `profiles` and `user_preferences` rows.
 
 ## 2. Run the privacy matrix
 
@@ -60,5 +60,6 @@ Do not admit public users until these are true:
 - Database and asset backups have been restored in a drill.
 - Deletion propagation has been verified.
 - Feed latency, quota, and error monitoring are in place.
-- The Wisdom library has provenance and redistribution rights recorded.
+- The Wisdom library has provenance, translator/edition metadata, jurisdiction caveats, and a completed redistribution-rights decision for every published external entry. Research copies remain excluded or visibly marked until then.
+- Recommendation evaluation reports relevance, diversity, novelty, repeat rate, fallback rate, explicit-preference adherence, and finite-feed stopping-point completion against a deterministic baseline.
 - Signups can be paused without corrupting existing writes.
