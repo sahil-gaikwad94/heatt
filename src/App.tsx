@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { signInWithGoogle, supabase } from './lib/auth'
+import { heattApi } from './lib/api'
 
 type Page = 'landing' | 'home' | 'rooms' | 'create' | 'journal' | 'wisdom' | 'profile'
 type ThemeId = 'ember' | 'midnight' | 'paper'
@@ -137,9 +139,36 @@ export default function App() {
   const [showShare, setShowShare] = useState<Post | Wisdom | null>(null)
   const [toast, setToast] = useState('')
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null)
+  const [signedIn, setSignedIn] = useState(false)
 
   useEffect(() => { window.localStorage.setItem('heatt-state', JSON.stringify(state)) }, [state])
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(''), 2600); return () => window.clearTimeout(timer) }, [toast])
+  useEffect(() => {
+    if (!supabase) return
+    let active = true
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!active) return
+      setSignedIn(Boolean(data.session))
+      if (!data.session) return
+      try {
+        const response = await heattApi.getProfile()
+        const remote = response.profile as { display_name?: string; handle?: string; bio?: string; avatar_url?: string | null } | null
+        if (remote && active) setState(previous => ({ ...previous, profile: { ...previous.profile, name: remote.display_name ?? previous.profile.name, handle: remote.handle ?? previous.profile.handle, bio: remote.bio ?? previous.profile.bio, avatarData: remote.avatar_url ?? previous.profile.avatarData } }))
+      } catch { /* Local-first mode remains usable when the API is not configured. */ }
+    })
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session)))
+    return () => { active = false; listener.subscription.unsubscribe() }
+  }, [])
+  useEffect(() => {
+    if (!signedIn) return
+    let active = true
+    heattApi.getFeed('for-you').then(response => {
+      if (!active || !response.posts.length) return
+      const remotePosts = (response.posts as Array<{ id: string; author_id: string; post_type: PostType; topic: string; text: string; created_at: string; invitation?: Post['invitation'] }>).map(post => ({ id: post.id, authorId: post.author_id, type: post.post_type, topic: post.topic, text: post.text, createdAt: new Date(post.created_at).getTime(), invitation: post.invitation ?? 'Just sharing' as const }))
+      setState(previous => ({ ...previous, posts: remotePosts }))
+    }).catch(() => undefined)
+    return () => { active = false }
+  }, [signedIn])
 
   const setStatePartial = (partial: Partial<StoredState>) => setState(previous => ({ ...previous, ...partial }))
   const toggleSave = (postId: string) => setStatePartial({ saved: state.saved.includes(postId) ? state.saved.filter(id => id !== postId) : [...state.saved, postId] })
@@ -183,6 +212,7 @@ export default function App() {
   }, [feedMode, search, state.following, state.joinedRooms, state.posts, state.preferences])
 
   const openPage = (next: Page) => { setPage(next); setSearch(''); setSelectedRoom(null) }
+  const handleSignIn = async () => { try { const result = await signInWithGoogle(); if (result.error) setToast('Sign in is unavailable right now. You can keep exploring locally.'); } catch { setToast('Connect Supabase Auth to enable account sign-in.'); } }
 
   return <div className={`app-shell theme-${state.theme || 'ember'}`}>
     <aside className="sidebar">
@@ -190,7 +220,7 @@ export default function App() {
         <span className="brand-mark"><span /></span><span className="brand-name">heatt</span>
       </div>
       <div className="sidebar-profile">
-        <div className={`avatar avatar-user ${state.profile.avatarData ? 'avatar-photo' : ''}`} style={state.profile.avatarData ? { backgroundImage: `url(${state.profile.avatarData})` } : undefined}>{!state.profile.avatarData && 'AR'}</div><div><strong>{state.profile.name}</strong><span>@{state.profile.handle}</span></div><button className="icon-button ghost" aria-label="Profile settings" onClick={() => openPage('profile')}><Icon name="more" size={17} /></button>
+        <div className={`avatar avatar-user ${state.profile.avatarData ? 'avatar-photo' : ''}`} style={state.profile.avatarData ? { backgroundImage: `url(${state.profile.avatarData})` } : undefined}>{!state.profile.avatarData && 'AR'}</div><div><strong>{state.profile.name}</strong><span>{signedIn ? 'Synced account' : `@${state.profile.handle}`}</span></div><button className="icon-button ghost" aria-label="Profile settings" onClick={() => openPage('profile')}><Icon name="more" size={17} /></button>
       </div>
       <nav className="main-nav" aria-label="Main navigation">
         <NavItem icon="home" label="Home" active={page === 'home'} onClick={() => openPage('home')} />
@@ -213,13 +243,13 @@ export default function App() {
         <label className="search-box"><Icon name="search" size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search thoughts, rooms, people" aria-label="Search Heatt" />{search && <button onClick={() => setSearch('')} aria-label="Clear search"><Icon name="x" size={15} /></button>}</label>
         <div className="top-actions"><button className="icon-button notification-button" aria-label="Notifications"><Icon name="bell" size={19} /><span /></button><div className="avatar avatar-user avatar-small">AR</div></div>
       </header>
-      {page === 'landing' && <LandingPage onEnter={() => openPage('home')} onExplore={() => openPage('rooms')} />}
+      {page === 'landing' && <LandingPage onEnter={() => openPage('home')} onExplore={() => openPage('rooms')} onSignIn={handleSignIn} />}
       {page === 'home' && <HomePage posts={filteredPosts} mode={feedMode} setMode={setFeedMode} state={state} onReact={setReaction} onSave={toggleSave} onComment={addComment} onShare={setShowShare} onTune={() => setShowTuner(true)} onToast={setToast} onCreatePost={createPost} onFollow={toggleFollow} />}
       {page === 'rooms' && <RoomsPage joinedRooms={state.joinedRooms} onJoin={joinRoom} onOpenRoom={room => setSelectedRoom(room)} selectedRoom={selectedRoom} posts={state.posts} state={state} onReact={setReaction} onSave={toggleSave} onComment={addComment} onShare={setShowShare} onFollow={toggleFollow} />}
       {page === 'create' && <CreatePage onCreate={createPost} onCancel={() => openPage('home')} />}
       {page === 'journal' && <JournalPage entries={state.journal} savedPosts={state.posts.filter(post => state.saved.includes(post.id))} onShare={setShowShare} onAddJournal={addJournal} />}
       {page === 'wisdom' && <WisdomPage state={state} onAddJournal={addJournal} onShare={setShowShare} onToast={setToast} />}
-      {page === 'profile' && <ProfilePage state={state} onSavePreferences={preferences => { setStatePartial({ preferences }); setToast('Your preferences are updated.'); }} onSaveProfile={profile => { setStatePartial({ profile }); setToast('Your profile is ready for the next conversation.'); }} onThemeChange={theme => setStatePartial({ theme })} />}
+      {page === 'profile' && <ProfilePage state={state} onSavePreferences={preferences => { setStatePartial({ preferences }); setToast('Your preferences are updated.'); }} onSaveProfile={profile => { setStatePartial({ profile }); if (signedIn) { heattApi.updateProfile({ name: profile.name, handle: profile.handle, bio: profile.bio }).then(() => setToast('Your profile is synced.')).catch(() => setToast('Saved locally. Sync will retry when the API is available.')); } else setToast('Your profile is ready for the next conversation.'); }} onThemeChange={theme => setStatePartial({ theme })} />}
     </main>
 
     <aside className="right-rail">
@@ -240,7 +270,7 @@ export default function App() {
 
 function KindleCard({ onToast }: { onToast: (message: string) => void }) { const [message, setMessage] = useState('I found a thought with a little edge to it.'); const messages = ['I found a thought with a little edge to it.', 'Try a room you have not visited yet.', 'A good question is a small door.']; return <div className="kindle-card"><div className="kindle-character" aria-hidden="true"><span className="kindle-flame" /><span className="kindle-eye left" /><span className="kindle-eye right" /><span className="kindle-smile" /></div><div className="kindle-copy"><span className="eyebrow">KINDLE, YOUR LITTLE CURATOR</span><p>{message}</p><button className="text-button" onClick={() => { const next = messages[(messages.indexOf(message) + 1) % messages.length]; setMessage(next); onToast('Kindle found another small door.'); }}>Give me a nudge <Icon name="spark" size={12} /></button></div></div> }
 
-function LandingPage({ onEnter, onExplore }: { onEnter: () => void; onExplore: () => void }) { return <div className="landing-page"><div className="landing-top"><button className="landing-brand" onClick={onEnter}><span className="brand-mark"><span /></span><span className="brand-name">heatt</span></button><div><button className="text-button" onClick={onExplore}>Explore rooms</button><button className="outline-button landing-login" onClick={onEnter}>Enter Heatt <Icon name="arrow" size={14} /></button></div></div><section className="landing-hero"><div className="landing-kicker"><span className="spark-soft"><Icon name="spark" size={14} /></span> A SOCIAL NETWORK FOR BETTER MOMENTS</div><h1>Make room for<br /><em>what matters.</em></h1><p>Heatt is where short thoughts become lasting threads, good questions find kind rooms, and discovery leaves you a little better than it found you.</p><div className="landing-actions"><button className="primary-button" onClick={onEnter}>Find your next thought <Icon name="arrow" size={15} /></button><button className="text-button landing-secondary" onClick={onExplore}>See the rooms <Icon name="arrow" size={15} /></button></div><div className="landing-proof"><div className="proof-avatars"><div className="avatar avatar-coral">MC</div><div className="avatar avatar-sage">NB</div><div className="avatar avatar-lilac">LH</div><div className="avatar avatar-user">+</div></div><span><strong>Small by intention.</strong><br />Built for the thought you keep coming back to.</span></div></section><section className="landing-orbit"><div className="orbit-ring ring-one" /><div className="orbit-ring ring-two" /><div className="orbit-card card-top"><span className="eyebrow">TODAY'S QUESTION</span><strong>What are you learning<br />to leave unfinished?</strong></div><div className="orbit-card card-main"><span className="quote-mark-small">“</span><p>The things that change us rarely arrive with a trumpet.</p><span className="orbit-source">Julian · Quiet Reading</span><div className="orbit-fire"><Icon name="fire" size={15} /> 27</div></div><div className="orbit-node node-one"><Icon name="book" size={16} /></div><div className="orbit-node node-two"><Icon name="heart" size={16} /></div><div className="orbit-note"><Icon name="check" size={13} /> Not an endless scroll.</div></section><section className="landing-principles"><div><span className="eyebrow">THE HEATT DIFFERENCE</span><h2>Thoughtful is<br /><em>a feature.</em></h2></div><div className="principle-grid"><div><span className="principle-number">01</span><h3>A feed with an ending</h3><p>Recommendations shaped by your intent, with a natural stopping point instead of a slot machine.</p></div><div><span className="principle-number">02</span><h3>Small rooms, real voices</h3><p>Find people around ideas worth sitting with — not the loudest thing in the room.</p></div><div><span className="principle-number">03</span><h3>Your attention stays yours</h3><p>Private by construction. Clear controls. No streaks, pressure, or manufactured activity.</p></div></div></section></div> }
+function LandingPage({ onEnter, onExplore, onSignIn }: { onEnter: () => void; onExplore: () => void; onSignIn: () => void }) { return <div className="landing-page"><div className="landing-top"><button className="landing-brand" onClick={onEnter}><span className="brand-mark"><span /></span><span className="brand-name">heatt</span></button><div><button className="text-button" onClick={onSignIn}>Sign in</button><button className="text-button" onClick={onExplore}>Explore rooms</button><button className="outline-button landing-login" onClick={onEnter}>Enter Heatt <Icon name="arrow" size={14} /></button></div></div><section className="landing-hero"><div className="landing-kicker"><span className="spark-soft"><Icon name="spark" size={14} /></span> A SOCIAL NETWORK FOR BETTER MOMENTS</div><h1>Make room for<br /><em>what matters.</em></h1><p>Heatt is where short thoughts become lasting threads, good questions find kind rooms, and discovery leaves you a little better than it found you.</p><div className="landing-actions"><button className="primary-button" onClick={onEnter}>Find your next thought <Icon name="arrow" size={15} /></button><button className="text-button landing-secondary" onClick={onExplore}>See the rooms <Icon name="arrow" size={15} /></button></div><div className="landing-proof"><div className="proof-avatars"><div className="avatar avatar-coral">MC</div><div className="avatar avatar-sage">NB</div><div className="avatar avatar-lilac">LH</div><div className="avatar avatar-user">+</div></div><span><strong>Small by intention.</strong><br />Built for the thought you keep coming back to.</span></div></section><section className="landing-orbit"><div className="orbit-ring ring-one" /><div className="orbit-ring ring-two" /><div className="orbit-card card-top"><span className="eyebrow">TODAY'S QUESTION</span><strong>What are you learning<br />to leave unfinished?</strong></div><div className="orbit-card card-main"><span className="quote-mark-small">“</span><p>The things that change us rarely arrive with a trumpet.</p><span className="orbit-source">Julian · Quiet Reading</span><div className="orbit-fire"><Icon name="fire" size={15} /> 27</div></div><div className="orbit-node node-one"><Icon name="book" size={16} /></div><div className="orbit-node node-two"><Icon name="heart" size={16} /></div><div className="orbit-note"><Icon name="check" size={13} /> Not an endless scroll.</div></section><section className="landing-principles"><div><span className="eyebrow">THE HEATT DIFFERENCE</span><h2>Thoughtful is<br /><em>a feature.</em></h2></div><div className="principle-grid"><div><span className="principle-number">01</span><h3>A feed with an ending</h3><p>Recommendations shaped by your intent, with a natural stopping point instead of a slot machine.</p></div><div><span className="principle-number">02</span><h3>Small rooms, real voices</h3><p>Find people around ideas worth sitting with — not the loudest thing in the room.</p></div><div><span className="principle-number">03</span><h3>Your attention stays yours</h3><p>Private by construction. Clear controls. No streaks, pressure, or manufactured activity.</p></div></div></section></div> }
 
 function NavItem({ icon, label, active, onClick }: { icon: IconName; label: string; active: boolean; onClick: () => void }) { return <button className={`nav-item ${active ? 'active' : ''}`} onClick={onClick}><Icon name={icon} size={19} /><span>{label}</span></button> }
 function MobileNavItem({ icon, label, active, onClick }: { icon: IconName; label: string; active: boolean; onClick: () => void }) { return <button className={`mobile-nav-item ${active ? 'active' : ''}`} onClick={onClick}><Icon name={icon} size={20} /><span>{label}</span></button> }

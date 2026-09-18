@@ -2,7 +2,7 @@
 
 > Where your mind catches fire.
 
-Heatt is a text-first social network for worthwhile expression, intentional discovery, and small communities. This repository contains the working React/Vite product slice: a responsive feed, Rooms, Create, Wisdom, private Journal, Profile & privacy controls, client-side share cards, recommendation explanations, Feed Tuner, Discovery Roulette, Curiosity Trail, and the Kindle editorial guide character.
+Heatt is a text-first social network for worthwhile expression, intentional discovery, and small communities. This repository now contains the working React/Vite client, an edge-compatible Hono API boundary, and the PostgreSQL/RLS foundation for a launchable product: responsive feed, Rooms, Create, Wisdom, private Journal, editable profiles, client-side share cards, recommendation explanations, Feed Tuner, Discovery Roulette, Curiosity Trail, and the Kindle editorial guide character.
 
 ## Run locally
 
@@ -33,6 +33,6 @@ The Vite server binds to `0.0.0.0` so it can be used in a preview environment.
 
 ## Architecture follow-up
 
-The checkout originally contained only `AGENTS.md` and `ARCHITECTURE_AND_ENGINEERING.md`; there was no API, schema, auth configuration, or migration history to safely extend. This client intentionally has no fake network layer or privileged credentials. The production boundary remains the one described by the architecture documents: Supabase Auth + PostgreSQL/RLS behind a thin TypeScript API, with idempotent mutations and database-enforced privacy rules.
+The checkout originally contained only `AGENTS.md` and `ARCHITECTURE_AND_ENGINEERING.md`; the implementation now adds the first real product boundary instead of a fake network layer. `apps/api` forwards authenticated Supabase sessions to RLS-scoped Postgres operations, and `database/migrations/0001_foundation.sql` owns the core relationship, audience, reaction, journal, moderation, and idempotency invariants. Without configured provider credentials, the client remains local-first and fully usable; with `VITE_API_URL` and Supabase Auth configured, profile and feed synchronization use the online boundary.
 
 See [`docs/research.md`](docs/research.md) for the domain research and product decisions behind the implementation.

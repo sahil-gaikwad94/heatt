@@ -1,0 +1,10 @@
+name = "heatt-api"
+main = "src/index.ts"
+compatibility_date = "2026-09-18"
+
+[vars]
+CORS_ORIGIN = "http://localhost:5173"
+
+# Configure secrets before deployment:
+# wrangler secret put SUPABASE_URL
+# wrangler secret put SUPABASE_ANON_KEY
