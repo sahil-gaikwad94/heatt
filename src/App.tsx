@@ -7,6 +7,8 @@ import { rankRecommendations, type RecommendationResult } from './lib/recommenda
 import { HeattAtmosphere } from './components/HeattAtmosphere'
 import { SettingsPage } from './components/SettingsPage'
 import { HeatButton } from './components/Heat'
+import { ReaderPortal } from './components/FlareReader'
+import type { BuddyMessage } from './data/buddies'
 import { normalizeTheme, type Preferences, type ThemeId } from './types'
 import { blogCatalog, blogCatalogReviewedOn, blogCategories, type BlogCategory, type BlogSource } from './data/blogCatalog'
 
@@ -169,6 +171,8 @@ export default function App() {
   const [toast, setToast] = useState('')
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null)
   const [signedIn, setSignedIn] = useState(false)
+  const [buddyChat, setBuddyChat] = useState<BuddyMessage[]>([])
+  const [readerBlog, setReaderBlog] = useState<BlogSource | null>(null)
 
   useEffect(() => { window.localStorage.setItem('heatt-state', JSON.stringify(state)); document.documentElement.dataset.theme = normalizeTheme(state.theme) }, [state])
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(''), 2600); return () => window.clearTimeout(timer) }, [toast])
@@ -298,7 +302,7 @@ export default function App() {
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={page} className={`route-stage surface-${surfaceAtmosphere}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: .32, ease: [0.22, 1, 0.36, 1] }}>
           {page === 'landing' && <LandingPage onEnter={() => openPage('home')} onExplore={() => openPage('rooms')} onSignIn={handleSignIn} />}
-          {page === 'home' && <HomePage posts={filteredPosts} mode={feedMode} setMode={setFeedMode} state={state} search={search} onClearSearch={() => setSearch('')} onReact={setReaction} onSave={toggleSave} onSaveBlog={toggleSaveBlog} onComment={addComment} onShare={setShowShare} onTune={() => setShowTuner(true)} onToast={setToast} onCreatePost={createPost} onFollow={toggleFollow} onJournal={addJournal} recommendationReasons={recommendationReasons} helpfulReplies={state.helpfulReplies} onHelpful={toggleHelpful} />}
+          {page === 'home' && <HomePage onOpenReader={setReaderBlog} posts={filteredPosts} mode={feedMode} setMode={setFeedMode} state={state} search={search} onClearSearch={() => setSearch('')} onReact={setReaction} onSave={toggleSave} onSaveBlog={toggleSaveBlog} onComment={addComment} onShare={setShowShare} onTune={() => setShowTuner(true)} onToast={setToast} onCreatePost={createPost} onFollow={toggleFollow} onJournal={addJournal} recommendationReasons={recommendationReasons} helpfulReplies={state.helpfulReplies} onHelpful={toggleHelpful} />}
           {page === 'rooms' && <RoomsPage joinedRooms={state.joinedRooms} onJoin={joinRoom} onOpenRoom={room => setSelectedRoom(room)} selectedRoom={selectedRoom} posts={state.posts} state={state} onReact={setReaction} onSave={toggleSave} onComment={addComment} onShare={setShowShare} onFollow={toggleFollow} onJournal={addJournal} helpfulReplies={state.helpfulReplies} onHelpful={toggleHelpful} onToast={setToast} onCreateRoom={room => { if (signedIn) heattApi.createRoom(room).then(() => setToast('Your room is synced.')).catch(() => setToast('Room created locally. Sync will retry when the API is available.')); }} />}
           {page === 'create' && <CreatePage profile={state.profile} onCreate={createPost} onCancel={() => openPage('home')} />}
           {page === 'journal' && <JournalPage entries={state.journal} savedPosts={state.posts.filter(post => state.saved.includes(post.id))} capsules={state.capsules} onShare={setShowShare} onAddJournal={addJournal} onAddCapsule={addCapsule} />}
@@ -311,6 +315,7 @@ export default function App() {
 
     <nav className="mobile-nav" aria-label="Mobile navigation"><MobileNavItem icon="home" label="Home" active={page === 'home'} onClick={() => openPage('home')} /><MobileNavItem icon="compass" label="Rooms" active={page === 'rooms'} onClick={() => openPage('rooms')} /><MobileNavItem icon="plus" label="Create" active={page === 'create'} onClick={() => openPage('create')} /><MobileNavItem icon="book" label="Journal" active={page === 'journal'} onClick={() => openPage('journal')} /><MobileNavItem icon="user" label="You" active={page === 'profile'} onClick={() => openPage('profile')} /><MobileNavItem icon="settings" label="Settings" active={page === 'settings'} onClick={() => openPage('settings')} /></nav>
 
+    {readerBlog && <ReaderPortal blog={readerBlog} heat={(state.reactions[`blog:${readerBlog.id}`] ?? 0) as 0 | 1 | 2 | 3} onHeat={value => setState(previous => ({ ...previous, reactions: { ...previous.reactions, [`blog:${readerBlog.id}`]: value } }))} saved={state.savedBlogs.includes(readerBlog.id)} onSave={() => toggleSaveBlog(readerBlog.id)} onToast={setToast} onClose={() => setReaderBlog(null)} />}
     {showTuner && <TunerModal preferences={state.preferences} onClose={() => setShowTuner(false)} onSave={preferences => { setStatePartial({ preferences }); setShowTuner(false); setToast('Feed tuned. Your choices lead the way.'); }} />}
     {showShare && <ShareModal item={showShare} onClose={() => setShowShare(null)} onToast={setToast} />}
     {toast && <div className="toast" role="status"><span className="toast-check"><Icon name="check" size={14} /></span>{toast}</div>}
@@ -393,7 +398,7 @@ function LandingPage({ onEnter, onExplore, onSignIn }: { onEnter: () => void; on
 function NavItem({ icon, label, active, onClick }: { icon: IconName; label: string; active: boolean; onClick: () => void }) { return <button className={`nav-item ${active ? 'active' : ''}`} onClick={onClick}>{active && <motion.span layoutId="nav-active" className="nav-active-indicator" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}<Icon name={icon} size={19} /><span>{label}</span></button> }
 function MobileNavItem({ icon, label, active, onClick }: { icon: IconName; label: string; active: boolean; onClick: () => void }) { return <button className={`mobile-nav-item ${active ? 'active' : ''}`} onClick={onClick}><Icon name={icon} size={20} /><span>{label}</span></button> }
 
-function HomePage({ posts, mode, setMode, state, search, onClearSearch, recommendationReasons, onReact, onSave, onSaveBlog, onComment, onShare, onTune, onToast, onCreatePost, onFollow, onJournal, helpfulReplies, onHelpful }: { posts: Post[]; mode: FeedMode; setMode: (mode: FeedMode) => void; state: StoredState; search: string; onClearSearch: () => void; recommendationReasons: Record<string, string>; onReact: (id: string, intensity: number) => void; onSave: (id: string) => void; onSaveBlog: (id: string) => void; onComment: (comment: Comment) => void; onShare: (item: Post) => void; onTune: () => void; onToast: (message: string) => void; onCreatePost: (post: Post) => void; onFollow: (authorId: string) => void; onJournal: (entry: JournalEntry) => void; helpfulReplies: string[]; onHelpful: (replyId: string) => void }) {
+function HomePage({ onOpenReader, posts, mode, setMode, state, search, onClearSearch, recommendationReasons, onReact, onSave, onSaveBlog, onComment, onShare, onTune, onToast, onCreatePost, onFollow, onJournal, helpfulReplies, onHelpful }: { onOpenReader: (blog: BlogSource) => void; posts: Post[]; mode: FeedMode; setMode: (mode: FeedMode) => void; state: StoredState; search: string; onClearSearch: () => void; recommendationReasons: Record<string, string>; onReact: (id: string, intensity: number) => void; onSave: (id: string) => void; onSaveBlog: (id: string) => void; onComment: (comment: Comment) => void; onShare: (item: Post) => void; onTune: () => void; onToast: (message: string) => void; onCreatePost: (post: Post) => void; onFollow: (authorId: string) => void; onJournal: (entry: JournalEntry) => void; helpfulReplies: string[]; onHelpful: (replyId: string) => void }) {
   const [showNew, setShowNew] = useState(false)
   const [roulette, setRoulette] = useState<Post | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Saved' | BlogCategory>('All')
@@ -462,7 +467,7 @@ function HomePage({ posts, mode, setMode, state, search, onClearSearch, recommen
       <div className="feed-explainer open-web-explainer"><span className="spark-soft"><Icon name="spark" size={14} /></span><span><strong>Real sources, no invented activity.</strong> Heatt links to free reading on the publisher’s own website.</span><button className="text-button" onClick={onTune}>Tune feed</button></div>
       <section className="library-overview" aria-label="Curated blog directory summary"><div><span className="library-count">{blogCatalog.length}</span><span>free-reading<br />destinations</span></div><div><span className="library-count">{blogCategories.length}</span><span>clear<br />categories</span></div><p><Icon name="check" size={14} /><span><strong>Reviewed {blogCatalogReviewedOn}</strong><br />Descriptions are written by Heatt. Articles stay with their publishers.</span></p></section>
       {eligibleBlogs.length === 0 ? <EmptyState icon="search" title="No source matches that search" description="Try a broader phrase or choose another shelf. The original directory is still here." action="Show all sources" onAction={() => { setSelectedCategory('All'); onClearSearch() }} /> : <>
-        <div className="blog-list" aria-live="polite">{displayedBlogs.map(({ blog, key, loop, index }) => <BlogCard key={key} blog={blog} index={index} repeated={loop > 0} saved={state.savedBlogs.includes(blog.id)} preferred={state.preferences.topics.includes(blog.category)} onSave={() => onSaveBlog(blog.id)} onShare={() => shareBlog(blog)} />)}</div>
+        <div className="blog-list" aria-live="polite">{displayedBlogs.map(({ blog, key, loop, index }) => <BlogCard key={key} blog={blog} index={index} repeated={loop > 0} saved={state.savedBlogs.includes(blog.id)} preferred={state.preferences.topics.includes(blog.category)} onSave={() => onSaveBlog(blog.id)} onShare={() => shareBlog(blog)} onOpenReader={() => onOpenReader(blog)} />)}</div>
         <div ref={sentinelRef} className="feed-sentinel" data-testid="infinite-scroll-sentinel" role="status" aria-label={isLoadingMore ? 'Loading more sources' : canLoadMore ? 'More sources load as you scroll' : 'End of this category'}>{isLoadingMore ? <><span className="loading-flame" /><strong>Kindling more good reads…</strong></> : canLoadMore ? <><span className="sentinel-line" /><span>Keep going · more reads load automatically</span><span className="sentinel-line" /></> : <><Icon name="check" size={14} /><span>You have reached every source in this shelf.</span></>}</div>
       </>}
     </> : <>
@@ -475,7 +480,7 @@ function HomePage({ posts, mode, setMode, state, search, onClearSearch, recommen
   </div>
 }
 
-function BlogCard({ blog, index, repeated, saved, preferred, onSave, onShare }: { blog: BlogSource; index: number; repeated: boolean; saved: boolean; preferred: boolean; onSave: () => void; onShare: () => void }) {
+function BlogCard({ blog, index, repeated, saved, preferred, onSave, onShare, onOpenReader }: { blog: BlogSource; index: number; repeated: boolean; saved: boolean; preferred: boolean; onSave: () => void; onShare: () => void; onOpenReader: () => void }) {
   const [showWhy, setShowWhy] = useState(false)
   return <motion.article className={`blog-card blog-accent-${blog.accent}`} data-testid="blog-card" initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .12 }} transition={{ duration: .42, delay: Math.min((index % 6) * .045, .18), ease: [0.22, 1, 0.36, 1] }}>
     <div className="blog-card-accent" aria-hidden="true" />
@@ -486,7 +491,7 @@ function BlogCard({ blog, index, repeated, saved, preferred, onSave, onShare }: 
     <div className="blog-tags">{blog.tags.map(tag => <span key={tag}>#{tag}</span>)}</div>
     <div className="blog-publisher"><span>{blog.publisher}</span><button onClick={() => setShowWhy(!showWhy)}><Icon name="spark" size={12} /> Why here?</button></div>
     {showWhy && <div className="blog-why"><p>{preferred ? `This matches your chosen shelf: ${blog.category}.` : `A curated perspective from ${blog.category.toLowerCase()}.`} Heatt wrote this summary and sends you to the publisher for the work itself.</p><button onClick={() => setShowWhy(false)} aria-label="Close explanation"><Icon name="x" size={13} /></button></div>}
-    <div className="blog-actions"><a className="primary-button visit-blog" href={blog.url} target="_blank" rel="noreferrer" data-testid="visit-blog">Visit blog <span aria-hidden="true">↗</span></a><button className={`outline-button ${saved ? 'saved-source' : ''}`} onClick={onSave}><Icon name={saved ? 'check' : 'bookmark'} size={15} /> {saved ? 'On your shelf' : 'Save source'}</button><button className="icon-button" onClick={onShare} aria-label={`Share ${blog.name}`}><Icon name="share" size={16} /></button></div>
+    <div className="blog-actions"><a className="primary-button visit-blog" href={blog.url} target="_blank" rel="noreferrer" onClick={event => { event.preventDefault(); onOpenReader() }} data-testid="visit-blog">Read this flare <span aria-hidden="true">→</span></a><button className={`outline-button ${saved ? 'saved-source' : ''}`} onClick={onSave}><Icon name={saved ? 'check' : 'bookmark'} size={15} /> {saved ? 'On your shelf' : 'Save source'}</button><button className="icon-button" onClick={onShare} aria-label={`Share ${blog.name}`}><Icon name="share" size={16} /></button></div>
   </motion.article>
 }
 
