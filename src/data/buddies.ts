@@ -276,7 +276,7 @@ export function buddyReply(buddy: Buddy, message: string, warmth: BuddyWarmth): 
   if (/(flare|post|wrote|writing|write)/.test(text)) return 'A flare! That is a real one — most thoughts never make it out of the head. Want to write another while the wick is hot?'
   if (/(heat|fire|lit|hot)/.test(text)) return 'Heat is our way of saying “this warmed me”. Three little flames if something really caught you.'
   if (/(what is heatt|about heatt|this app|what is this)/.test(text)) return 'Heatt is a quieter social space for worthwhile expression. Real sources, honest signals, private journal, and small rooms. I live here.'
-  if (/(theme|dark mode|light mode|appearance)/.test(text)) return 'You can dress Heatt in Lumen, Midnight, or Ink — Settings → Appearance. The whole app changes, not just one page. It is quite satisfying.'
+  if (/(theme|dark mode|light mode|appearance)/.test(text)) return 'You can dress Heatt in Ember, Midnight, or Ink — Settings → Appearance. The whole app changes, not just one page. It is quite satisfying.'
   if (/(read|article|blog|suggest|recommend|something good|find me|book)/.test(text)) {
     const found = findRead(text)
     if (found) return found.line

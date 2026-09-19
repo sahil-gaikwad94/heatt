@@ -3,9 +3,9 @@ import type { BlogCategory } from './blogCatalog'
 /* ============================================================
    HEATT · SHELF ART
    Every category shelf carries its own commissioned artwork.
-   Art direction: ice-white daylight, electric blue washes,
-   warm gold accents — it sits comfortably inside all three
-   app themes (Lumen, Midnight, Ink).
+   Art direction: warm ember light, terracotta and gold on warm
+   cream — the Heatt palette, sitting comfortably inside all
+   three app themes (Ember, Midnight, Ink).
    ============================================================ */
 
 export type ShelfArt = {

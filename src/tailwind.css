@@ -1,0 +1,108 @@
+/* ============================================================
+   HEATT · TAILWIND v4 FOUNDATION
+   CSS-first Tailwind layer for the modern (2026) surfaces:
+   reader, profile, landing, flare cards, dialogs.
+
+   Utilities resolve to the app's theme tokens (theme.css), so
+   every class is automatically theme-reactive: the same
+   `bg-card` is porcelain in Ember, near-black in Midnight.
+   No preflight is imported — the legacy surfaces keep their
+   carefully tuned base styles, and Tailwind utilities layer
+   on top for the redesigned components.
+   ============================================================ */
+
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme inline {
+  /* surfaces */
+  --color-paper: var(--bg);
+  --color-card: var(--panel);
+  --color-card-soft: var(--panel-soft);
+  --color-card-deep: var(--panel-deep);
+  --color-card-glass: var(--panel-glass);
+  --color-night: var(--panel-ink);
+  --color-night-2: var(--panel-ink-2);
+  --color-night-text: var(--panel-ink-text);
+  --color-night-copy: var(--panel-ink-copy);
+  --color-night-line: var(--panel-ink-line);
+
+  /* ink */
+  --color-ink: var(--text);
+  --color-ink-soft: var(--copy);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  /* accents */
+  --color-ember: var(--ember);
+  --color-ember-deep: var(--ember-deep);
+  --color-ember-soft: var(--accent-soft);
+  --color-on-ember: var(--surface-on-accent);
+  --color-gold: var(--saffron);
+  --color-gold-soft: var(--gold-soft);
+  --color-sage: var(--sage);
+  --color-lilac: var(--lilac);
+  --color-good: var(--good);
+
+  /* heat ramp */
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+  --color-cool: var(--cool);
+
+  /* type + shape */
+  --font-display: var(--display);
+  --font-body: var(--body);
+  --font-mono: var(--mono);
+  --radius-xl2: 20px;
+  --radius-xl3: 26px;
+
+  /* shadows */
+  --shadow-soft: var(--shadow);
+  --shadow-lift: var(--shadow-lift);
+  --shadow-night: var(--shadow-panel-ink);
+
+  /* motion */
+  --animate-ember-rise: ember-rise 11s linear infinite;
+  --animate-float-slow: float-slow 7s ease-in-out infinite;
+  --animate-float-slower: float-slow 9.5s ease-in-out infinite reverse;
+  --animate-breathe: breathe 3.4s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes ember-rise {
+  0% { transform: translateY(6vh) translateX(0) scale(.5); opacity: 0; }
+  10% { opacity: .7; }
+  65% { opacity: .45; }
+  100% { transform: translateY(-104vh) translateX(7vw) scale(1.1); opacity: 0; }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(-.5deg); }
+  50% { transform: translateY(-11px) rotate(.4deg); }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: .65; }
+  50% { transform: scale(1.14); opacity: 1; }
+}
+@keyframes shimmer {
+  0%, 100% { opacity: .45; }
+  50% { opacity: 1; }
+}
+
+/* Radix dialog choreography (data-state driven) */
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes overlay-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(26px) scale(.965); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes dialog-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(18px) scale(.975); } }
+
+.dialog-overlay[data-state='open'] { animation: overlay-in .28s ease both; }
+.dialog-overlay[data-state='closed'] { animation: overlay-out .22s ease both; }
+.dialog-content[data-state='open'] { animation: dialog-in .38s cubic-bezier(.22, 1, .36, 1) both; }
+.dialog-content[data-state='closed'] { animation: dialog-out .24s ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-overlay[data-state='open'], .dialog-overlay[data-state='closed'],
+  .dialog-content[data-state='open'], .dialog-content[data-state='closed'] { animation-duration: .01ms; }
+}

@@ -19,10 +19,10 @@ export function HeattAtmosphere({ firstName, onWrite, onTune }: HeattAtmosphereP
       <div className="moment-copy">
         <span>For {firstName}, today</span>
         <h2 id="moment-title">What would you like to <em>make room for?</em></h2>
-        <p>A private reflection is enough. Nothing here is timed, scored, or shared unless you choose.</p>
+        <p>One honest flare is enough. Nothing here is timed, scored, or shared unless you choose.</p>
       </div>
       <div className="moment-actions">
-        <button className="moment-primary" onClick={onWrite}>Write a reflection</button>
+        <button className="moment-primary" onClick={onWrite}>Write a flare</button>
         <button className="moment-secondary" onClick={onTune}>Tune this shelf</button>
       </div>
     </motion.section>

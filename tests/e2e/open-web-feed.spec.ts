@@ -19,9 +19,6 @@ test('cold-start feed uses real original sources and saves a source locally', as
   const cards = page.getByTestId('blog-card')
   await expect(cards).toHaveCount(8)
   await expect(cards.first().getByText('FREE TO READ')).toBeVisible()
-  const originalLink = cards.first().getByTestId('visit-blog')
-  await expect(originalLink).toHaveAttribute('href', /^https:\/\//)
-  await expect(originalLink).toHaveAttribute('target', '_blank')
 
   await cards.first().getByRole('button', { name: 'Save source' }).click()
   await expect(cards.first().getByRole('button', { name: 'On your shelf' })).toBeVisible()
@@ -29,6 +26,26 @@ test('cold-start feed uses real original sources and saves a source locally', as
   await expect(page.getByTestId('blog-card').first().getByRole('button', { name: 'On your shelf' })).toBeVisible()
   await page.getByTestId('category-filter').getByRole('button', { name: /My reads/ }).click()
   await expect(page.getByTestId('blog-card')).toHaveCount(1)
+})
+
+test('blog cards open the flare reader in-app instead of redirecting', async ({ page }) => {
+  await page.route(/r\.jina\.ai|allorigins\.win/, route => route.abort())
+
+  const card = page.getByTestId('blog-card').first()
+  await card.getByRole('button', { name: /Open flare/ }).click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('original owner', { exact: true })).toBeVisible()
+  await expect(dialog.getByTestId('visit-blog')).toHaveAttribute('href', /^https:\/\//)
+  await expect(dialog.getByTestId('visit-blog')).toHaveAttribute('target', '_blank')
+
+  // heat the flare from inside the reader, then close it
+  await dialog.getByTestId('heat-button').click()
+  await expect(dialog.getByTestId('heat-button')).toContainText('warm')
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByTestId('blog-card').first()).toBeVisible()
 })
 
 test('feed appends automatically and categories produce a finite organized shelf', async ({ page }) => {
@@ -48,17 +65,31 @@ test('feed appends automatically and categories produce a finite organized shelf
   }
 })
 
-test('a guest can publish a local thought without fabricated engagement', async ({ page }) => {
-  await page.getByRole('button', { name: 'Share a thought' }).click()
-  await page.getByPlaceholder('What is taking up a little space in your mind?').fill('A small thought from the first real reader.')
-  await page.getByRole('button', { name: 'Publish thought' }).click()
+test('a guest can publish a local flare without fabricated engagement', async ({ page }) => {
+  await page.getByRole('button', { name: 'Write a flare' }).first().click()
+  await page.getByPlaceholder('What is taking up a little space in your mind?').fill('A small flare from the first real reader.')
+  await page.getByRole('button', { name: 'Publish flare' }).click()
 
   await expect(page.getByRole('tab', { name: 'Following' })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByText('A small thought from the first real reader.')).toBeVisible()
+  await expect(page.getByText('A small flare from the first real reader.')).toBeVisible()
   await expect(page.getByText('0 replies')).toBeHidden()
   await page.reload()
   await page.getByRole('tab', { name: 'Following' }).click()
-  await expect(page.getByText('A small thought from the first real reader.')).toBeVisible()
+  await expect(page.getByText('A small flare from the first real reader.')).toBeVisible()
+})
+
+test('the companion dock is alive on home and chats on-device', async ({ page }) => {
+  const dock = page.getByRole('button', { name: /Chat with .+, your companion/ })
+  await expect(dock).toBeVisible()
+  await dock.click()
+
+  const chat = page.getByRole('dialog', { name: /Chat with/ })
+  await expect(chat).toBeVisible()
+  await chat.getByRole('button', { name: 'Find me something to read' }).click()
+  await expect(chat.locator('.chat-bubble')).toHaveCount(2)
+  await expect(chat.locator('.chat-bubble.from-buddy').first()).not.toBeEmpty()
+  await chat.getByRole('button', { name: 'Close chat' }).click()
+  await expect(chat).toHaveCount(0)
 })
 
 test('search, empty community state, and mobile navigation remain usable', async ({ page }, testInfo) => {
@@ -75,6 +106,6 @@ test('search, empty community state, and mobile navigation remain usable', async
 
   if (testInfo.project.name === 'mobile') {
     await expect(page.getByRole('navigation', { name: 'Mobile navigation' })).toBeVisible()
-    await expect(page.getByTestId('blog-card').first().getByTestId('visit-blog')).toBeVisible()
+    await expect(page.getByTestId('blog-card').first().getByRole('button', { name: /Open flare/ })).toBeVisible()
   }
 })

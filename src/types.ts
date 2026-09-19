@@ -11,6 +11,13 @@ export type Preferences = {
   excludedIds: string[]
 }
 
+export type ProfileData = {
+  name: string
+  handle: string
+  bio: string
+  avatarData?: string
+}
+
 /** Map any legacy theme id onto the current trio. */
 export function normalizeTheme(value: unknown): ThemeId {
   if (value === 'midnight') return 'midnight'

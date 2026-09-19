@@ -129,7 +129,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .post-labels { display: flex; gap: 7px; align-items: center; margin: 17px 0 9px 45px; }
 .type-label, .invitation-label { display: inline-flex; align-items: center; min-height: 21px; padding: 0 7px; border-radius: 5px; font: 9px var(--mono); letter-spacing: .04em; text-transform: uppercase; }
 .type-label { color: var(--ember-deep); background: #f8e5dc; }
-.type-question { color: #5e7c86; background: #e4eef0; }
+.type-question { color: #8a6d3f; background: #f3e9d7; }
 .type-practice { color: #7b6a3f; background: #f8efd7; }
 .type-poem { color: #76638e; background: #ece5f3; }
 .type-check-in { color: #547660; background: #e6efe6; }
