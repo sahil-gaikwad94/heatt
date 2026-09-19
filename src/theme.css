@@ -1,94 +1,272 @@
-/* Route atmospheres. Color is semantic; it never represents rank or reward. */
-.app-shell {
-  --surface-bg: #f6f2ea;
-  --surface-panel: #fffdf9;
-  --surface-raised: #ffffff;
-  --surface-soft: #eee8de;
-  --surface-text: #252521;
-  --surface-copy: #65635d;
-  --surface-muted: #918e86;
-  --surface-line: #e2ddd3;
-  --surface-accent: #d75f3e;
-  --surface-accent-strong: #af432c;
+/* ============================================================
+   HEATT · THEME ENGINE
+   Three complete, app-wide atmospheres. The chosen theme is
+   applied on <html data-theme="..."> so every surface — landing,
+   onboarding, feed, rooms, journal, wisdom, profile, settings,
+   reader, public pages — shares one coherent system.
+
+   Lumen    — ice-white daylight, electric blue, warm gold.
+   Midnight — true black focus, lime glow, soft cream.
+   Ink      — paper minimalism, black ink, quiet khaki.
+
+   Heat (the product's core gesture) always uses a warm fire
+   ramp so the meaning of "heating something" never changes,
+   regardless of atmosphere.
+   ============================================================ */
+
+/* ---------- shared semantic tokens ---------- */
+:root {
+  /* heat ramp — universal, warm, meaningful */
+  --heat-1: #f6a928;
+  --heat-2: #f3721a;
+  --heat-3: #ea4e12;
+  --heat-soft: rgba(243, 114, 26, 0.14);
+  --cool: #7fc4f2;
+  --cool-soft: rgba(127, 196, 242, 0.18);
+
+  --radius: 16px;
+  --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --body: 'Inter', system-ui, -apple-system, sans-serif;
+  --mono: 'DM Mono', ui-monospace, monospace;
+
+  color-scheme: light;
+}
+
+/* ============================================================
+   EMBER — the default. Golden hour, every hour.
+   Warm porcelain daylight, heat-orange energy, soft gold.
+   ============================================================ */
+:root, html[data-theme='ember'] {
+  color-scheme: light;
+
+  --bg: #f8f2ea;
+  --bg-tint-1: rgba(232, 89, 12, 0.07);
+  --bg-tint-2: rgba(184, 144, 48, 0.07);
+  --bg-tint-3: rgba(249, 115, 22, 0.05);
+
+  --panel: #fffdf9;
+  --panel-soft: #f5ede2;
+  --panel-deep: #ecdfcd;
+  --panel-glass: rgba(255, 253, 249, 0.72);
+
+  --panel-ink: #1d1410;
+  --panel-ink-2: #291b13;
+  --panel-ink-text: #f9f1e7;
+  --panel-ink-copy: #c9ac93;
+  --panel-ink-line: rgba(249, 115, 22, 0.24);
+
+  --text: #221812;
+  --copy: #5c4d42;
+  --muted: #947f71;
+  --line: #ecdfd1;
+  --line-strong: #d9c6b0;
+
+  --accent: #c2410c;
+  --accent-strong: #9a3412;
+  --accent-soft: rgba(194, 65, 12, 0.11);
+  --accent-glow: rgba(232, 89, 12, 0.30);
+  --on-accent: #fff7ed;
+  --accent-2: #f97316;
+  --gold: #b89030;
+  --gold-soft: rgba(184, 144, 48, 0.16);
+
+  --flame-1: #f97316;
+  --flame-2: #fdba74;
+  --flame-3: #b89030;
+
+  --good: #2f7d5a;
+  --shadow: 0 14px 35px rgba(87, 53, 25, 0.09);
+  --shadow-lift: 0 22px 48px rgba(87, 53, 25, 0.17);
+  --shadow-panel-ink: 0 24px 60px rgba(28, 17, 9, 0.38);
+
+  /* legacy remaps keep every existing surface themed */
+  --paper: var(--bg);
+  --paper-deep: var(--panel-deep);
+  --card: var(--panel);
+  --ink: var(--text);
+  --ink-soft: var(--copy);
+  --line-dark: var(--line-strong);
+  --ember: var(--accent);
+  --ember-deep: var(--accent-strong);
+  --saffron: var(--gold);
+  --sage: var(--good);
+  --lilac: #8b7fc7;
+
+  /* old atmosphere variables */
+  --surface-bg: var(--bg);
+  --surface-panel: var(--panel);
+  --surface-raised: var(--panel);
+  --surface-soft: var(--panel-soft);
+  --surface-text: var(--text);
+  --surface-copy: var(--copy);
+  --surface-muted: var(--muted);
+  --surface-line: var(--line);
+  --surface-accent: var(--accent);
+  --surface-accent-strong: var(--accent-strong);
+  --surface-on-accent: var(--on-accent);
+}
+
+/* ============================================================
+   MIDNIGHT — true black, lime glow.
+   ============================================================ */
+html[data-theme='midnight'] {
+  color-scheme: dark;
+
+  --bg: #07080a;
+  --bg-tint-1: rgba(216, 242, 91, 0.05);
+  --bg-tint-2: rgba(239, 231, 218, 0.03);
+  --bg-tint-3: rgba(216, 242, 91, 0.035);
+
+  --panel: #101214;
+  --panel-soft: #15181b;
+  --panel-deep: #1c2023;
+  --panel-glass: rgba(16, 18, 20, 0.72);
+
+  --panel-ink: #0d0f0b;
+  --panel-ink-2: #131708;
+  --panel-ink-text: #eff7d2;
+  --panel-ink-copy: #a9b583;
+  --panel-ink-line: rgba(216, 242, 91, 0.2);
+
+  --text: #f2f4ee;
+  --copy: #b7bdb4;
+  --muted: #7e847b;
+  --line: #22262a;
+  --line-strong: #33383d;
+
+  --accent: #d8f25b;
+  --accent-strong: #e7ff78;
+  --accent-soft: rgba(216, 242, 91, 0.1);
+  --accent-glow: rgba(216, 242, 91, 0.22);
+  --on-accent: #10120b;
+  --accent-2: #e9ddba;
+  --gold: #e8c66a;
+  --gold-soft: rgba(232, 198, 106, 0.12);
+
+  --flame-1: #d8f25b;
+  --flame-2: #f2ffa0;
+  --flame-3: #e9ddba;
+
+  --good: #9fd8a8;
+  --shadow: 0 14px 35px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 24px 55px rgba(0, 0, 0, 0.65);
+  --shadow-panel-ink: 0 24px 60px rgba(0, 0, 0, 0.7);
+
+  --paper: var(--bg);
+  --paper-deep: var(--panel-deep);
+  --card: var(--panel);
+  --ink: var(--text);
+  --ink-soft: var(--copy);
+  --line-dark: var(--line-strong);
+  --ember: var(--accent);
+  --ember-deep: var(--accent-strong);
+  --saffron: var(--gold);
+  --sage: var(--good);
+  --lilac: #a5a3c9;
+
+  --surface-bg: var(--bg);
+  --surface-panel: var(--panel);
+  --surface-raised: var(--panel);
+  --surface-soft: var(--panel-soft);
+  --surface-text: var(--text);
+  --surface-copy: var(--copy);
+  --surface-muted: var(--muted);
+  --surface-line: var(--line);
+  --surface-accent: var(--accent);
+  --surface-accent-strong: var(--accent-strong);
+  --surface-on-accent: var(--on-accent);
+}
+
+/* ============================================================
+   INK — paper minimalism, black ink, quiet khaki.
+   ============================================================ */
+html[data-theme='ink'] {
+  color-scheme: light;
+
+  --bg: #f7f6f3;
+  --bg-tint-1: rgba(20, 20, 18, 0.04);
+  --bg-tint-2: rgba(142, 130, 92, 0.06);
+  --bg-tint-3: rgba(20, 20, 18, 0.025);
+
+  --panel: #ffffff;
+  --panel-soft: #f0efeb;
+  --panel-deep: #e7e5df;
+  --panel-glass: rgba(255, 255, 255, 0.74);
+
+  --panel-ink: #141412;
+  --panel-ink-2: #1d1d1a;
+  --panel-ink-text: #f5f4ef;
+  --panel-ink-copy: #b5b2a6;
+  --panel-ink-line: rgba(245, 244, 239, 0.16);
+
+  --text: #17170f;
+  --copy: #514f46;
+  --muted: #8a877c;
+  --line: #e2e0d9;
+  --line-strong: #cfcdc3;
+
+  --accent: #1b1b18;
+  --accent-strong: #000000;
+  --accent-soft: rgba(23, 23, 15, 0.08);
+  --accent-glow: rgba(23, 23, 15, 0.2);
+  --on-accent: #faf9f5;
+  --accent-2: #8e825c;
+  --gold: #8e825c;
+  --gold-soft: rgba(142, 130, 92, 0.16);
+
+  --flame-1: #2b2b26;
+  --flame-2: #55544c;
+  --flame-3: #8e825c;
+
+  --good: #5f7a52;
+  --shadow: 0 12px 30px rgba(32, 30, 22, 0.07);
+  --shadow-lift: 0 20px 44px rgba(32, 30, 22, 0.14);
+  --shadow-panel-ink: 0 24px 60px rgba(20, 20, 17, 0.3);
+
+  --paper: var(--bg);
+  --paper-deep: var(--panel-deep);
+  --card: var(--panel);
+  --ink: var(--text);
+  --ink-soft: var(--copy);
+  --line-dark: var(--line-strong);
+  --ember: #c14b2e;
+  --ember-deep: #a03a20;
+  --saffron: var(--gold);
+  --sage: var(--good);
+  --lilac: #8b8577;
+
+  --surface-bg: var(--bg);
+  --surface-panel: var(--panel);
+  --surface-raised: var(--panel);
+  --surface-soft: var(--panel-soft);
+  --surface-text: var(--text);
+  --surface-copy: var(--copy);
+  --surface-muted: var(--muted);
+  --surface-line: var(--line);
+  --surface-accent: #c14b2e;
+  --surface-accent-strong: #a03a20;
   --surface-on-accent: #ffffff;
-  color: var(--surface-text);
-  background: var(--surface-bg);
 }
 
-/* Ember: crafted warmth and translucent depth. */
-.app-shell.atmosphere-ember {
-  --surface-bg: #f7eee5;
-  --surface-panel: rgba(255, 251, 246, .76);
-  --surface-raised: #fffaf4;
-  --surface-soft: rgba(244, 222, 205, .72);
-  --surface-text: #321e19;
-  --surface-copy: #755b52;
-  --surface-muted: #9a7b70;
-  --surface-line: rgba(126, 76, 60, .18);
-  --surface-accent: #d95532;
-  --surface-accent-strong: #aa351f;
-  --surface-on-accent: #fffaf6;
+/* ---------- global application ---------- */
+html { background: var(--bg); }
+body {
+  color: var(--text);
+  background:
+    radial-gradient(1100px 520px at 85% -8%, var(--bg-tint-1), transparent 62%),
+    radial-gradient(900px 600px at -10% 30%, var(--bg-tint-2), transparent 58%),
+    radial-gradient(700px 700px at 55% 115%, var(--bg-tint-3), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  font-family: var(--body);
 }
 
-/* Paper: quiet, information-first and nearly monochrome. */
-.app-shell.atmosphere-paper {
-  --surface-bg: #f9f8f4;
-  --surface-panel: transparent;
-  --surface-raised: #ffffff;
-  --surface-soft: #f0eee9;
-  --surface-text: #20211f;
-  --surface-copy: #62645f;
-  --surface-muted: #8d8e88;
-  --surface-line: #deded8;
-  --surface-accent: #bd4f35;
-  --surface-accent-strong: #963b28;
-  --surface-on-accent: #ffffff;
+/* smooth atmosphere cross-fade when the theme changes */
+html.theme-transitioning *, html.theme-transitioning *::before, html.theme-transitioning *::after {
+  transition: background-color .45s ease, border-color .45s ease, color .45s ease, fill .45s ease, box-shadow .45s ease !important;
 }
 
-/* Midnight: saturated color is reserved for actions and active state. */
-.app-shell.atmosphere-midnight {
-  --surface-bg: #0d0f0f;
-  --surface-panel: #141716;
-  --surface-raised: #191d1b;
-  --surface-soft: #202422;
-  --surface-text: #f5f4ed;
-  --surface-copy: #b3b7b1;
-  --surface-muted: #747a75;
-  --surface-line: #2d322f;
-  --surface-accent: #d9f74a;
-  --surface-accent-strong: #e6ff76;
-  --surface-on-accent: #10120b;
-}
-
-.app-shell, .main-column, .topbar, .mobile-nav, .route-stage { background-color: var(--surface-bg); color: var(--surface-text); }
-.app-shell .kicker, .app-shell .eyebrow, .app-shell .lede { color: var(--surface-muted); }
-.app-shell .primary-button { color: var(--surface-on-accent); background: var(--surface-accent); box-shadow: none; }
-.app-shell .primary-button:hover { color: var(--surface-on-accent); background: var(--surface-accent-strong); box-shadow: none; }
-.app-shell .outline-button { color: var(--surface-copy); border-color: var(--surface-line); background: transparent; }
-.app-shell .outline-button:hover { color: var(--surface-text); border-color: var(--surface-copy); background: transparent; }
-.app-shell .text-button { color: var(--surface-copy); }
-.app-shell .text-button:hover { color: var(--surface-accent); }
-.app-shell .topbar { border-color: var(--surface-line); background: color-mix(in srgb, var(--surface-bg) 88%, transparent); }
-.app-shell .search-box { color: var(--surface-muted); background: var(--surface-soft); }
-.app-shell .search-box input { color: var(--surface-text); }
-.app-shell .mobile-nav { border-color: var(--surface-line); background: color-mix(in srgb, var(--surface-bg) 94%, transparent); }
-.app-shell .mobile-nav-item { color: var(--surface-muted); }
-.app-shell .mobile-nav-item.active { color: var(--surface-accent); }
-.app-shell .post-card, .app-shell .blog-card, .app-shell .modal, .app-shell .journal-entry, .app-shell .saved-row, .app-shell .large-create-card { color: var(--surface-text); border-color: var(--surface-line); background: var(--surface-panel); }
-.app-shell.atmosphere-midnight .post-card, .app-shell.atmosphere-midnight .blog-card { box-shadow: none; }
-.app-shell.atmosphere-midnight .free-label { color: #b8d8c0; background: #1e3025; }
-.app-shell.atmosphere-midnight .category-label { color: #ff9a7d; background: #342019; }
-.app-shell.atmosphere-midnight .feed-explainer, .app-shell.atmosphere-midnight .library-overview { color: var(--surface-copy); border-color: var(--surface-line); background: var(--surface-soft); }
-.app-shell.atmosphere-midnight .feed-explainer strong, .app-shell.atmosphere-midnight .library-count, .app-shell.atmosphere-midnight .library-overview p strong { color: var(--surface-text); }
-.app-shell.atmosphere-midnight .blog-card h2, .app-shell.atmosphere-midnight .page-heading h1, .app-shell.atmosphere-midnight .blog-source-meta strong { color: var(--surface-text); }
-.app-shell.atmosphere-midnight .feed-tabs button.active::after, .app-shell.atmosphere-midnight .journal-tabs button.active::after, .app-shell.atmosphere-midnight .room-tabs button.active::after { background: var(--surface-accent); }
-.app-shell.atmosphere-midnight .blog-card-accent { background: var(--surface-line); }
-.app-shell.atmosphere-midnight .source-mark { color: var(--surface-text); background: #292d2b; }
-.app-shell.atmosphere-midnight .category-label { color: var(--surface-copy); background: var(--surface-soft); }
-.app-shell.atmosphere-midnight .free-label { color: #c6cbc5; background: #242925; }
-.app-shell.atmosphere-midnight .source-trust { color: #aeb4ae; }
-.app-shell.atmosphere-paper .room-card, .app-shell.atmosphere-paper .settings-section, .app-shell.atmosphere-paper .profile-stats, .app-shell.atmosphere-paper .privacy-row { box-shadow: none !important; background: transparent !important; }
-.app-shell.atmosphere-paper .room-card { border-color: var(--surface-line); }
+::selection { background: var(--accent-soft); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
