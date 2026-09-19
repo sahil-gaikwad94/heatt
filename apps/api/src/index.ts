@@ -44,6 +44,11 @@ function error(c: any, code: string, message: string, status = 400) {
   return c.json({ error: { code, message } }, status)
 }
 
+async function isAdministrator(c: any) {
+  const { data } = await c.get('db').from('admin_users').select('user_id').eq('user_id', c.get('userId')).maybeSingle()
+  return Boolean(data)
+}
+
 const app = new Hono<ApiEnv>()
 app.use('*', cors({ origin: (origin, context) => context.env.CORS_ORIGIN ?? origin ?? '*', allowHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'], allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'] }))
 app.get('/health', c => c.json({ ok: true, service: 'heatt-api', version: 'v1' }))
@@ -306,6 +311,21 @@ app.post('/v1/reports', zValidator('json', z.object({ postId: z.string().uuid(),
   const { error: queryError } = await c.get('db').from('reports').insert({ reporter_id: c.get('userId'), post_id: input.postId, reason: input.reason, details: input.details ?? null })
   if (queryError) return error(c, 'REPORT_CREATE_FAILED', 'Could not send this report.', 400)
   return c.json({ accepted: true }, 202)
+})
+
+app.get('/v1/admin/reports', async c => {
+  if (!await isAdministrator(c)) return error(c, 'FORBIDDEN', 'Administrator access is required.', 403)
+  const { data, error: queryError } = await c.get('db').from('reports').select('id, post_id, reason, details, status, created_at, reviewed_at, posts(text, author_id)').order('created_at', { ascending: false }).limit(200)
+  if (queryError) return error(c, 'REPORTS_READ_FAILED', 'Could not load the report queue.', 500)
+  return c.json({ reports: data ?? [] })
+})
+
+app.patch('/v1/admin/reports/:id', zValidator('json', z.object({ status: z.enum(['reviewed', 'actioned', 'dismissed']) })), async c => {
+  if (!await isAdministrator(c)) return error(c, 'FORBIDDEN', 'Administrator access is required.', 403)
+  const { status } = c.req.valid('json')
+  const { data, error: queryError } = await c.get('db').from('reports').update({ status, reviewed_at: new Date().toISOString(), reviewed_by: c.get('userId') }).eq('id', c.req.param('id')).select('id, status, reviewed_at').single()
+  if (queryError) return error(c, 'REPORT_UPDATE_FAILED', 'Could not update this report.', 400)
+  return c.json({ report: data })
 })
 
 app.onError((cause, c) => {

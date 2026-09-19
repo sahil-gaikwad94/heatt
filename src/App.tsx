@@ -7,7 +7,7 @@ import { rankRecommendations, type RecommendationResult } from './lib/recommenda
 import { HeattAtmosphere } from './components/HeattAtmosphere'
 import { blogCatalog, blogCatalogReviewedOn, blogCategories, type BlogCategory, type BlogSource } from './data/blogCatalog'
 
-type Page = 'landing' | 'home' | 'rooms' | 'create' | 'journal' | 'wisdom' | 'profile'
+type Page = 'landing' | 'home' | 'rooms' | 'create' | 'journal' | 'wisdom' | 'profile' | 'admin'
 type ThemeId = 'ember' | 'midnight' | 'paper'
 type ProfileData = { name: string; handle: string; bio: string; avatarData?: string }
 type FeedMode = 'For You' | 'Following' | 'Rooms'
@@ -71,7 +71,7 @@ const defaultState: StoredState = {
   theme: 'ember',
   profile: { name: 'Guest Reader', handle: 'guest', bio: 'A private, local profile until you choose to sign in.' },
   authorProfiles: Object.fromEntries(authors.map(author => [author.id, author])),
-  onboarded: true,
+  onboarded: false,
 }
 
 function loadState(): StoredState {
@@ -150,6 +150,11 @@ function wisdomForPreferences(preferences: Preferences) {
   const pool = matching.length ? matching : originalFallback.length ? originalFallback : wisdomLibrary
   const seed = `${preferences.intent}|${preferences.topics.join('|')}|${preferences.tuned.join('|')}`
   return pool[seededNumber(seed) % pool.length]
+}
+function categorySlug(category: string) { return category.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') }
+function categoryFromPath(pathname: string) {
+  const slug = pathname.match(/^\/explore\/([^/]+)\/?$/)?.[1]
+  return slug ? blogCategories.find(category => categorySlug(category) === slug) : undefined
 }
 
 export default function App() {
@@ -274,6 +279,11 @@ export default function App() {
 
   const openPage = (next: Page) => { setPage(next); setSearch(''); setSelectedRoom(null) }
   const handleSignIn = async () => { try { const result = await signInWithGoogle(); if (result.error) setToast('Sign in is unavailable right now. You can keep exploring locally.'); } catch { setToast('Connect Supabase Auth to enable account sign-in.'); } }
+  const publicCategory = categoryFromPath(window.location.pathname)
+  if (publicCategory) return <PublicExplorePage category={publicCategory} onEnter={() => { window.history.pushState({}, '', '/'); window.location.reload() }} />
+  if (window.location.pathname === '/privacy' || window.location.pathname === '/terms') return <LegalPage kind={window.location.pathname === '/privacy' ? 'privacy' : 'terms'} />
+  if (window.location.pathname === '/admin') return <AdminPage signedIn={signedIn} onSignIn={handleSignIn} />
+  if (!state.onboarded) return <OnboardingPage preferences={state.preferences} onComplete={preferences => setState(previous => ({ ...previous, preferences, onboarded: true }))} />
 
   return <MotionConfig reducedMotion="user"><div className={`app-shell theme-${state.theme || 'ember'}`}>
     <aside className="sidebar">
@@ -294,7 +304,8 @@ export default function App() {
         <div className="quiet-card"><div className="quiet-icon"><Icon name="moon" size={16} /></div><div><strong>Quiet mode</strong><span>Your space is yours.</span></div><button className="toggle" aria-label="Toggle quiet mode"><span /></button></div>
         <NavItem icon="user" label="Profile" active={page === 'profile'} onClick={() => openPage('profile')} />
         <button className="text-button help-button" onClick={() => openPage('landing')}><Icon name="spark" size={16} /> About Heatt</button>
-        <button className="text-button help-button"><Icon name="settings" size={16} /> Settings & privacy</button>
+        <button className="text-button help-button" onClick={() => openPage('profile')}><Icon name="settings" size={16} /> Settings</button>
+        <div className="sidebar-legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
       </div>
     </aside>
 
@@ -331,6 +342,65 @@ export default function App() {
     {showShare && <ShareModal item={showShare} onClose={() => setShowShare(null)} onToast={setToast} />}
     {toast && <div className="toast" role="status"><span className="toast-check"><Icon name="check" size={14} /></span>{toast}</div>}
   </div></MotionConfig>
+}
+
+function OnboardingPage({ preferences, onComplete }: { preferences: Preferences; onComplete: (preferences: Preferences) => void }) {
+  const [step, setStep] = useState(0)
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([])
+  const [selectedStyles, setSelectedStyles] = useState<string[]>([])
+  const [intent, setIntent] = useState(preferences.intent)
+  const toggle = (list: string[], value: string, setter: (items: string[]) => void) => setter(list.includes(value) ? list.filter(item => item !== value) : [...list, value])
+  const canContinue = step === 0 ? selectedTopics.length >= 3 : step === 1 ? selectedStyles.length >= 1 : Boolean(intent)
+  return <main className="onboarding-page">
+    <header className="onboarding-header"><a className="brand-lockup" href="/"><span className="brand-mark"><span /></span><span className="brand-name">heatt</span></a><span>{step + 1} of 3</span></header>
+    <div className="onboarding-progress"><motion.span animate={{ width: `${((step + 1) / 3) * 100}%` }} /></div>
+    <section className="onboarding-card">
+      <div className="onboarding-copy"><span className="onboarding-icon"><Icon name={step === 0 ? 'compass' : step === 1 ? 'spark' : 'heart'} size={22} /></span><p className="kicker">YOUR ATTENTION, YOUR CHOICE</p><h1>{step === 0 ? 'What lights you up?' : step === 1 ? 'How do you like ideas to feel?' : 'What brings you here today?'}</h1><p>{step === 0 ? 'Choose at least three. These explicit choices shape your first shelf — not hidden guesses.' : step === 1 ? 'Pick one or more voices. You can change every choice later.' : 'We will set the tone for your first visit. No streaks, no pressure.'}</p></div>
+      {step === 0 && <div className="onboarding-grid">{topics.map((topic, index) => <button key={topic} className={selectedTopics.includes(topic) ? 'selected' : ''} onClick={() => toggle(selectedTopics, topic, setSelectedTopics)}><span className={`topic-glyph glyph-${index % 5}`}>{topic.slice(0, 1)}</span><strong>{topic}</strong>{selectedTopics.includes(topic) && <span className="choice-check"><Icon name="check" size={13} /></span>}</button>)}</div>}
+      {step === 1 && <div className="onboarding-grid style-grid">{styles.map((style, index) => <button key={style} className={selectedStyles.includes(style) ? 'selected' : ''} onClick={() => toggle(selectedStyles, style, setSelectedStyles)}><span className={`topic-glyph glyph-${index % 5}`}><Icon name={index % 2 ? 'quote' : 'spark'} size={17} /></span><strong>{style}</strong><small>{['Clear, usable ideas', 'Room to sit with it', 'Lightness is welcome', 'Language with texture', 'Questions over certainty'][index]}</small>{selectedStyles.includes(style) && <span className="choice-check"><Icon name="check" size={13} /></span>}</button>)}</div>}
+      {step === 2 && <div className="intent-cards">{intents.map((item, index) => <button key={item} className={intent === item ? 'selected' : ''} onClick={() => setIntent(item)}><span>{['Take a thoughtful pause', 'Find a useful new idea', 'Meet people with shared interests', 'Wander beyond the usual loop'][index]}</span><strong>{item}</strong>{intent === item && <Icon name="check" size={15} />}</button>)}</div>}
+      <footer className="onboarding-actions"><button className="text-button" disabled={step === 0} onClick={() => setStep(step - 1)}>Back</button><span className="selection-count">{step === 0 ? `${selectedTopics.length} selected · choose 3+` : step === 1 ? `${selectedStyles.length} selected` : 'You can change this anytime'}</span><button className="primary-button" disabled={!canContinue} onClick={() => step < 2 ? setStep(step + 1) : onComplete({ ...preferences, topics: selectedTopics, styles: selectedStyles, intent })}>{step < 2 ? 'Continue' : 'Build my shelf'} <Icon name="arrow" size={15} /></button></footer>
+    </section>
+    <p className="onboarding-privacy"><Icon name="lock" size={12} /> Your choices stay private and editable.</p>
+  </main>
+}
+
+function PublicExplorePage({ category, onEnter }: { category: BlogCategory; onEnter: () => void }) {
+  const sources = blogCatalog.filter(source => source.category === category)
+  return <div className="public-explore">
+    <header className="public-header"><a className="brand-lockup" href="/"><span className="brand-mark"><span /></span><span className="brand-name">heatt</span></a><nav><a href="/#rooms">Rooms</a><a href="/privacy">Privacy</a><button className="primary-button" onClick={onEnter}>Open Heatt <Icon name="arrow" size={14} /></button></nav></header>
+    <main><section className="public-hero"><p className="kicker">THE OPEN WEB · CURATED BY PEOPLE</p><h1>Best free {category.toLowerCase()} blogs<br /><em>worth your attention.</em></h1><p>{sources.length} thoughtful, free-to-read sources. Every link opens at the original publisher — no copied articles, invented activity, or login wall from us.</p><div className="public-stats"><span><strong>{sources.length}</strong> sources</span><span><strong>100%</strong> original links</span><span><strong>{blogCatalogReviewedOn}</strong> last reviewed</span></div></section>
+    <section className="public-source-list" aria-label={`${category} sources`}>{sources.map((source, index) => <article key={source.id}><span className={`public-source-number accent-${index % 5}`}>{String(index + 1).padStart(2, '0')}</span><div><p className="kicker">{source.publisher} · FREE TO READ</p><h2>{source.name}</h2><p>{source.description}</p><div className="public-tags">{source.tags.slice(0, 3).map(tag => <span key={tag}>#{tag}</span>)}</div></div><a href={source.url} target="_blank" rel="noopener noreferrer">Visit original <Icon name="arrow" size={15} /></a></article>)}</section>
+    <section className="public-cta"><span className="spark-soft"><Icon name="spark" size={19} /></span><h2>Your reading should lead somewhere.</h2><p>Save sources, tune your shelf, and follow a curiosity trail — without giving up control of your attention.</p><button className="primary-button" onClick={onEnter}>Build your personal shelf <Icon name="arrow" size={15} /></button></section></main>
+    <footer className="public-footer"><span>© 2026 Heatt</span><span>Worthwhile expression, intentional discovery.</span><nav><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav></footer>
+  </div>
+}
+
+function LegalPage({ kind }: { kind: 'privacy' | 'terms' }) {
+  const privacy = kind === 'privacy'
+  return <div className="legal-page"><header className="public-header"><a className="brand-lockup" href="/"><span className="brand-mark"><span /></span><span className="brand-name">heatt</span></a><a href="/">Back to Heatt</a></header><main><p className="kicker">LAST UPDATED · SEPTEMBER 19, 2026</p><h1>{privacy ? 'Privacy, in plain language.' : 'Terms of use.'}</h1><p className="legal-lede">{privacy ? 'Your attention and private writing belong to you. This policy explains the small amount of data Heatt needs and the boundaries we will not cross.' : 'These terms keep Heatt thoughtful, lawful, and safe while preserving room for honest expression.'}</p>{privacy ? <>
+    <LegalSection title="What we collect"><p>When you create an account, we receive your email address and basic profile information from the sign-in provider. We store the profile, topics, rooms, posts, replies, saves, reactions, reports, and settings you choose to create. Basic technical logs may be retained briefly for reliability and abuse prevention.</p></LegalSection>
+    <LegalSection title="Private means private"><p>Journal entries and private time capsules are visible only to you under database access policies. They are excluded from public discovery, search, share cards, and recommendation inputs. Local guest data stays in your browser unless you sign in and explicitly sync it.</p></LegalSection>
+    <LegalSection title="How data is used"><p>We use your explicit preferences to order your shelf, provide requested features, secure the service, and respond to reports. We do not sell personal information, run third-party behavioral advertising, or train public AI models on private journal content.</p></LegalSection>
+    <LegalSection title="Providers and retention"><p>Heatt may use Supabase for authentication and storage, Cloudflare for edge delivery, and the original publishers you choose to visit. External links have their own policies. Account content is retained while your account is active; security logs and deleted-item backups may remain for a limited operational period.</p></LegalSection>
+    <LegalSection title="Your choices"><p>You may edit your profile and preferences, export or delete your content, revoke Google access, or request account deletion. Contact <a href="mailto:privacy@heatt.app">privacy@heatt.app</a> for access, correction, deletion, or privacy questions.</p></LegalSection>
+  </> : <>
+    <LegalSection title="Using Heatt"><p>You must be at least 13, provide accurate account information, and use Heatt lawfully. You remain responsible for content you post and grant Heatt a limited license to host and display it only as needed to operate the service. You keep ownership.</p></LegalSection>
+    <LegalSection title="Kind rooms"><p>Do not harass, threaten, impersonate, spam, exploit minors, publish private information, infringe intellectual property, or interfere with the service. We may limit or remove content and accounts to protect people, comply with law, or enforce these terms.</p></LegalSection>
+    <LegalSection title="Open-web sources"><p>Directory cards are editorial links, not republications or endorsements. Articles remain on and belong to their original publishers. Availability and publisher terms can change.</p></LegalSection>
+    <LegalSection title="Service boundaries"><p>Heatt is provided as available during beta. We cannot promise uninterrupted operation or that every external source remains available. To the extent permitted by law, liability is limited to the amount you paid Heatt in the prior twelve months.</p></LegalSection>
+    <LegalSection title="Changes and contact"><p>Material changes will be announced in the product or by email. Continued use after they take effect means you accept them. Questions may be sent to <a href="mailto:hello@heatt.app">hello@heatt.app</a>.</p></LegalSection>
+  </>}<p className="legal-note">This launch-ready baseline should be reviewed by qualified counsel for the countries where Heatt operates.</p></main></div>
+}
+function LegalSection({ title, children }: { title: string; children: ReactNode }) { return <section className="legal-section"><h2>{title}</h2>{children}</section> }
+
+function AdminPage({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void }) {
+  type Report = { id: string; reason: string; details?: string | null; status: string; created_at: string; post_id?: string | null; posts?: { text?: string; author_id?: string } | null }
+  const [reports, setReports] = useState<Report[]>([])
+  const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'denied' | 'error'>('idle')
+  useEffect(() => { if (!signedIn) return; setStatus('loading'); heattApi.getReports().then(response => { setReports(response.reports as Report[]); setStatus('ready') }).catch(error => setStatus(String(error).includes('403') ? 'denied' : 'error')) }, [signedIn])
+  const review = (id: string, next: 'reviewed' | 'actioned' | 'dismissed') => heattApi.updateReport(id, next).then(() => setReports(items => items.map(item => item.id === id ? { ...item, status: next } : item))).catch(() => setStatus('error'))
+  return <div className="admin-page"><header className="admin-header"><a className="brand-lockup" href="/"><span className="brand-mark"><span /></span><span className="brand-name">heatt</span></a><span className="admin-badge"><Icon name="lock" size={13} /> Moderation</span></header><main><div className="admin-title"><div><p className="kicker">TRUST & SAFETY</p><h1>Report queue</h1><p>Review member reports without opening the Supabase dashboard.</p></div><span>{reports.filter(report => report.status === 'open').length} open</span></div>{!signedIn && <div className="admin-empty"><Icon name="lock" size={25} /><h2>Administrator sign-in required</h2><p>Access is checked against the database administrator allowlist.</p><button className="primary-button" onClick={onSignIn}>Sign in with Google</button></div>}{signedIn && status === 'loading' && <div className="admin-empty">Loading secure report queue…</div>}{signedIn && status === 'denied' && <div className="admin-empty"><h2>No administrator access</h2><p>This account is signed in but is not on the administrator allowlist.</p></div>}{signedIn && status === 'error' && <div className="admin-empty"><h2>Could not load reports</h2><p>Confirm the Worker and moderation migration are deployed.</p></div>}{status === 'ready' && !reports.length && <div className="admin-empty"><Icon name="check" size={25} /><h2>The queue is clear</h2><p>There are no reports to review.</p></div>}{status === 'ready' && reports.map(report => <article className="report-card" key={report.id}><div><span className={`report-status status-${report.status}`}>{report.status}</span><span className="kicker">{new Date(report.created_at).toLocaleString()}</span></div><h2>{report.reason}</h2><blockquote>{report.posts?.text ?? 'The reported post is no longer available.'}</blockquote>{report.details && <p>{report.details}</p>}<footer><code>{report.post_id ?? 'deleted post'}</code><button onClick={() => review(report.id, 'dismissed')}>Dismiss</button><button onClick={() => review(report.id, 'reviewed')}>Mark reviewed</button><button className="primary-button" onClick={() => review(report.id, 'actioned')}>Actioned</button></footer></article>)}</main></div>
 }
 
 function KindleCard({ onToast }: { onToast: (message: string) => void }) { const [message, setMessage] = useState('I found a free read with a little edge to it.'); const messages = ['I found a free read with a little edge to it.', 'Try a shelf you have not visited yet.', 'A good source is a small door.']; return <div className="kindle-card"><div className="kindle-character" aria-hidden="true"><span className="kindle-flame" /><span className="kindle-eye left" /><span className="kindle-eye right" /><span className="kindle-smile" /></div><div className="kindle-copy"><span className="eyebrow">KINDLE, YOUR LITTLE CURATOR</span><p>{message}</p><button className="text-button" onClick={() => { const next = messages[(messages.indexOf(message) + 1) % messages.length]; setMessage(next); onToast('Kindle found another small door.'); }}>Give me a nudge <Icon name="spark" size={12} /></button></div></div> }

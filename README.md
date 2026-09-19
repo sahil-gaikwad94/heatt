@@ -34,6 +34,9 @@ The Vite server binds to `0.0.0.0` so it can be used in a preview environment. T
 - **Private by construction:** journal notes are stored locally under the browser's Heatt state and are never passed into the feed scorer or share card content.
 - **500 grapheme budget:** the composer enforces the product's short-form limit client-side. The server must enforce the same invariant when the Supabase API is used.
 - **Local cards:** public post and Wisdom cards render to a browser canvas for a downloadable 1080 × 1080 PNG; no image API is required.
+- **Real first-run onboarding:** new readers explicitly choose topics, preferred voices, and intent before the first shelf is built. Choices remain editable in Profile.
+- **Indexable public directory:** `npm run build` pre-renders all 13 category pages under `/explore/:category`, plus canonical metadata, a sitemap, and robots rules. The source catalog is useful to search engines without executing React.
+- **Launch basics:** installable PWA icons, social preview metadata/image, plain-language Privacy and Terms pages, and an allowlisted moderation queue at `/admin` are included.
 - **Three atmospheres:** Ember, Midnight, and Paper are the only visual themes. The theme choice is persisted locally.
 
 ## Content and rights boundary

@@ -4,6 +4,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
   await page.evaluate(() => window.localStorage.clear())
   await page.reload()
+  await page.getByRole('button', { name: 'Creative practice' }).click()
+  await page.getByRole('button', { name: 'Books & ideas' }).click()
+  await page.getByRole('button', { name: 'Philosophy' }).click()
+  await page.getByRole('button', { name: /Continue/ }).click()
+  await page.getByRole('button', { name: /Reflective/ }).click()
+  await page.getByRole('button', { name: /Continue/ }).click()
+  await page.getByRole('button', { name: /Build my shelf/ }).click()
 })
 
 test('cold-start feed uses real original sources and saves a source locally', async ({ page }) => {
