@@ -1,0 +1,155 @@
+/* ============================================================
+   HEATT · HEAT SYSTEM STYLES
+   Heat button: tap → sparks, flame grows, color deepens through
+   warm → ember → blazing. Full heat + tap → cool-down puff.
+   Avatar ring: ignites around the circle when a pfp changes.
+   ============================================================ */
+
+.heat-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 13px 0 11px;
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--copy);
+  font: 600 12px/1 var(--body);
+  transition: border-color .25s ease, background .25s ease, color .25s ease, box-shadow .3s ease;
+  overflow: visible;
+}
+.heat-button:hover { border-color: var(--heat-2); color: var(--heat-2); }
+
+.heat-button.h-lg { min-height: 46px; padding: 0 18px 0 15px; font-size: 13px; gap: 10px; }
+.heat-button.h-sm { min-height: 32px; padding: 0 10px 0 9px; font-size: 11px; gap: 6px; }
+
+.heat-glow {
+  position: absolute; inset: -3px;
+  border-radius: inherit;
+  background: radial-gradient(circle at 22% 50%, var(--heat-soft), transparent 70%);
+  opacity: 0;
+  transition: opacity .3s ease;
+  pointer-events: none;
+}
+.heat-button.level-1 .heat-glow { opacity: .8; }
+.heat-button.level-2 .heat-glow { opacity: 1; background: radial-gradient(circle at 22% 50%, rgba(243,114,26,.24), transparent 72%); }
+.heat-button.level-3 .heat-glow { opacity: 1; background: radial-gradient(circle at 22% 50%, rgba(234,78,18,.32), transparent 78%); }
+
+.heat-flame { display: grid; place-items: center; color: var(--muted); transition: color .25s ease; }
+.heat-button.level-1 .heat-flame { color: var(--heat-1); }
+.heat-button.level-2 .heat-flame { color: var(--heat-2); }
+.heat-button.level-3 .heat-flame { color: var(--heat-3); }
+.heat-button.level-3 { border-color: var(--heat-3); color: var(--heat-3); box-shadow: 0 0 0 3px var(--heat-soft), 0 6px 18px rgba(234,78,18,.18); }
+.heat-button.level-3 .heat-glow { animation: heat-pulse 1.6s ease-in-out infinite; }
+.heat-button.cooling { border-color: var(--cool); color: #6b93b8; box-shadow: 0 0 0 3px var(--cool-soft); }
+.heat-button.cooling .heat-flame { color: #8fb6d6; }
+
+@keyframes heat-pulse {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+.heat-pips { display: inline-flex; gap: 3px; align-items: center; }
+.heat-pips .pip {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: .28;
+}
+.heat-pips .pip.p1.lit { background: var(--heat-1); }
+.heat-pips .pip.p2.lit { background: var(--heat-2); }
+.heat-pips .pip.p3.lit { background: var(--heat-3); }
+.heat-pips .pip.lit { opacity: 1; box-shadow: 0 0 6px rgba(243,114,26,.55); }
+
+.heat-word { letter-spacing: .01em; }
+
+/* spark + puff particles */
+.heat-particles { position: absolute; left: 16px; top: 50%; pointer-events: none; z-index: 3; }
+.heat-spark {
+  position: absolute;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe9b0, var(--heat-2) 58%, var(--heat-3));
+  box-shadow: 0 0 8px rgba(243,114,26,.75);
+}
+.heat-spark.i1 { background: radial-gradient(circle at 35% 30%, #fff3cf, var(--heat-1) 65%); box-shadow: 0 0 8px rgba(246,169,40,.7); }
+.heat-spark.i3 { background: radial-gradient(circle at 35% 30%, #ffd9c2, var(--heat-3) 58%, #c23a0d); box-shadow: 0 0 10px rgba(234,78,18,.85); }
+.heat-puff {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(190,222,244,.85), rgba(127,196,242,.25) 65%, transparent 75%);
+  filter: blur(1px);
+}
+
+/* ---------- demo (landing) ---------- */
+.heat-demo {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 18px 20px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 18px;
+  background: rgba(255,255,255,.07);
+  backdrop-filter: blur(12px);
+}
+.heat-demo-label { color: rgba(255,255,255,.75); font: 600 11px/1.4 var(--body); letter-spacing: .04em; text-transform: uppercase; }
+.heat-demo-caption { color: rgba(255,255,255,.6); font-size: 11.5px; }
+.heat-demo .heat-button { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.3); color: rgba(255,255,255,.85); }
+
+/* ---------- avatar heat ring ---------- */
+.avatar-heat-ring { position: relative; display: inline-grid; place-items: center; flex: 0 0 auto; }
+.avatar-ring-avatar { position: relative; z-index: 2; border: 0; padding: 0; }
+
+.ring-track, .ring-fire {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.ring-track { border: 2px solid var(--line-strong); }
+.ring-fire {
+  border: 2px solid transparent;
+  background: conic-gradient(from 0deg, transparent 0%, var(--heat-1) 18%, var(--heat-3) 36%, transparent 52%) border-box;
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+}
+.avatar-heat-ring.igniting .ring-fire {
+  opacity: 1;
+  animation: ring-ignite 1.5s cubic-bezier(.6,.05,.3,1) forwards;
+}
+.avatar-heat-ring.igniting .ring-track { border-color: var(--heat-2); transition: border-color .4s ease .9s; }
+
+@keyframes ring-ignite {
+  0% { transform: rotate(-40deg) scale(.9); opacity: 0; }
+  18% { opacity: 1; }
+  55% { transform: rotate(300deg) scale(1.05); opacity: 1; }
+  100% { transform: rotate(360deg) scale(1); opacity: 0; }
+}
+
+.ring-sparks { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+.avatar-heat-ring.igniting .ring-sparks { opacity: 1; }
+.ring-sparks i {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe9b0, var(--heat-2) 60%);
+  box-shadow: 0 0 9px rgba(243,114,26,.8);
+  transform: rotate(var(--angle)) translateY(calc(var(--ring-radius, 52px) * -1)) scale(0);
+  animation: ring-spark 1.4s ease-out forwards;
+  animation-delay: calc(var(--i) * .06s);
+}
+.avatar-heat-ring.igniting .ring-sparks i { --ring-radius: 54%; }
+
+@keyframes ring-spark {
+  0% { transform: rotate(var(--angle)) translateY(-54%) scale(0); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: rotate(calc(var(--angle) + 24deg)) translateY(-105%) scale(1); opacity: 0; }
+}
+
+.avatar-photo-fill { width: 100%; height: 100%; border-radius: 50%; background-size: cover; background-position: center; display: block; }
