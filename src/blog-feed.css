@@ -374,20 +374,26 @@
 }
 
 .app-shell.atmosphere-midnight .open-web-explainer,
-.app-shell.atmosphere-midnight .library-overview,
+.app-shell.atmosphere-midnight .library-overview {
+  border-color: var(--surface-line);
+  background: var(--surface-soft);
+}
 .app-shell.atmosphere-midnight .blog-card {
-  background: var(--card);
+  border-color: var(--surface-line);
+  background: var(--surface-panel);
 }
 .app-shell.atmosphere-midnight .free-label {
-  color: #a7c5a9;
-  background: #304034;
+  color: #c6cbc5;
+  background: #242925;
 }
 .app-shell.atmosphere-midnight .category-label {
-  color: #f1ae94;
-  background: #482f28;
+  color: var(--surface-copy);
+  background: var(--surface-soft);
 }
 .app-shell.atmosphere-midnight .blog-actions .saved-source {
-  background: #304034;
+  color: var(--surface-accent);
+  border-color: var(--surface-accent);
+  background: transparent;
 }
 
 @keyframes kindle-pulse {

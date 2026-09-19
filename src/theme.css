@@ -55,9 +55,9 @@
   --surface-copy: #b3b7b1;
   --surface-muted: #747a75;
   --surface-line: #2d322f;
-  --surface-accent: #ff6941;
-  --surface-accent-strong: #ff805f;
-  --surface-on-accent: #17100d;
+  --surface-accent: #d9f74a;
+  --surface-accent-strong: #e6ff76;
+  --surface-on-accent: #10120b;
 }
 
 .app-shell, .main-column, .topbar, .mobile-nav, .route-stage { background-color: var(--surface-bg); color: var(--surface-text); }
@@ -81,6 +81,12 @@
 .app-shell.atmosphere-midnight .feed-explainer, .app-shell.atmosphere-midnight .library-overview { color: var(--surface-copy); border-color: var(--surface-line); background: var(--surface-soft); }
 .app-shell.atmosphere-midnight .feed-explainer strong, .app-shell.atmosphere-midnight .library-count, .app-shell.atmosphere-midnight .library-overview p strong { color: var(--surface-text); }
 .app-shell.atmosphere-midnight .blog-card h2, .app-shell.atmosphere-midnight .page-heading h1, .app-shell.atmosphere-midnight .blog-source-meta strong { color: var(--surface-text); }
+.app-shell.atmosphere-midnight .feed-tabs button.active::after, .app-shell.atmosphere-midnight .journal-tabs button.active::after, .app-shell.atmosphere-midnight .room-tabs button.active::after { background: var(--surface-accent); }
+.app-shell.atmosphere-midnight .blog-card-accent { background: var(--surface-line); }
+.app-shell.atmosphere-midnight .source-mark { color: var(--surface-text); background: #292d2b; }
+.app-shell.atmosphere-midnight .category-label { color: var(--surface-copy); background: var(--surface-soft); }
+.app-shell.atmosphere-midnight .free-label { color: #c6cbc5; background: #242925; }
+.app-shell.atmosphere-midnight .source-trust { color: #aeb4ae; }
 .app-shell.atmosphere-paper .room-card, .app-shell.atmosphere-paper .settings-section, .app-shell.atmosphere-paper .profile-stats, .app-shell.atmosphere-paper .privacy-row { box-shadow: none !important; background: transparent !important; }
 .app-shell.atmosphere-paper .room-card { border-color: var(--surface-line); }
 

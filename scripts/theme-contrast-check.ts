@@ -7,7 +7,7 @@ const pairs = [
   ['Paper accent action', '#ffffff', '#bd4f35'],
   ['Midnight body', '#f5f4ed', '#0d0f0f'],
   ['Midnight secondary copy', '#b3b7b1', '#0d0f0f'],
-  ['Midnight accent action', '#17100d', '#ff6941'],
+  ['Midnight accent action', '#10120b', '#d9f74a'],
   ['Landing body', '#f7f5ef', '#101313'],
   ['Landing accent action', '#1d110e', '#ff744e'],
 ] as const
