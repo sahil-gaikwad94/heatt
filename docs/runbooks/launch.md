@@ -9,8 +9,10 @@ This checklist turns the repository into the capped public beta described in the
 3. Apply `database/migrations/0001_foundation.sql`.
 4. Apply `database/migrations/0002_profile_relationships.sql`.
 5. Apply `database/migrations/0003_delight_layer.sql`.
-7. Add three coherent, rights-cleared rooms and a small approved Wisdom library. Every external Wisdom entry must have a completed rights decision; `public_domain_source_pending_review` is not launch-cleared.
-8. Confirm that the Auth user trigger creates `profiles` and `user_preferences` rows.
+6. Apply `database/migrations/0004_moderation.sql`.
+7. Add the first administrator from the Supabase SQL editor using the commented `admin_users` insert in migration 0004. Never expose administrator writes through the public client.
+8. Add three coherent, rights-cleared rooms and a small approved Wisdom library. Every external Wisdom entry must have a completed rights decision; `public_domain_source_pending_review` is not launch-cleared.
+9. Confirm that the Auth user trigger creates `profiles` and `user_preferences` rows.
 
 ## 2. Run the privacy matrix
 
@@ -56,7 +58,7 @@ Do not admit public users until these are true:
 - `npm run check`, `npm run api:check`, and `npm run build` pass.
 - OAuth sign-in and refresh have been tested.
 - RLS denial tests pass.
-- Reporting and administrator review are usable.
+- Reporting and administrator review at `/admin` are usable, and a non-admin account receives a 403 from both admin report endpoints.
 - Database and asset backups have been restored in a drill.
 - Deletion propagation has been verified.
 - Feed latency, quota, and error monitoring are in place.

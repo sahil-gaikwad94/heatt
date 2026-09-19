@@ -22,7 +22,7 @@ try {
   await page.goto(process.env.HEATT_URL ?? 'http://127.0.0.1:5173/', { waitUntil: 'networkidle' })
   await page.evaluate(() => window.localStorage.clear())
   await page.reload({ waitUntil: 'networkidle' })
-  await page.evaluate(() => window.scrollTo(0, 450))
+  await page.evaluate(() => window.scrollTo(0, document.querySelector('.onboarding-page') ? 0 : 450))
   await page.waitForTimeout(400)
   await mkdir('artifacts', { recursive: true })
   await page.screenshot({ path: 'artifacts/heatt-open-web-feed.png', fullPage: false })

@@ -51,4 +51,6 @@ export const heattApi = {
   getTimeCapsules: () => request<{ capsules: unknown[] }>('/v1/time-capsules'),
   createTimeCapsule: (capsule: { content: string; revealAt: string; recipientId?: string | null; visibility?: 'private' | 'mutual' }) => request<{ capsule: unknown }>('/v1/time-capsules', { method: 'POST', body: JSON.stringify(capsule) }),
   deleteTimeCapsule: (capsuleId: string) => request<void>(`/v1/time-capsules/${capsuleId}`, { method: 'DELETE' }),
+  getReports: () => request<{ reports: unknown[] }>('/v1/admin/reports'),
+  updateReport: (reportId: string, status: 'reviewed' | 'actioned' | 'dismissed') => request<{ report: unknown }>(`/v1/admin/reports/${reportId}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 }

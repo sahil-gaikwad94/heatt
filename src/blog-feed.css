@@ -373,21 +373,27 @@
   white-space: nowrap;
 }
 
-.app-shell.theme-midnight .open-web-explainer,
-.app-shell.theme-midnight .library-overview,
-.app-shell.theme-midnight .blog-card {
-  background: var(--card);
+.app-shell.atmosphere-midnight .open-web-explainer,
+.app-shell.atmosphere-midnight .library-overview {
+  border-color: var(--surface-line);
+  background: var(--surface-soft);
 }
-.app-shell.theme-midnight .free-label {
-  color: #a7c5a9;
-  background: #304034;
+.app-shell.atmosphere-midnight .blog-card {
+  border-color: var(--surface-line);
+  background: var(--surface-panel);
 }
-.app-shell.theme-midnight .category-label {
-  color: #f1ae94;
-  background: #482f28;
+.app-shell.atmosphere-midnight .free-label {
+  color: #c6cbc5;
+  background: #242925;
 }
-.app-shell.theme-midnight .blog-actions .saved-source {
-  background: #304034;
+.app-shell.atmosphere-midnight .category-label {
+  color: var(--surface-copy);
+  background: var(--surface-soft);
+}
+.app-shell.atmosphere-midnight .blog-actions .saved-source {
+  color: var(--surface-accent);
+  border-color: var(--surface-accent);
+  background: transparent;
 }
 
 @keyframes kindle-pulse {
