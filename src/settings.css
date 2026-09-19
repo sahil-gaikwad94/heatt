@@ -34,11 +34,6 @@
   height: 132px;
   overflow: hidden;
 }
-.preview-lumen .tp-rail { background: #eef3fa; }
-.preview-lumen .tp-body { background: #f7faff; }
-.preview-lumen .tp-line { background: #c9d8ef; }
-.preview-lumen .tp-chip { background: #dce8f8; }
-.preview-lumen .tp-chip.alt { background: #ecd9a8; }
 .preview-midnight .tp-rail { background: #07080a; }
 .preview-midnight .tp-body { background: #0d0f10; }
 .preview-midnight .tp-line { background: #262a2e; }

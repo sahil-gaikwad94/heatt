@@ -2,7 +2,7 @@
 
 > Where your mind catches fire.
 
-Heatt is a text-first social network for worthwhile expression, intentional discovery, and small communities. This repository contains the React/Vite client, an edge-compatible Hono API boundary, and the PostgreSQL/RLS foundation for a capped beta: a responsive open-web feed, Rooms, Create, Wisdom, private Journal, editable profiles, client-side share cards, deterministic community recommendations, Feed Tuner, Discovery Roulette, Curiosity Trail, Highlight & Annotate, Practice Journeys, Ask the Room helpful marks, private Time Capsules, and the Kindle editorial guide character.
+Heatt is a text-first social network for worthwhile expression, intentional discovery, and small communities. This repository contains the React/Vite client, an edge-compatible Hono API boundary, and the PostgreSQL/RLS foundation for a capped beta — now with in-app reading, flares, companion buddies, and three complete app-wide atmospheres.
 
 ## Run locally
 
@@ -19,29 +19,39 @@ npm run build
 npm run test:blogs
 npm run test:recommendations
 npm run test:content
+npm run test:contrast
 npm run test:e2e
 ```
 
 The Vite server binds to `0.0.0.0` so it can be used in a preview environment. The Playwright configuration uses the checked npm dependencies for its headless Chromium runtime; it does not require a separately installed system browser.
 
+## The modern client stack
+
+- **React 19 + Vite + TypeScript** — the application layer.
+- **Tailwind CSS v4** (`src/tailwind.css`) — a CSS-first utility layer whose tokens map onto the app's theme variables, so every utility is automatically theme-reactive. The redesigned surfaces (flare cards, reader, profile, landing, dialogs) are built on it.
+- **Radix UI** — accessible dialog primitives (focus trap, scroll lock, Escape, aria wiring) behind a small local wrapper (`src/components/ui/Dialog.tsx`).
+- **motion** — the animation system: heat bursts, avatar ignite rings, page transitions, landing choreography. Respects `prefers-reduced-motion`.
+- **lucide-react** — the icon set, mapped through one `Icon` component so the whole app stays consistent.
+
 ## Product behavior in this slice
 
-- **Infinite open-web feed:** the default cold-start feed appends another six cards as its sentinel nears the viewport. The complete 53-source catalog is organized into 13 category shelves. In the unfiltered “All” view, a new, visibly labelled reading loop begins after every source has appeared; a filtered category has an honest ending.
-- **Original sources, not synthetic members:** the default state contains no fabricated posts, reactions, comments, follower counts, or member profiles. Every external card names and links to the original publisher. Heatt stores only original editorial descriptions and catalog metadata; it does not copy article bodies, images, or feeds.
-- **Useful before network effects:** each destination offered substantial free-to-read material when reviewed on September 18, 2026. Individual publishers may still offer optional memberships, newsletters, books, or other paid products. Source links should be reviewed periodically because external availability can change.
-- **Following / Rooms:** these views now start with honest empty states and only display posts received from the authenticated API or created by the current user.
-- **One Fire per thought:** an accessible intensity menu supports 1–3 and toggles the reaction off; repeated taps cannot create repeated reactions.
-- **Private by construction:** journal notes are stored locally under the browser's Heatt state and are never passed into the feed scorer or share card content.
-- **500 grapheme budget:** the composer enforces the product's short-form limit client-side. The server must enforce the same invariant when the Supabase API is used.
-- **Local cards:** public post and Wisdom cards render to a browser canvas for a downloadable 1080 × 1080 PNG; no image API is required.
-- **Real first-run onboarding:** new readers explicitly choose topics, preferred voices, and intent before the first shelf is built. Choices remain editable in Profile.
-- **Indexable public directory:** `npm run build` pre-renders all 13 category pages under `/explore/:category`, plus canonical metadata, a sitemap, and robots rules. The source catalog is useful to search engines without executing React.
-- **Launch basics:** installable PWA icons, social preview metadata/image, plain-language Privacy and Terms pages, and an allowlisted moderation queue at `/admin` are included.
-- **Three atmospheres:** Ember, Midnight, and Paper are the only visual themes. The theme choice is persisted locally.
+- **Read the open web inside Heatt:** blog cards no longer redirect. Opening a flare fetches the article live through privacy-friendly CORS reader endpoints (r.jina.ai, then allorigins), renders it in the in-app reader, and always credits the original owner — the publisher is the author of the flare, with the source link one tap away. A local 7-day cache keeps repeat opens instant; nothing is stored on any server.
+- **Every post is a flare.** Short-form writing is composed, published, saved, and shared as flares (the API keeps its own wire value; the mapping lives at the UI boundary). The 500-grapheme budget is enforced client-side.
+- **Heat, the only reaction:** one tap raises the temperature (warm → ember → blazing, intensity 1–3) with a spark burst; a fully heated item cools with a frost puff. Small flame pips on the button show the rising intensity, and a changed profile picture arrives inside an igniting ember ring.
+- **Companion buddies:** every reader chooses a companion — Kindle, Spark, Noct, Cinder, or Wick. The buddy lives animated in the corner of Home (open a private, on-device chat with quick chips), owns a full interaction card with a warmth meter on your Profile, and is showcased as part of the product on the landing page. Chats are rule-based, local, and never leave the device.
+- **Three complete atmospheres:** Ember (default — warm porcelain, heat orange, gold), Midnight (true black, lime glow), and Ink (paper minimalism). Chosen in Settings (or tried live from the landing page) and applied to the entire app — feed, reader, profile, landing, and every room in between.
+- **A redesigned landing page** in the app's own theme: drifting embers, a playable flare with the heat button, all thirteen shelves with commissioned category artwork, the companions, the three atmospheres, and the product principles.
+- **A redesigned profile:** avatar heat ring, five animated state tiles (flares, heat given, saved, rooms, shelves), the companion interaction card, explicit shelf preferences, and quiet privacy controls.
+- **Original sources, not synthetic members:** the default state contains no fabricated posts, reactions, comments, follower counts, or member profiles. 53 sources across 13 category shelves, each with its own commissioned artwork.
+- **Following / Rooms:** honest empty states; only real posts from the authenticated API or written by the current user appear.
+- **Private by construction:** journal notes and time capsules stay local and never enter the feed scorer or share cards.
+- **Real first-run onboarding:** new readers explicitly choose topics before the first shelf is built; choices remain editable in Profile and Settings.
+- **Indexable public directory:** `npm run build` pre-renders all 13 category pages under `/explore/:category`, plus canonical metadata, a sitemap, and robots rules.
+- **Launch basics:** installable PWA icons, social preview metadata, plain-language Privacy and Terms pages, and an allowlisted moderation queue at `/admin`.
 
 ## Content and rights boundary
 
-The open-web directory is a link catalog, not a republication system. Entries in [`src/data/blogCatalog.ts`](src/data/blogCatalog.ts) contain a source name, canonical destination, category, publisher type, discovery tags, and an original Heatt description. The catalog contract is checked by `npm run test:blogs`.
+The open-web reader fetches articles on demand, for the requesting reader only, and always credits the original publisher. Heatt stores only original editorial descriptions and catalog metadata; it does not copy article bodies, images, or feeds into any database. A local browser cache serves the reader; no server-side scraping or republication happens.
 
 Wisdom research and rights metadata remain separate in `content/wisdom/`; external Wisdom entries remain review-required until a jurisdiction-aware rights decision is recorded.
 
