@@ -373,20 +373,20 @@
   white-space: nowrap;
 }
 
-.app-shell.theme-midnight .open-web-explainer,
-.app-shell.theme-midnight .library-overview,
-.app-shell.theme-midnight .blog-card {
+.app-shell.atmosphere-midnight .open-web-explainer,
+.app-shell.atmosphere-midnight .library-overview,
+.app-shell.atmosphere-midnight .blog-card {
   background: var(--card);
 }
-.app-shell.theme-midnight .free-label {
+.app-shell.atmosphere-midnight .free-label {
   color: #a7c5a9;
   background: #304034;
 }
-.app-shell.theme-midnight .category-label {
+.app-shell.atmosphere-midnight .category-label {
   color: #f1ae94;
   background: #482f28;
 }
-.app-shell.theme-midnight .blog-actions .saved-source {
+.app-shell.atmosphere-midnight .blog-actions .saved-source {
   background: #304034;
 }
 

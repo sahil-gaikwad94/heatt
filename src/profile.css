@@ -1,2 +1,22 @@
-.avatar-photo { background-size: cover !important; background-position: center !important; color: transparent !important; }.profile-edit-modal { max-width: 500px; }.profile-edit-body { padding: 4px 26px 8px; }.edit-photo-row { display: flex; align-items: center; gap: 12px; padding: 8px 0 20px; }.avatar-edit-preview { width: 66px; height: 66px; font-size: 20px; }.upload-button { display: inline-flex; align-items: center; gap: 6px; padding: 9px 11px; border: 1px solid var(--line-dark); border-radius: 8px; color: var(--ink-soft); background: var(--card); font-size: 10px; cursor: pointer; }.upload-button:hover { border-color: var(--ember); color: var(--ember-deep); }.upload-button input { display: none; }.edit-photo-row .text-button { color: var(--ember-deep); font-size: 10px; }.field-label { display: flex; flex-direction: column; gap: 6px; margin: 13px 0; color: var(--ink-soft); font: 10px var(--mono); }.field-label span { margin-left: auto; color: var(--muted); font-size: 9px; }.field-label input, .field-label textarea { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; outline: 0; resize: vertical; color: var(--ink); background: var(--paper); font: 12px var(--body); }.field-label input:focus, .field-label textarea:focus { border-color: var(--ember); }.app-shell.theme-midnight .upload-button, .app-shell.theme-midnight .field-label input, .app-shell.theme-midnight .field-label textarea { background: var(--paper-deep); color: var(--ink); }
-@media (max-width: 760px) { .profile-edit-body { padding-left: 18px; padding-right: 18px; }.profile-edit-modal .modal-footer { padding-left: 18px; padding-right: 18px; } }
+/* Paper profile: structured rows, whitespace, and a single accent. */
+.paper-profile .profile-hero { padding: 14px 0 38px; display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center; border-bottom: 1px solid var(--surface-line); }
+.paper-profile .profile-hero > div:nth-child(2) > p:first-child { margin: 0 0 6px; color: var(--surface-muted); font-size: 11px; }
+.paper-profile .profile-hero h1 { margin: 0; font: 600 35px/1 var(--display); letter-spacing: -.04em; }
+.paper-profile .profile-hero > div:nth-child(2) > span { display: block; margin-top: 7px; color: var(--surface-muted); font-size: 11px; }
+.paper-profile .profile-bio { max-width: 390px; margin: 13px 0 0; color: var(--surface-copy); font-size: 12px; line-height: 1.55; }
+.paper-profile .profile-edit { align-self: start; padding: 9px 12px; border: 1px solid var(--surface-line); border-radius: 8px; color: var(--surface-text); background: transparent; font-size: 10px; }
+.paper-profile .profile-stats { margin: 0; padding: 24px 0; display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--surface-line); }
+.paper-profile .profile-stats div { padding: 0 17px; display: flex; flex-direction: column-reverse; gap: 6px; border: 0; background: transparent; }
+.paper-profile .profile-stats div:first-child { padding-left: 0; }
+.paper-profile .profile-stats div + div { border-left: 1px solid var(--surface-line); }
+.paper-profile .profile-stats dt { color: var(--surface-muted); font-size: 10px; }
+.paper-profile .profile-stats dd { margin: 0; color: var(--surface-text); font: 600 24px var(--display); }
+.paper-profile .settings-section { margin: 0; padding: 42px 0; border: 0; border-bottom: 1px solid var(--surface-line); border-radius: 0; background: transparent; box-shadow: none; }
+.paper-profile .section-heading h2 { margin: 0 0 6px; font: 600 25px var(--display); }
+.paper-profile .section-heading p { margin: 0; color: var(--surface-copy); font-size: 11px; }
+.paper-profile .preference-pills button, .paper-profile .intent-pills button { border: 1px solid var(--surface-line); color: var(--surface-copy); background: transparent; }
+.paper-profile .preference-pills button.selected, .paper-profile .intent-pills button.active { color: var(--surface-on-accent); border-color: var(--surface-accent); background: var(--surface-accent); }
+.paper-profile .privacy-row { border-color: var(--surface-line); }
+.paper-profile .privacy-row-icon { color: var(--surface-copy); background: transparent; }
+.profile-legal { display: flex; gap: 18px; padding: 25px 0; }.profile-legal a, .profile-legal button { padding: 0; color: var(--surface-muted); background: transparent; font-size: 10px; text-decoration: none; }
+@media (max-width: 620px) { .paper-profile .profile-hero { grid-template-columns: auto 1fr; }.paper-profile .profile-edit { grid-column: 2; margin: -7px 0 0; justify-self: start; }.paper-profile .profile-stats div { padding: 0 10px; }.paper-profile .profile-stats dt { font-size: 9px; } }

@@ -14,6 +14,7 @@
     "test:content": "node --experimental-strip-types scripts/content-check.ts",
     "test:e2e": "playwright test",
     "test:blogs": "node --experimental-strip-types scripts/blog-catalog-check.ts",
+    "test:contrast": "node --experimental-strip-types scripts/theme-contrast-check.ts",
     "capture:ui": "node scripts/capture-ui.mjs"
   },
   "dependencies": {
