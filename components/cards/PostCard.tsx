@@ -227,12 +227,14 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
       <footer className="relative z-40 mt-3 flex items-center gap-1 border-t border-white/[.05] pt-1.5">
         <ActionButton
           label="reply"
+          hint={`Reply to ${post.authorName} in the thread`}
           count={(post.comments ?? 0) + myReplies}
           onClick={() => app.openPost(post.id)}
           icon={<ReplyIcon />}
         />
         <ActionButton
           label="repost"
+          hint="Repost to your sparks"
           count={post.reposts ?? 0}
           onClick={() => app.toast('Reposted to your sparks', 'heat')}
           icon={<RepostIcon />}
@@ -248,11 +250,13 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
 
         <ActionButton
           label="share"
+          hint="Make a share poster"
           onClick={() => app.setShare(post.id)}
           icon={<ShareIcon />}
         />
         <ActionButton
           label="save"
+          hint={saved ? 'Remove from your library' : 'Save to library (reads offline)'}
           active={!!saved}
           onClick={() => {
             useLocal().toggleSave(post.id);
@@ -370,12 +374,14 @@ export function WaveBars({ values, burning, h = 16 }: { values: number[]; burnin
 function ActionButton({
   icon,
   label,
+  hint,
   count,
   onClick,
   active,
 }: {
   icon: React.ReactNode;
   label: string;
+  hint?: string;
   count?: number;
   onClick?: () => void;
   active?: boolean;
@@ -383,7 +389,8 @@ function ActionButton({
   return (
     <button
       onClick={onClick}
-      aria-label={label}
+      aria-label={hint ?? label}
+      title={hint ?? label}
       className="group/act flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[13px] font-semibold text-ink-mute transition-all hover:bg-white/[.06] hover:text-ember-300 active:scale-95"
       style={active ? { color: 'var(--ht-flare)' } : undefined}
     >

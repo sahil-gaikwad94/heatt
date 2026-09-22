@@ -166,6 +166,7 @@ function Toggle({ label, value, onChange, hint }: { label: string; value: boolea
       </div>
       <button
         role="switch"
+        aria-label={label}
         aria-checked={value}
         onClick={() => onChange(!value)}
         className="relative h-[26px] w-[46px] shrink-0 rounded-full border transition-all"

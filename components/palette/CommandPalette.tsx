@@ -30,12 +30,17 @@ export function CommandPalette() {
   const [i, setI] = React.useState(0);
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const attachInput = React.useCallback((el: HTMLInputElement | null) => {
+    inputRef.current = el;
+    // focus when the node appears — the modal mounts a frame after `open`
+    if (el) el.focus();
+  }, []);
 
   React.useEffect(() => {
     if (open) {
       setQ('');
       setI(0);
-      setTimeout(() => inputRef.current?.focus(), 60);
+      inputRef.current?.focus();
     }
   }, [open]);
 
@@ -160,7 +165,7 @@ export function CommandPalette() {
         <div className="flex items-center gap-2.5 border-b border-white/[.07] px-4 py-3">
           <span className="text-ember-400">⌘</span>
           <input
-            ref={inputRef}
+            ref={attachInput}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search posts, tags, people, commands…"

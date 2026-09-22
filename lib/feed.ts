@@ -246,6 +246,15 @@ export function rank(posts: Post[], s: State, opts: RankOpts) {
     if (aff) score *= 1 + aff * 0.12;
     const demoted = p.tags.filter((t) => (s.muted ?? []).includes(`#${t}`)).length;
     if (demoted) score *= 0.22;
+    /* Your own fresh work stays findable. A feed where what you just published
+       falls below the cliff reads as "my post is lost", so a new post gets a
+       decaying additive boost in logit space for its first six hours, then it
+       has to live on its heat like everyone else. */
+    const mine = s.me?.handle && p.authorHandle === s.me.handle;
+    if (mine) {
+      const freshH = Math.max(0, (now - new Date(p.date).getTime()) / 3600_000);
+      if (freshH < 6) score += 7 * (1 - freshH / 6);
+    }
     if (opts.mode === 'new') score = heat.temp * 0.2 + Math.max(0, 60 - (now - new Date(p.date).getTime()) / (1000 * 60 * 60 * 24)) * 3;
     if (opts.mode === 'top') score = Math.log1p(p.reactions + ((s.heatCounts ?? {})[p.id] ?? 0)) * 2.4 + heat.score * 0.2;
     if (opts.mode === 'contested') {

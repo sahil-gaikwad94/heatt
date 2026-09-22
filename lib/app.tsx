@@ -147,6 +147,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const dismissToast = React.useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
   /* ------------------------------------------------------------ ranking */
+  /* Every input assemble()/rank() reads has to be a dependency — mute was
+     missing once, which made hiding an author a no-op until the next reload. */
   const posts = React.useMemo(() => assemble(s as any, wire), [
     wire,
     s.mySparks,
@@ -158,6 +160,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     s.heatCounts,
     s.me,
     s.follows,
+    s.muted,
     s.interests,
   ]);
 

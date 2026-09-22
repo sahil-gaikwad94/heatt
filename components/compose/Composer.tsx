@@ -41,6 +41,10 @@ export function Composer() {
   const [promoted, setPromoted] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const areaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const attachArea = React.useCallback((el: HTMLTextAreaElement | null) => {
+    areaRef.current = el;
+    if (el) el.focus(); // the sheet mounts a frame after open, so focus on attach
+  }, []);
 
   React.useEffect(() => {
     if (!open) return;
@@ -51,7 +55,7 @@ export function Composer() {
       setText(seed.article.markdown ?? '');
       setKind('forge');
     }
-    setTimeout(() => areaRef.current?.focus(), 220);
+    areaRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -167,7 +171,7 @@ export function Composer() {
           )}
 
           <textarea
-            ref={areaRef}
+            ref={attachArea}
             value={text}
             maxLength={kind === 'spark' ? SPARK_MAX : undefined}
             onChange={(e) => setText(e.target.value)}

@@ -114,7 +114,9 @@ export function BootLayer({ children }: { children: React.ReactNode }) {
       {phase === 'intro' && <CinematicIntro onDone={finishIntro} done={introDone} />}
       {phase === 'onboard' && <Onboarding onDone={() => setPhase('app')} />}
 
-      <div className={React.useMemo(() => (phase === 'app' ? 'relative z-10' : 'relative z-10 opacity-0 pointer-events-none'), [phase])}>
+      {/* plain ternary, not useMemo: a hook here would run after the early
+          return above and change the hook order between renders (React throws). */}
+      <div className={phase === 'app' ? 'relative z-10' : 'relative z-10 opacity-0 pointer-events-none'}>
         {children}
       </div>
 

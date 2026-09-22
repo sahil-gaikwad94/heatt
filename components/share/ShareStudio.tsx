@@ -45,6 +45,14 @@ export function ShareStudio() {
   const [showWave, setShowWave] = React.useState(true);
   const [autoPal, setAutoPal] = React.useState(true);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  /* The Modal mounts its children a frame after `open` flips, so an effect that
+     depends only on `open` would run against a null canvas and never repaint —
+     a silently blank poster. Attaching the node is what triggers the first draw. */
+  const [canvasReady, setCanvasReady] = React.useState(false);
+  const attachCanvas = React.useCallback((el: HTMLCanvasElement | null) => {
+    canvasRef.current = el;
+    setCanvasReady((v) => (v === !!el ? v : !!el));
+  }, []);
   const [busy, setBusy] = React.useState(false);
   const [done, setDone] = React.useState<string | null>(null);
 
@@ -61,10 +69,10 @@ export function ShareStudio() {
   const effectivePal: Palette = autoPal ? (temp > 34 ? 'ember' : temp > 14 ? 'ash' : 'cryo') : pal;
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open || !canvasReady) return;
     void draw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, fmt, effectivePal, showCover, showWave, id]);
+  }, [open, canvasReady, fmt, effectivePal, showCover, showWave, id]);
 
   async function draw() {
     const [W, H] = DIMS[fmt];
@@ -478,7 +486,7 @@ export function ShareStudio() {
         <div ref={stageRef} className="flex items-start justify-center overflow-hidden bg-[repeating-linear-gradient(45deg,#0b0b0e_0_12px,#09090c_12px_24px)] p-5">
           <div style={{ transform: `scale(${scaleTarget})`, transformOrigin: 'top center', height: DIMS[fmt][1] * scaleTarget, width: DIMS[fmt][0] * scaleTarget }}>
             <canvas
-              ref={canvasRef}
+              ref={attachCanvas}
               className="rounded-[22px]"
               style={{ width: DIMS[fmt][0], height: DIMS[fmt][1], boxShadow: '0 60px 140px -50px rgba(255,92,10,.5), 0 0 0 1px rgba(255,255,255,.08)', transition: 'box-shadow .5s' }}
             />

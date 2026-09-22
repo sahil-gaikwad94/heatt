@@ -104,6 +104,36 @@ When the network is unavailable (offline demo, blocked egress) the app degrades 
 library — 7 fully written forges with structured blocks, 16 sparks, 8 profiles — and the wire
 panel says so honestly instead of showing skeletons forever.
 
+## Verification
+
+Two suites, both headless, both run with `npm test`:
+
+```bash
+npm run test:model   # 45 assertions on heat math, ranker, store reducers, seed corpus
+npm run test:smoke   # 65 assertions driving the real components in jsdom
+```
+
+`test:model` compiles the pure-TS core and checks the physics against the spec
+(`cool(9h) === e⁻¹`, ignite weight 6.5× ember, cliff detection, tab/handle/search
+filters, streak and activity reducers, every seeded forge having real blocks).
+
+`test:smoke` is the interesting one: it mounts `ShellProviders → BootLayer →
+shell layout → page` with react-dom/client inside jsdom, stubs `next/navigation`,
+`next/dynamic` and `next/link`, replaces `getContext('2d')` with a **canvas
+recorder**, and then presses buttons — skip intro, walk onboarding, `j/k/h/l/↵`,
+hold-to-heat through the real 1.15s timer, mute from the ⋯ menu, reply in a
+thread, publish a spark, open a poster and switch format (asserting the canvas
+is repainted at 1080×1080 with ~3k draw calls and zero unknown canvas APIs),
+⌘K navigation, heat-grid day selection, and every settings toggle reaching
+`<html>`. It fails on any console error, uncaught rejection, or React warning.
+
+It found four bugs no build step could: a `useMemo` inside JSX after an early
+`return` in `BootLayer` (hook-order violation that crashed the first-visit boot),
+the poster canvas painting a frame *before* the modal mounted its children (every
+share image would have been blank), `muted` missing from the `posts` dependency
+list (muting did nothing until reload), and own new posts falling below the
+semantic cliff (now a decaying findability boost for six hours).
+
 ## Layout
 
 ```
