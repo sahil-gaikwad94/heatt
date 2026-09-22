@@ -59,6 +59,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
   const doc = React.useMemo(() => (post.markdown ? parseMarkdown(post.markdown) : null), [post.markdown]);
 
   /* syndicated body, fetched per view and cached ephemerally (spec §6.2) */
+  const [attempt, setAttempt] = React.useState(0);
   React.useEffect(() => {
     if (post.origin !== 'wire' || doc) return;
     let alive = true;
@@ -72,7 +73,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [post.id]);
+  }, [post.id, attempt]);
 
   const blocks: ArticleBlock[] | null = post.blocks ?? null;
   const md: ParsedDoc | null = doc ?? syndicated.doc ?? null;
@@ -308,7 +309,14 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
           ) : syndicated.state === 'loading' ? (
             <LoadingBody />
           ) : (
-            <OfflineBody post={post} meta={syndicated.meta} onRetry={() => setSyndicated({ state: 'idle' })} />
+            <OfflineBody
+              post={post}
+              meta={syndicated.meta}
+              onRetry={() => {
+                setSyndicated({ state: 'loading' });
+                setAttempt((a) => a + 1);
+              }}
+            />
           )}
 
           {(level >= 2 || burning) && <EmberTrail active count={12} />}

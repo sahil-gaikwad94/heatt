@@ -114,15 +114,38 @@ function snapshotItems(): WireItem[] {
   );
 }
 
+/** Mirrors app/api/feed BOARDS so the wire still has shape when the proxy is unreachable. */
+const DIRECT_BOARDS: { key: string; qs: string }[] = [
+  { key: 'top', qs: 'per_page=16&top=3' },
+  { key: 'latest', qs: 'per_page=16' },
+  { key: 'webdev', qs: 'per_page=10&tag=webdev' },
+  { key: 'design', qs: 'per_page=8&tag=design' },
+  { key: 'ai', qs: 'per_page=8&tag=ai' },
+  { key: 'programming', qs: 'per_page=8&tag=programming' },
+];
+
 async function directForem(): Promise<WireItem[] | null> {
   try {
-    const r = await fetch('https://dev.to/api/articles?per_page=30&top=7', {
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!r.ok) return null;
-    const rows = await r.json();
-    if (!Array.isArray(rows) || !rows.length) return null;
-    return rows.map((a: any) =>
+    const settled = await Promise.allSettled(
+      DIRECT_BOARDS.map((b) =>
+        fetch(`https://dev.to/api/articles?${b.qs}`, { signal: AbortSignal.timeout(6000) })
+          .then((r) => (r.ok ? r.json() : []))
+          .then((rows) => ({ board: b.key, rows }))
+      )
+    );
+    const seen = new Set<string>();
+    const flat: any[] = [];
+    for (const res of settled) {
+      if (res.status !== 'fulfilled' || !Array.isArray(res.value.rows)) continue;
+      for (const a of res.value.rows) {
+        const key = String(a.id ?? a.title);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        flat.push({ a, board: res.value.board });
+      }
+    }
+    if (!flat.length) return null;
+    return flat.map(({ a, board }) =>
       toWire(
         {
           id: a.id,
@@ -140,7 +163,7 @@ async function directForem(): Promise<WireItem[] | null> {
           tags: a.tag_list ?? [],
           cover: a.cover_image,
           avatar: a.user?.profile_image_90,
-          board: 'top',
+          board,
           flare: a.flare_tag?.name,
         },
         'forem'
