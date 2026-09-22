@@ -525,21 +525,15 @@ function CoolingLab() {
       </svg>
       <div className="mt-3 space-y-3">
         <Lab label="τ cooling constant" value={`${tau}h`}>
-          <input type="range" min={2} max={30} value={tau} onChange={(e) => setTau(Number(e.target.value))} className="ht-range2" style={{ ['--v' as string]: `${((tau - 2) / 28) * 100}%` }} />
+          <input type="range" min={2} max={30} value={tau} onChange={(e) => setTau(Number(e.target.value))} className="ht-range" style={{ ['--v' as string]: `${((tau - 2) / 28) * 100}%` }} />
         </Lab>
         <Lab label="hold length" value={`${hold.toFixed(2)}s → level ${hold > 2.4 ? 3 : hold > 1.15 ? 2 : 1}`}>
-          <input type="range" min={0} max={300} value={hold * 100} onChange={(e) => setHold(Number(e.target.value) / 100)} className="ht-range2" style={{ ['--v' as string]: `${(hold / 3) * 100}%` }} />
+          <input type="range" min={0} max={300} value={hold * 100} onChange={(e) => setHold(Number(e.target.value) / 100)} className="ht-range" style={{ ['--v' as string]: `${(hold / 3) * 100}%` }} />
         </Lab>
         <Lab label="heats in first hour" value={String(heats)}>
-          <input type="range" min={0} max={40} value={heats} onChange={(e) => setHeats(Number(e.target.value))} className="ht-range2" style={{ ['--v' as string]: `${(heats / 40) * 100}%` }} />
+          <input type="range" min={0} max={40} value={heats} onChange={(e) => setHeats(Number(e.target.value))} className="ht-range" style={{ ['--v' as string]: `${(heats / 40) * 100}%` }} />
         </Lab>
       </div>
-      <style>{`
-        .ht-range2{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:99px;
-          background:linear-gradient(90deg,var(--ht-flame) var(--v,50%),rgba(255,255,255,.1) var(--v,50%))}
-        .ht-range2::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
-          background:radial-gradient(circle at 35% 30%,#fff6de,#ff8a1f 60%,#b92806);cursor:grab;box-shadow:0 0 12px rgba(255,92,10,.9)}
-      `}</style>
     </div>
   );
 }

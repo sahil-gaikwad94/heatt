@@ -106,11 +106,12 @@ panel says so honestly instead of showing skeletons forever.
 
 ## Verification
 
-Two suites, both headless, both run with `npm test`:
+Three suites, all headless, all run with `npm test`:
 
 ```bash
 npm run test:model   # 56 assertions on heat math, ranker, store reducers, seed corpus
 npm run test:smoke   # 100 assertions driving the real components in jsdom
+npm run test:styles  # style audit: every class rendered in the DOM compiles to a rule
 ```
 
 `test:model` compiles the pure-TS core and checks the physics against the spec
@@ -121,18 +122,43 @@ filters, streak and activity reducers, every seeded forge having real blocks).
 shell layout → page` with react-dom/client inside jsdom, stubs `next/navigation`,
 `next/dynamic` and `next/link`, replaces `getContext('2d')` with a **canvas
 recorder**, and then presses buttons — skip intro, walk onboarding, `j/k/h/l/↵`,
-hold-to-heat through the real 1.15s timer, mute from the ⋯ menu, reply in a
-thread, publish a spark, open a poster and switch format (asserting the canvas
-is repainted at 1080×1080 with ~3k draw calls and zero unknown canvas APIs),
-⌘K navigation, heat-grid day selection, and every settings toggle reaching
-`<html>`. It fails on any console error, uncaught rejection, or React warning.
+hold-to-heat through the real 2.45s timer including ignition (25 embers,
+`activity.ignites`, fire chrome and its 2.4s expiry), mute from the ⋯ menu,
+reply in a thread, publish a spark, build a poll → feed → vote, open a poster
+and exercise every export (clipboard image, native share sheet, PNG download,
+palette repaint via canvas op count ~3k→6k), offline syndicated body retry +
+attribution, profile editing, ⌘K navigation, heat-grid day selection, and every
+settings toggle reaching `<html>`. It fails on any console error, uncaught
+rejection, or React warning.
 
-It found six bugs no build step could: a `useMemo` inside JSX after an early
-`return` in `BootLayer` (hook-order violation that crashed the first-visit boot),
-the poster canvas painting a frame *before* the modal mounted its children (every
-share image would have been blank), `muted` missing from the `posts` dependency
-list (muting did nothing until reload), and own new posts falling below the
-semantic cliff (now a decaying findability boost for six hours).
+`test:styles` renders every surface (feed, igniting card, reader, offline
+reader, explore, library, notifications, settings, heatmap, profile, landing,
+palette, composer, share studio, thread sheet, onboarding, intro) in jsdom,
+collects every class token from the real DOM, extracts every selector from the
+production CSS by unescaping Tailwind's escaped arbitrary values
+(`bg-[linear-gradient(140deg,#FFD27D,#FF5C0A)]`, `text-[clamp(...)]`,
+`bottom-[max(84px,calc(env(safe-area-inset-bottom)+84px))]`), and asserts that
+every utility has a compiled rule and every `.ht-*` primitive is defined. It
+catches the class of bug Tailwind silently drops — a typo'd token or an opacity
+step not in the scale compiles to nothing.
+
+Together they found eight bugs no build step could:
+
+1. `useMemo` inside JSX after an early `return` in `BootLayer` — hook-order
+   violation that crashed the first-visit boot.
+2. Poster canvas painting a frame *before* the modal mounted its children — every
+   share image would have been blank.
+3. `muted` missing from the `posts` dependency list — muting did nothing until
+   reload.
+4. Own new posts falling below the semantic cliff — now a decaying findability
+   boost for six hours.
+5. `assemble()` not attaching heat — poster palette always fell back to 42° and
+   `heat!.temp` threw on profile sort and reader end-card related rows.
+6. `heat!` non-null assertions latent crashes for unranked lists.
+7. `h-4.5` dead utility in `ShareStudio` — not in Tailwind's spacing scale, so it
+   emitted no rule (height was saved by an inline style).
+8. `ht-range2` duplicated inline `<style>` in landing + onboarding with different
+   thumb sizes — now one `.ht-range` primitive in `globals.css`.
 
 ## Layout
 

@@ -578,7 +578,7 @@ function Check({ label, value, onChange }: { label: string; value: boolean; onCh
   return (
     <button onClick={() => onChange(!value)} className="flex w-full items-center justify-between rounded-[12px] border border-white/[.07] px-3 py-2 text-[13px] text-ink-dim transition-colors hover:border-white/20">
       {label}
-      <span className="grid h-4.5 w-[18px] place-items-center rounded-[5px] border" style={{ borderColor: value ? 'var(--ht-flame)' : 'var(--ht-line)', background: value ? 'rgba(255,138,31,.2)' : 'transparent', height: 18 }}>
+      <span className="grid w-[18px] place-items-center rounded-[5px] border" style={{ borderColor: value ? 'var(--ht-flame)' : 'var(--ht-line)', background: value ? 'rgba(255,138,31,.2)' : 'transparent', height: 18 }}>
         {value && (
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ht-whitehot)" strokeWidth="3.4">
             <path d="m5 13 4.5 4.5L19 7" strokeLinecap="round" />

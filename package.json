@@ -10,7 +10,9 @@
     "lint": "next lint",
     "test:model": "bash scripts/model-test.sh",
     "test:smoke": "bash scripts/smoke-test.sh",
-    "test": "bash scripts/model-test.sh && bash scripts/smoke-test.sh"
+    "test:styles": "node tests/style-audit.cjs",
+    "audit:styles": "node tests/style-audit.cjs",
+    "test": "bash scripts/model-test.sh && bash scripts/smoke-test.sh && node tests/style-audit.cjs"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",

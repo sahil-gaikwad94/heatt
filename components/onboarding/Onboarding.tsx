@@ -559,14 +559,6 @@ function LivePreview({
           </div>
         </div>
       </div>
-      <style>{`
-        .ht-range{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:99px;
-          background:linear-gradient(90deg,var(--ht-magma) var(--v,50%),rgba(255,255,255,.09) var(--v,50%));outline:none}
-        .ht-range::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;
-          background:radial-gradient(circle at 35% 30%,#fff6de,#ff8a1f 55%,#b92806);border:2px solid #0b0b0d;
-          box-shadow:0 0 20px rgba(255,92,10,.9);cursor:grab}
-        .ht-range::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#ff8a1f;border:2px solid #0b0b0d}
-      `}</style>
     </motion.div>
   );
 }
