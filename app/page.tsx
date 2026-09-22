@@ -12,7 +12,6 @@ import * as React from 'react';
 import Link from 'next/link';
 import { motion, useScroll, useTransform, AnimatePresence, useMotionValueEvent } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { HeatField } from '@/components/gl/HeatField';
 import { HeatButton } from '@/components/heat/HeatButton';
 import { FireOverlay, EmberTrail } from '@/components/heat/FireOverlay';
 import { Avatar, Sparkline } from '@/components/ui/primitives';
@@ -51,11 +50,8 @@ export default function Landing() {
 
   return (
     <div className="relative min-h-[100dvh] overflow-x-clip bg-[#07070a]">
-      {/* scroll-linked ambient */}
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <HeatField intensity={0.3} flow={0.7} vignette={0.62} interactive scale={0.6} cool={0} />
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(120% 80% at 50% 0%, rgba(6,6,8,.72), rgba(6,6,8,.9) 70%)' }} />
-      </div>
+      {/* Quiet editorial atmosphere: no looping background animation on the landing page. */}
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(900px_520px_at_75%_-10%,rgba(91,75,255,.12),transparent_65%),radial-gradient(760px_460px_at_8%_30%,rgba(43,224,200,.06),transparent_68%)]" />
 
       {/* nav */}
       <header className="sticky top-0 z-50 border-b border-white/[.06] bg-[#07070a]/70 backdrop-blur-2xl">
@@ -92,7 +88,7 @@ export default function Landing() {
               </motion.div>
 
               <h1 className="ht-title text-[clamp(2.9rem,1.4rem+7.2vw,7.2rem)] leading-[0.88]" style={{ textWrap: 'balance' as any }}>
-                {['Ideas are', 'measured in', 'heat.'].map((l, i) => (
+                {['Make room for', 'better', 'thinking.'].map((l, i) => (
                   <motion.span
                     key={l}
                     initial={{ opacity: 0, y: 26, filter: 'blur(14px)' }}

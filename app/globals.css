@@ -24,17 +24,18 @@
   --ht-ink-mute: #6e6a66;
 
   /* --- heat ramp: cold indigo → magma → incandescent --- */
-  --ht-cryo-indigo: #5b4bff;
-  --ht-cryo-violet: #8a5cff;
-  --ht-cryo-teal: #2be0c8;
-  --ht-magma: #ff2d12;
-  --ht-ember: #ff5c0a;
-  --ht-flame: #ff8a1f;
-  --ht-flare: #ffb531;
-  --ht-whitehot: #fff6de;
+  /* restrained accent system: indigo and mint lead; amber is reserved for heat events */
+  --ht-cryo-indigo: #7180ff;
+  --ht-cryo-violet: #a78bfa;
+  --ht-cryo-teal: #63e6d5;
+  --ht-magma: #d95f59;
+  --ht-ember: #e7a45b;
+  --ht-flame: #f2c078;
+  --ht-flare: #f8dfaa;
+  --ht-whitehot: #fff8eb;
 
   --ht-heat: var(--ht-ember);
-  --ht-heat-soft: rgba(255, 92, 10, 0.14);
+  --ht-heat-soft: rgba(231, 164, 91, 0.12);
 
   /* --- fluid type scale (clamp) --- */
   --fs-micro: clamp(0.68rem, 0.66rem + 0.12vw, 0.75rem);
@@ -915,3 +916,14 @@ body {
   border: 2px solid #0b0b0d;
 }
 .ht-range:focus-visible { box-shadow: 0 0 0 2px rgba(255, 181, 49, 0.5); }
+
+/* Product polish: atmospheric motion is intentional and sparse, never a constant orange wash. */
+.ht-card:hover { box-shadow: 0 24px 60px -34px rgba(99, 230, 213, .18), 0 0 0 1px rgba(113,128,255,.08); }
+.ht-btn--heat { background: linear-gradient(135deg, #d9b27b, #f0c98e 58%, #fff0c9); color: #15131a; box-shadow: 0 10px 34px -14px rgba(231,164,91,.36), 0 1px 0 rgba(255,255,255,.45) inset; }
+.ht-btn--heat:hover { box-shadow: 0 16px 44px -14px rgba(99,230,213,.3), 0 1px 0 rgba(255,255,255,.5) inset; }
+.ht-heat-text { background-image: linear-gradient(110deg, #63e6d5 0%, #a78bfa 48%, #f2c078 100%); }
+.ht-panel { background: linear-gradient(180deg, #14161d, #0d0f15); }
+.ht-input:focus { border-color: rgba(99,230,213,.5); background: rgba(99,230,213,.045); box-shadow: 0 0 0 4px rgba(99,230,213,.09); }
+@media (prefers-reduced-motion: no-preference) {
+  .ht-card { transition-duration: .28s; }
+}
