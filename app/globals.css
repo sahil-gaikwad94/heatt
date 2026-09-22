@@ -927,3 +927,20 @@ body {
 @media (prefers-reduced-motion: no-preference) {
   .ht-card { transition-duration: .28s; }
 }
+
+/* Ambient motion is a slow, almost imperceptible depth layer. It should reward
+   time spent in the app, not compete with the content. */
+.ht-ambient-wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(38rem 24rem at 84% 12%, rgba(113,128,255,.08), transparent 70%),
+    radial-gradient(32rem 22rem at 8% 70%, rgba(99,230,213,.045), transparent 72%);
+  opacity: .8;
+  animation: ht-ambient-drift 28s ease-in-out infinite alternate;
+}
+@keyframes ht-ambient-drift {
+  from { transform: translate3d(-1%, -1%, 0) scale(1); opacity: .58; }
+  to { transform: translate3d(1%, 1%, 0) scale(1.04); opacity: .9; }
+}
+@media (prefers-reduced-motion: reduce) { .ht-ambient-wash { animation: none; } }

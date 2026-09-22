@@ -90,7 +90,7 @@ const DEFAULT_PREFS: Prefs = {
   measure: 'normal',
   serif: true,
   reduceMotion: false,
-  ambient: false,
+  ambient: true,
   autoplayVideo: true,
   haptics: true,
   ignitionFx: 'full',

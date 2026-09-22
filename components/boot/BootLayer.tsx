@@ -100,14 +100,15 @@ export function BootLayer({ children }: { children: React.ReactNode }) {
       {/* ambient thermal field behind everything (paused while the intro owns it) */}
       {ambient && phase === 'app' && (
         <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
-          <HeatField intensity={0.16} flow={0.55} vignette={0.4} interactive={false} scale={0.5} cool={0} />
+          <HeatField intensity={0.075} flow={0.18} vignette={0.58} interactive={false} scale={0.72} cool={0.82} />
+          <div className="ht-ambient-wash" />
         </div>
       )}
       {!ambient && (
         <div
           className="pointer-events-none fixed inset-0 z-0"
           aria-hidden
-          style={{ background: 'radial-gradient(120% 90% at 50% 112%, rgba(255,92,10,.09), transparent 62%), linear-gradient(180deg,#07070a,#050506)' }}
+          style={{ background: 'radial-gradient(120% 90% at 50% 112%, rgba(99,230,213,.07), transparent 62%), linear-gradient(180deg,#080a10,#05060a)' }}
         />
       )}
 
