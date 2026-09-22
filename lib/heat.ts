@@ -80,6 +80,8 @@ export type HeatResult = {
   velocity: number;
   /** final rank score */
   score: number;
+  /** your injected engagement heat (× thermal mass) — the ranker's diffusion input */
+  injected: number;
   /** human-readable breakdown for the "why am I seeing this" trace */
   trace: { label: string; value: number; hint: string }[];
   /** 7-day sparkline of temperature */
@@ -143,6 +145,7 @@ export function computeHeat(sig: HeatSignals, now = Date.now()): HeatResult {
     heat,
     velocity: Math.round(velocity * 100) / 100,
     score,
+    injected: Math.round(injected * 100) / 100,
     trend,
     trace: [
       { label: 'Crowd energy', value: crowd, hint: 'cooled reactions · replies · reposts' },
@@ -153,8 +156,17 @@ export function computeHeat(sig: HeatSignals, now = Date.now()): HeatResult {
   };
 }
 
-/** One discrete Laplacian pass: content nodes exchange heat with neighbours. */
-export function diffuse(nodes: { id: string; temp: number; neighbors: string[] }[], passes = 1) {
+/**
+ * One Laplacian pass over the user↔content bipartite graph. Every node relaxes
+ * toward the mean of its neighbours by `kappa` — the discrete heat equation
+ * with a stability-clamped coefficient (kappa ≤ 0.5 keeps it convergent).
+ */
+export function diffuse(
+  nodes: { id: string; temp: number; neighbors: string[] }[],
+  passes = 1,
+  kappa = 0.18
+): Map<string, number> {
+  const k = Math.max(0, Math.min(0.5, kappa));
   const byId = new Map(nodes.map((n) => [n.id, n.temp]));
   let out = byId;
   for (let p = 0; p < passes; p++) {
@@ -163,11 +175,59 @@ export function diffuse(nodes: { id: string; temp: number; neighbors: string[] }
       const nb = n.neighbors.map((x) => out.get(x) ?? 0);
       const avg = nb.length ? nb.reduce((a, b) => a + b, 0) / nb.length : 0;
       const laplacian = avg - (out.get(n.id) ?? 0);
-      next.set(n.id, Math.max(0, (out.get(n.id) ?? 0) + 0.18 * laplacian));
+      next.set(n.id, Math.max(0, (out.get(n.id) ?? 0) + k * laplacian));
     }
     out = next;
   }
   return out;
+}
+
+/**
+ * Cross-author diffusion (spec §8.1, the actual graph pass): "when a
+ * highly reputable user interacts with a post, they inject a significant
+ * spike of temperature into that node, initiating a diffusion process that
+ * propagates the content to adjacent user feeds."
+ *
+ * Builds the bipartite graph of the visible feed — each content node linked
+ * to its author node — where an author node's temperature is the heat *you*
+ * injected into that author's posts, weighted by their thermal mass. One
+ * Laplacian pass with the platform kappa; the result is the warming each
+ * post receives from heat that burned elsewhere on the same author.
+ *
+ * Deterministic, O(n). A post only warms (Δ ≥ 0) — cooling is already the
+ * job of Newton's decay, so the ranker never double-punishes.
+ */
+export function feedDiffusion(
+  posts: { id: string; authorHandle: string; injected: number; temp: number; mass: number }[]
+): Map<string, number> {
+  const byAuthor = new Map<string, { sum: number; mass: number; ids: string[] }>();
+  for (const p of posts) {
+    const e = byAuthor.get(p.authorHandle) ?? { sum: 0, mass: p.mass, ids: [] };
+    e.sum += p.injected;
+    e.ids.push(p.id);
+    byAuthor.set(p.authorHandle, e);
+  }
+  // author node = reservoir: your injected heat × reputation weighting
+  const authorTemp = (e: { sum: number; mass: number }) =>
+    e.sum * (1 + 0.3 * (e.mass - 1));
+
+  // run the pass directly (one pass is all the feed needs; reuse diffuse()'s
+  // clamp+relax so the physics lives in exactly one place)
+  const tempOf = new Map<string, number>();
+  for (const p of posts) tempOf.set(p.id, p.temp);
+  const nodes = posts.map((p) => ({ id: p.id, temp: p.temp, neighbors: [`a:${p.authorHandle}`] }));
+  for (const [h, e] of byAuthor) nodes.push({ id: `a:${h}`, temp: authorTemp(e), neighbors: e.ids });
+  const after = diffuse(nodes, 1, K.kappa * 0.5);
+  const out = new Map<string, number>();
+  for (const p of posts) out.set(p.id, Math.max(0, (after.get(p.id) ?? 0) - p.temp));
+  return out;
+}
+
+/** Score-space boost from a post's diffusion warming (logit-space, like the
+ *  other ranker boosts, so it composes with the log-temperature rank). */
+export function diffusionBoost(diffT: number, mass = 1) {
+  if (diffT <= 0) return 0;
+  return 1.35 * Math.log1p(diffT * 1.6) * Math.min(1.6, 1 + 0.3 * (mass - 1));
 }
 
 /**

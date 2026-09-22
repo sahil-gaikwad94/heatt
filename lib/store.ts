@@ -7,7 +7,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { HeatEvent, HeatLevel, Notification, Prefs, Spark, User } from './types';
+import type { HeatEvent, HeatLevel, LogEvent, LogEventKind, Notification, Prefs, Spark, User } from './types';
 import { uid } from './util';
 
 export type LocalArticle = {
@@ -36,6 +36,9 @@ export type Reply = {
 
 type HeatKey = string; // post id
 
+/** Bounded so the ring can't bloat the persisted store — a month of heavy use */
+export const EVENT_RING_CAP = 200;
+
 export type State = {
   booted: boolean;
   introSeen: boolean;
@@ -54,8 +57,13 @@ export type State = {
   mySparks: Spark[];
   myArticles: LocalArticle[];
   notifications: Notification[];
-  /** ISO date strings of days with activity → drives the heatmap + streak */
-  activity: Record<string, { reads: number; heats: number; ignites: number; posts: number; minutes: number }>;
+  /** ISO date strings of days with activity → drives the heatmap + streak.
+      `blazes` is a subset of `heats` (level-2 holds) — day-level narrative
+      needs the split, and older persisted stores may lack it, so every
+      consumer reads `blazes ?? 0`. */
+  activity: Record<string, { reads: number; heats: number; blazes?: number; ignites: number; posts: number; minutes: number }>;
+  /** Bounded ring of memorable moments (latest last) → day timelines */
+  events: LogEvent[];
   interests: string[];
   /** live syndication payload cache */
   wire: { at: number; items: unknown[] } | null;
@@ -68,9 +76,9 @@ export type State = {
   setPrefs: (patch: Partial<Prefs>) => void;
   setHeat: (id: HeatKey, level: HeatLevel) => void;
   bumpHeatCount: (id: HeatKey, delta: number) => void;
-  setRead: (id: HeatKey, pct: number, minutes?: number) => void;
+  setRead: (id: HeatKey, pct: number, minutes?: number, meta?: { title?: string; author?: string }) => void;
   toggleSave: (id: HeatKey) => void;
-  addShare: (id: HeatKey) => void;
+  addShare: (id: HeatKey, meta?: { title?: string; author?: string }) => void;
   toggleFollow: (handle: string) => void;
   /** `muted` holds `@handle` (hide everything by them) and `#tag` (demote a topic) */
   toggleMute: (entry: string) => void;
@@ -80,7 +88,9 @@ export type State = {
   addArticle: (a: Omit<LocalArticle, 'id' | 'date' | 'kind' | 'minutes'>) => LocalArticle;
   notify: (n: Omit<Notification, 'id' | 'at' | 'read'>) => void;
   markAllRead: () => void;
-  logActivity: (kind: 'reads' | 'heats' | 'ignites' | 'posts', minutes?: number) => void;
+  logActivity: (kind: 'reads' | 'heats' | 'blazes' | 'ignites' | 'posts', minutes?: number) => void;
+  /** Append a memorable moment to the bounded ring (cap EVENT_RING_CAP) */
+  logEvent: (kind: LogEventKind, id: string, meta?: { title?: string; author?: string }) => void;
   setWire: (items: unknown[]) => void;
   reset: () => void;
 };
@@ -119,6 +129,7 @@ export const useStore = create<State>()(
       myArticles: [],
       notifications: [],
       activity: {},
+      events: [],
       interests: ['design', 'engineering', 'typography', 'ai'],
       wire: null,
 
@@ -161,15 +172,17 @@ export const useStore = create<State>()(
         }
         set({ heat: { ...get().heat, [id]: { level, at: Date.now() } } });
         if (level > cur) get().logActivity('heats');
+        if (level === 2 && cur < 2) get().logActivity('blazes');
         if (level === 3 && cur < 3) get().logActivity('ignites');
       },
 
       bumpHeatCount: (id, delta) =>
         set({ heatCounts: { ...get().heatCounts, [id]: Math.max(0, (get().heatCounts[id] ?? 0) + delta) } }),
 
-      setRead: (id, pct, minutes = 0) => {
+      setRead: (id, pct, minutes = 0, meta) => {
         /* `finished` is edge-triggered: the day gets counted once, the first
-           time you cross 97%, and never un-counted by scrolling back up. */
+           time you cross 97%, and never un-counted by scrolling back up. The
+           same edge logs a memorable-moment for the heatmap narrative. */
         const clean = Math.max(0, Math.min(100, Math.round(Number.isFinite(pct) ? pct : 0)));
         const prev = get().reads[id];
         const crossing = clean >= 97 && !prev?.finished;
@@ -183,7 +196,10 @@ export const useStore = create<State>()(
             },
           },
         });
-        if (crossing) get().logActivity('reads', minutes);
+        if (crossing) {
+          get().logActivity('reads', minutes);
+          get().logEvent('read', id, meta);
+        }
       },
 
       toggleSave: (id) => {
@@ -193,9 +209,10 @@ export const useStore = create<State>()(
         set({ saved });
       },
 
-      addShare: (id) => {
+      addShare: (id, meta) => {
         set({ shares: { ...get().shares, [id]: (get().shares[id] ?? 0) + 1 } });
         get().logActivity('posts');
+        get().logEvent('share', id, meta);
       },
 
       toggleFollow: (handle) => {
@@ -216,6 +233,7 @@ export const useStore = create<State>()(
         const spark: Spark = { ...s, id: uid('sp'), kind: 'spark', date: new Date().toISOString() };
         set({ mySparks: [spark, ...get().mySparks] });
         get().logActivity('posts');
+        get().logEvent('post', spark.id, { title: spark.text?.slice(0, 60) });
         return spark;
       },
 
@@ -230,6 +248,7 @@ export const useStore = create<State>()(
         };
         set({ myArticles: [art, ...get().myArticles] });
         get().logActivity('posts');
+        get().logEvent('post', art.id, { title: art.title });
         return art;
       },
 
@@ -240,13 +259,19 @@ export const useStore = create<State>()(
 
       logActivity: (kind, minutes = 0) => {
         const d = today();
-        const cur = get().activity[d] ?? { reads: 0, heats: 0, ignites: 0, posts: 0, minutes: 0 };
+        const cur = get().activity[d] ?? { reads: 0, heats: 0, blazes: 0, ignites: 0, posts: 0, minutes: 0 };
         set({
           activity: {
             ...get().activity,
-            [d]: { ...cur, [kind]: cur[kind] + 1, minutes: cur.minutes + minutes },
+            [d]: { ...cur, [kind]: (cur[kind] ?? 0) + 1, minutes: cur.minutes + minutes },
           },
         });
+      },
+
+      logEvent: (kind, id, meta) => {
+        const e: LogEvent = { t: Date.now(), kind, id, title: meta?.title, author: meta?.author };
+        const next = [...get().events, e];
+        set({ events: next.length > EVENT_RING_CAP ? next.slice(-EVENT_RING_CAP) : next });
       },
 
       setWire: (items) => set({ wire: { at: Date.now(), items } }),
@@ -267,6 +292,7 @@ export const useStore = create<State>()(
           myArticles: [],
           notifications: [],
           activity: {},
+          events: [],
           wire: null,
         }),
     }),
@@ -291,6 +317,7 @@ export const useStore = create<State>()(
         myArticles: s.myArticles,
         notifications: s.notifications,
         activity: s.activity,
+        events: s.events,
         interests: s.interests,
       }),
     }

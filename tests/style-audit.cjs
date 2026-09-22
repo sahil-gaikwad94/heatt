@@ -135,8 +135,17 @@ function extractCompiledClasses(cssText) {
 
 (async () => {
   if (!fs.existsSync(CSS_DIR)) {
-    console.error('no compiled CSS — run `npm run build` first (the audit diffs against production CSS)');
-    process.exit(2);
+    console.log('no compiled CSS — running `next build` first (one-time, the audit diffs against production CSS)');
+    try {
+      require('node:child_process').execSync('npm run build', { cwd: ROOT, stdio: 'inherit' });
+    } catch (e) {
+      console.error('`next build` failed — cannot audit classes against a production stylesheet');
+      process.exit(2);
+    }
+    if (!fs.existsSync(CSS_DIR)) {
+      console.error('build finished but still no compiled CSS');
+      process.exit(2);
+    }
   }
   const cssName = fs.readdirSync(CSS_DIR).find((f) => f.endsWith('.css'));
   const css = fs.readFileSync(path.join(CSS_DIR, cssName), 'utf8');

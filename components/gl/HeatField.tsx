@@ -1,18 +1,34 @@
 'use client';
 /* ============================================================================
-   components/gl/HeatField — GPU thermal field (spec §4.1)
+   components/gl/HeatField — GPU thermal field (spec §4.1 + §4.2)
 
    A single full-bleed quad, an FBM turbulence shader, and nothing else: no
    three.js, no textures, ~4KB of GLSL. Displacement and colour are computed
    per fragment on the GPU, so the shell stays at 60-120Hz on a phone while
    the CPU does feed work.
 
+   §4.2 adaptive degradation, fully wired:
+     • startup: `probeGpu()` reads the device profile (cores, memory, UA,
+       touch) and seeds the quality tier — constrained hardware never starts
+       at full resolution;
+     • runtime: a frame-time governor (median of a rolling rAF window,
+       hysteresis-cooled) steps the tier down when the GPU can't keep up —
+       lower DPR cap + smaller render scale — and if even the minimal tier
+       sags, it swaps the canvas for a Web-Animations-API-driven CSS gradient
+       (hardware-accelerated, ~0 JS per frame);
+     • `webglcontextlost` / `restored` are handled: loss → CSS fallback
+       immediately, restore → shaders recompile and GL resumes;
+     • cursor *and* gyroscope both drive the focal distortion (spec §4.1:
+       "uniform variables bound to the user's cursor position or device
+       gyroscope").
+
    Props let every surface tune it: the intro pushes `surge`, the app shell
-   keeps `intensity` low so text stays readable, and pointer heat adds a local
-   bloom that follows the cursor like a real ember.
+   keeps `intensity` low so text stays readable, and pointer heat adds a
+   local bloom that follows the cursor like a real ember.
    ==========================================================================*/
 
 import * as React from 'react';
+import { governorStep, probeGpu, type GovernorState } from '@/lib/gpu';
 
 export type HeatFieldProps = {
   /** 0..1 global burn */
@@ -23,16 +39,18 @@ export type HeatFieldProps = {
   flow?: number;
   /** colour bias: 0 = magma/orange, 1 = cryo teal-indigo */
   cool?: number;
-  /** add pointer-reactive bloom */
+  /** add pointer-reactive bloom (cursor + gyroscope) */
   interactive?: boolean;
   className?: string;
   style?: React.CSSProperties;
   /** pause the rAF loop (e.g. when a modal is open or tab hidden) */
   paused?: boolean;
-  /** quality: 1 = full DPR, 0.6 = cheaper on low-end */
+  /** base quality: 1 = full DPR, 0.6 = cheaper on low-end */
   scale?: number;
   /** vignette strength */
   vignette?: number;
+  /** quality tier changed (0..2 = GL tiers, 3 = CSS fallback) */
+  onTier?: (tier: number, reason: string) => void;
 };
 
 const VERT = `
@@ -114,7 +132,7 @@ void main(){
                   smoothstep(0.30, 0.95, field + w.x * 0.3));
   vec3 col = mix(heat, col_min(cryo), u_cool);
 
-  // pointer ember — a soft bloom that trails the cursor
+  // pointer/gyro ember — a soft bloom that trails the input
   if (u_mouseOn > 0.0) {
     vec2 m = (u_mouse - 0.5) * asp;
     float d = length(q - m);
@@ -138,6 +156,14 @@ void main(){
 
 `;
 
+/* -------------------------------------------------------- quality tiers */
+
+/** per-tier multipliers against the base `scale` prop, plus DPR caps. */
+const TIER_FACTOR = [1, 0.72, 0.5];
+const TIER_DPR_CAP = [2, 1.5, 1];
+/** pointer bloom only at full quality — it is the most expensive uniform. */
+const TIER_BLOOM = [true, false, false];
+
 function compile(gl: WebGLRenderingContext, type: number, src: string) {
   const sh = gl.createShader(type);
   if (!sh) return null;
@@ -152,6 +178,38 @@ function compile(gl: WebGLRenderingContext, type: number, src: string) {
   return sh;
 }
 
+/**
+ * The CSS/WAAPI fallback (spec §4.2): two drifting thermal gradients,
+ * animated through the Web Animations API so the compositor owns the motion
+ * and per-frame JS cost is ~0. Falls back to a static gradient where WAAPI
+ * is unavailable (or the user prefers reduced motion).
+ */
+function startCssFallback(layer: HTMLDivElement, animated: boolean) {
+  layer.innerHTML = '<div class="ht-cssheat ht-cssheat-a"></div><div class="ht-cssheat ht-cssheat-b"></div>';
+  if (!animated) return;
+  const a = layer.querySelector('.ht-cssheat-a');
+  const b = layer.querySelector('.ht-cssheat-b');
+  if (!(a instanceof HTMLElement) || !(b instanceof HTMLElement)) return;
+  try {
+    a.animate(
+      [
+        { backgroundPosition: '50% 100%', opacity: 0.85 },
+        { backgroundPosition: '50% 30%', opacity: 1 },
+      ],
+      { duration: 16000, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' }
+    );
+    b.animate(
+      [
+        { backgroundPosition: '0% 0%', opacity: 0.5 },
+        { backgroundPosition: '30% 40%', opacity: 0.9 },
+      ],
+      { duration: 23000, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' }
+    );
+  } catch {
+    /* WAAPI unavailable — the static gradients still render */
+  }
+}
+
 export function HeatField({
   intensity = 0.45,
   surge = 0,
@@ -163,11 +221,20 @@ export function HeatField({
   paused = false,
   scale = 0.75,
   vignette = 0.55,
+  onTier,
 }: HeatFieldProps) {
   const ref = React.useRef<HTMLCanvasElement | null>(null);
+  const cssRef = React.useRef<HTMLDivElement | null>(null);
+  const [cssMode, setCssMode] = React.useState(false);
+  const [tier, setTier] = React.useState(0);
+  /* cssMode readable from the rAF loop without re-binding the effect */
+  const cssModeRef = React.useRef(cssMode);
+  cssModeRef.current = cssMode;
   const state = React.useRef({
     gl: null as WebGLRenderingContext | null,
     prog: null as WebGLProgram | null,
+    vs: null as WebGLShader | null,
+    fs: null as WebGLShader | null,
     raf: 0,
     t: 0,
     last: 0,
@@ -178,11 +245,51 @@ export function HeatField({
     reduced: false,
     hidden: false,
     dpr: 1,
+    tierIdx: 0,
+    gov: null as GovernorState | null,
+    pending: [] as number[],
+    probeReason: '',
   });
 
   // keep live prop values reachable from the render loop without re-binding GL
-  const props = React.useRef({ intensity, surge, flow, cool, vignette });
-  props.current = { intensity, surge, flow, cool, vignette };
+  const props = React.useRef({ intensity, surge, flow, cool, vignette, paused, scale });
+  props.current = { intensity, surge, flow, cool, vignette, paused, scale };
+  const onTierRef = React.useRef(onTier);
+  onTierRef.current = onTier;
+
+  const announceTier = React.useCallback((t: number, reason: string) => {
+    setTier(t);
+    onTierRef.current?.(t, reason);
+  }, []);
+
+  /** rebuild the program after a context restore */
+  const linkShaders = React.useCallback((gl: WebGLRenderingContext): boolean => {
+    const s = state.current;
+    s.vs = compile(gl, gl.VERTEX_SHADER, VERT);
+    s.fs = compile(gl, gl.FRAGMENT_SHADER, FRAG);
+    if (!s.vs || !s.fs) return false;
+    const prog = gl.createProgram();
+    if (!prog) return false;
+    gl.attachShader(prog, s.vs);
+    gl.attachShader(prog, s.fs);
+    gl.bindAttribLocation(prog, 0, 'p');
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      gl.deleteProgram(prog);
+      return false;
+    }
+    gl.useProgram(prog);
+    s.prog = prog;
+    for (const u of ['u_res', 'u_t', 'u_intensity', 'u_surge', 'u_cool', 'u_mouse', 'u_mouseOn', 'u_vig']) {
+      s.uniforms[u] = gl.getUniformLocation(prog, u);
+    }
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    return true;
+  }, []);
 
   React.useEffect(() => {
     const canvas = ref.current;
@@ -193,6 +300,24 @@ export function HeatField({
       (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ||
         document.documentElement.dataset.reduceMotion === 'true');
 
+    /* §4.2 — profile the device before drawing a single frame */
+    const probe = probeGpu({
+      cores: typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : undefined,
+      mem: (navigator as { deviceMemory?: number } | undefined)?.deviceMemory,
+      ua: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      touch: typeof navigator !== 'undefined' ? navigator.maxTouchPoints : undefined,
+    });
+    s.tierIdx = Math.min(2, probe.tier);
+    s.gov = { tier: s.tierIdx, maxTier: 2, frames: [], sinceChange: 0, cssSustain: 0 };
+    s.probeReason = probe.reason;
+    s.pending = [];
+    announceTier(s.tierIdx, probe.reason);
+    try {
+      (window as unknown as { __heattGpu?: unknown }).__heattGpu = probe;
+    } catch {
+      /* non-browser */
+    }
+
     let gl: WebGLRenderingContext | null = null;
     const opts: WebGLContextAttributes = { antialias: false, alpha: false, powerPreference: 'low-power', depth: false, stencil: false };
     try {
@@ -201,38 +326,22 @@ export function HeatField({
       gl = null;
     }
     if (!gl) {
-      // graceful: keep the CSS gradient atmosphere underneath
-      canvas.style.background =
-        'radial-gradient(120% 80% at 50% 110%, rgba(255,92,10,.22), transparent 60%), linear-gradient(180deg,#0a0a0b,#060607)';
+      // no WebGL at all → animated CSS atmosphere (static under reduced motion)
+      setCssMode(true);
+      announceTier(3, 'no WebGL context — CSS gradient fallback');
       return;
     }
     s.gl = gl;
 
-    const vs = compile(gl, gl.VERTEX_SHADER, VERT);
-    const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG);
-    if (!vs || !fs) return;
-    const prog = gl.createProgram();
-    if (!prog) return;
-    gl.attachShader(prog, vs);
-    gl.attachShader(prog, fs);
-    gl.bindAttribLocation(prog, 0, 'p');
-    gl.linkProgram(prog);
-    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
-    gl.useProgram(prog);
-    s.prog = prog;
-
-    const buf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-    for (const u of ['u_res', 'u_t', 'u_intensity', 'u_surge', 'u_cool', 'u_mouse', 'u_mouseOn', 'u_vig']) {
-      s.uniforms[u] = gl.getUniformLocation(prog, u);
+    if (!linkShaders(gl)) {
+      setCssMode(true);
+      announceTier(3, 'shader compile failed — CSS gradient fallback');
+      return;
     }
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2) * scale;
+      const dprCap = TIER_DPR_CAP[s.tierIdx] ?? 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, dprCap) * Math.max(0.3, props.current.scale * TIER_FACTOR[s.tierIdx]);
       const w = Math.max(1, Math.floor(canvas.clientWidth * dpr));
       const h = Math.max(1, Math.floor(canvas.clientHeight * dpr));
       s.dpr = dpr;
@@ -246,17 +355,27 @@ export function HeatField({
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
+    /* §4.1 — cursor AND gyroscope drive the focal distortion. The cursor
+       wins while it moves (mouseOn 1); gyro is a softer ambient input. On
+       iOS the deviceorientation event never fires without the user granting
+       permission, so this is a passive no-op there — zero cost. */
     const onMove = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
       s.target = [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
       s.mouseOn = 1;
     };
     const onLeave = () => {
-      s.mouseOn = 0;
+      if (s.mouseOn === 1) s.mouseOn = 0;
+    };
+    const onGyro = (e: DeviceOrientationEvent) => {
+      if (e.gamma === null || e.beta === null) return;
+      s.target = [Math.min(1, Math.max(0, 0.5 + e.gamma / 90)), Math.min(1, Math.max(0, 0.72 - e.beta / 120))];
+      s.mouseOn = Math.max(s.mouseOn, 0.55);
     };
     if (interactive) {
       window.addEventListener('pointermove', onMove, { passive: true });
       window.addEventListener('pointerleave', onLeave);
+      if ('DeviceOrientationEvent' in window) window.addEventListener('deviceorientation', onGyro as EventListener, { passive: true });
     }
 
     const onVis = () => {
@@ -264,9 +383,29 @@ export function HeatField({
     };
     document.addEventListener('visibilitychange', onVis);
 
+    /* §4.2 — context loss is a real thing on mobile GPUs (driver resets,
+       memory pressure). We pre-empt the blank canvas by switching to CSS
+       immediately and resuming when the context comes back. */
+    const onLost = (e: Event) => {
+      e.preventDefault();
+      setCssMode(true);
+      announceTier(3, 'WebGL context lost — CSS gradient fallback');
+    };
+    const onRestored = () => {
+      if (!s.gl) return;
+      if (linkShaders(s.gl)) {
+        resize();
+        setCssMode(false);
+        s.gov = { tier: s.tierIdx, maxTier: 2, frames: [], sinceChange: 0, cssSustain: 0 };
+        announceTier(s.tierIdx, 'WebGL context restored');
+      }
+    };
+    canvas.addEventListener('webglcontextlost', onLost);
+    canvas.addEventListener('webglcontextrestored', onRestored);
+
     const draw = (now: number) => {
       s.raf = requestAnimationFrame(draw);
-      if (paused || s.hidden) {
+      if (props.current.paused || s.hidden || cssModeRef.current) {
         s.last = now;
         return;
       }
@@ -274,7 +413,33 @@ export function HeatField({
       s.last = now;
       if (!s.reduced) s.t += dt * props.current.flow;
 
-      // ease pointer heat so it trails rather than sticks
+      // §4.2 — governor: batch frame deltas, evaluate the pure state machine
+      if (!s.reduced) {
+        s.pending.push(dt * 1000);
+        if (s.pending.length >= 12) {
+          const g = s.gov;
+          if (g) {
+            const { action, state: g2 } = governorStep(g, s.pending);
+            s.pending = [];
+            if (action === 'step-down') {
+              s.tierIdx = g2.tier;
+              s.gov = g2;
+              resize();
+              announceTier(g2.tier, `frame time sagging — stepped to tier ${g2.tier}`);
+              return;
+            }
+            if (action === 'css-fallback') {
+              s.gov = g2;
+              setCssMode(true);
+              announceTier(3, 'sustained frame lag at minimal tier — CSS gradient fallback');
+              return;
+            }
+            s.gov = g2;
+          }
+        }
+      }
+
+      // ease pointer/gyro heat so it trails rather than sticks
       s.mouse[0] += (s.target[0] - s.mouse[0]) * Math.min(1, dt * 6);
       s.mouse[1] += (s.target[1] - s.mouse[1]) * Math.min(1, dt * 6);
 
@@ -286,7 +451,7 @@ export function HeatField({
       gl!.uniform1f(u.u_cool, props.current.cool);
       gl!.uniform1f(u.u_vig, props.current.vignette);
       gl!.uniform2f(u.u_mouse, s.mouse[0], s.mouse[1]);
-      gl!.uniform1f(u.u_mouseOn, s.mouseOn);
+      gl!.uniform1f(u.u_mouseOn, TIER_BLOOM[s.tierIdx] ? s.mouseOn : 0);
       gl!.drawArrays(gl!.TRIANGLES, 0, 3);
     };
     s.raf = requestAnimationFrame(draw);
@@ -295,24 +460,41 @@ export function HeatField({
       cancelAnimationFrame(s.raf);
       ro.disconnect();
       document.removeEventListener('visibilitychange', onVis);
+      canvas.removeEventListener('webglcontextlost', onLost);
+      canvas.removeEventListener('webglcontextrestored', onRestored);
       if (interactive) {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerleave', onLeave);
+        if ('DeviceOrientationEvent' in window) window.removeEventListener('deviceorientation', onGyro as EventListener);
       }
-      gl?.deleteProgram(prog);
-      gl?.deleteShader(vs);
-      gl?.deleteShader(fs);
+      gl?.deleteProgram(s.prog);
+      gl?.deleteShader(s.vs);
+      gl?.deleteShader(s.fs);
+      s.prog = null;
+      s.vs = null;
+      s.fs = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interactive, scale]);
 
+  /* start/stop the WAAPI animation whenever the fallback mounts */
+  React.useEffect(() => {
+    const layer = cssRef.current;
+    if (!cssMode || !layer) return;
+    startCssFallback(layer, !(state.current.reduced || document.documentElement.dataset.reduceMotion === 'true'));
+  }, [cssMode]);
+
   return (
-    <canvas
-      ref={ref}
-      aria-hidden
-      className={className}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', ...style }}
-    />
+    <React.Fragment>
+      <canvas
+        ref={ref}
+        aria-hidden
+        data-gpu-tier={tier}
+        className={className}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', visibility: cssMode ? 'hidden' : undefined, ...style }}
+      />
+      {cssMode && <div ref={cssRef} aria-hidden data-gpu-tier={3} className="ht-cssheat-layer" style={{ position: 'absolute', inset: 0, ...style }} />}
+    </React.Fragment>
   );
 }
 

@@ -283,6 +283,45 @@ try {
   fail(`heat check threw: ${e.message}`);
 }
 
+// 10. Flagship behaviours must actually be wired in (regression guards)
+console.log('\n▸ flagship wiring (regression guards)');
+try {
+  const feedSrc = fs.readFileSync(path.join(ROOT, 'lib/feed.ts'), 'utf8');
+  const heatSrc = fs.readFileSync(path.join(ROOT, 'lib/heat.ts'), 'utf8');
+  if (feedSrc.includes('feedDiffusion(') && /feedDiffusion\(/.test(feedSrc.replace(/import[^\n]*\n/, ''))) {
+    ok('rank() runs the cross-author diffusion pass (not dead code)');
+  } else fail('rank() does not call feedDiffusion — diffusion is dead code');
+  if (heatSrc.includes('export function feedDiffusion')) ok('feedDiffusion is exported from heat.ts');
+  else fail('feedDiffusion missing');
+  if (heatSrc.includes('export function diffusionBoost')) ok('diffusionBoost is exported from heat.ts');
+  else fail('diffusionBoost missing');
+} catch (e) { fail(`diffusion wiring check threw: ${e.message}`); }
+
+try {
+  const previewSrc = fs.readFileSync(path.join(ROOT, 'app/api/preview/route.ts'), 'utf8');
+  const ogSrc = fs.readFileSync(path.join(ROOT, 'lib/oghead.ts'), 'utf8');
+  if (previewSrc.includes('readHeadOnly')) ok('preview route streams the head (readHeadOnly)');
+  else fail('preview route not using streaming head read');
+  if (ogSrc.includes('</head>')) ok('oghead aborts at </head>');
+  else fail('oghead missing </head> abort');
+} catch (e) { fail(`og preview wiring check threw: ${e.message}`); }
+
+try {
+  const heatField = fs.readFileSync(path.join(ROOT, 'components/gl/HeatField.tsx'), 'utf8');
+  if (heatField.includes('governorStep') && heatField.includes('probeGpu')) ok('HeatField runs the GPU governor + probe');
+  else fail('HeatField missing GPU governor/probe');
+  if (heatField.includes('webglcontextlost')) ok('HeatField handles webglcontextlost');
+  else fail('HeatField missing context-loss handling');
+  if (heatField.includes('ht-cssheat')) ok('HeatField has the CSS/WAAPI fallback');
+  else fail('HeatField missing CSS fallback');
+} catch (e) { fail(`HeatField wiring check threw: ${e.message}`); }
+
+try {
+  const storeSrc = fs.readFileSync(path.join(ROOT, 'lib/store.ts'), 'utf8');
+  if (storeSrc.includes('logEvent') && storeSrc.includes('EVENT_RING_CAP')) ok('store keeps a bounded event ring for narratives');
+  else fail('store missing event ring');
+} catch (e) { fail(`event ring check threw: ${e.message}`); }
+
 console.log(`\n────────────────────────────────────────`);
 console.log(`integrity: ${passes} passed, ${failures} failed`);
 console.log(failures ? '\nINTEGRITY AUDIT FAILED' : '\nINTEGRITY AUDIT PASSED');

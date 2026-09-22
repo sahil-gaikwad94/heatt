@@ -82,6 +82,20 @@ export type FeedItem = (Article | Spark) & {
 
 export type HeatEvent = { level: HeatLevel; at: number };
 
+/**
+ * One memorable moment, kept in a bounded ring (spec §5.2 — the heatmap
+ * narrative needs "the exact time of viral posts", not just day counts).
+ * `t` is epoch ms; `id` is the post/article the moment belongs to.
+ */
+export type LogEventKind = 'ignite' | 'blaze' | 'read' | 'post' | 'save' | 'share';
+export type LogEvent = {
+  t: number;
+  kind: LogEventKind;
+  id: string;
+  title?: string;
+  author?: string;
+};
+
 export type Notification = {
   id: string;
   type: 'heat' | 'ignite' | 'follow' | 'reply' | 'mention' | 'milestone' | 'digest';

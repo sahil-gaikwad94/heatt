@@ -7,7 +7,7 @@
 import { ORIGINALS } from './seed/articles';
 import { SPARKS } from './seed/sparks';
 import { getUser, SEED_USERS } from './seed/users';
-import { computeHeat, cliffIndex, type HeatResult, K } from './heat';
+import { computeHeat, cliffIndex, diffusionBoost, feedDiffusion, type HeatResult, K } from './heat';
 import type { ArticleBlock, HeatLevel, Spark, User } from './types';
 import type { State } from './store';
 import type { WireItem } from './syndicate';
@@ -240,7 +240,7 @@ export type RankOpts = {
 
 export function rank(posts: Post[], s: State, opts: RankOpts) {
   const now = Date.now();
-  const scored = posts.map((p) => {
+  const rows = posts.map((p) => {
     // assemble() already attached heat (and recomputes it when any input map
     // changes), so ranking reuses it instead of re-deriving per render pass.
     const heat = p.heat ?? heatFor(p, s);
@@ -266,7 +266,52 @@ export function rank(posts: Post[], s: State, opts: RankOpts) {
       // contested = high velocity, low total — the fight is happening now
       score = heat.velocity * 3 - Math.log1p(heat.temp) * 0.6;
     }
-    return { ...p, heat, heated: (s.heat ?? {})[p.id]?.level ?? 0, savedAt: (s.saved ?? {})[p.id], readPct: (s.reads ?? {})[p.id]?.pct ?? 0, score };
+    return {
+      p,
+      heat,
+      score,
+      heated: (s.heat ?? {})[p.id]?.level ?? 0,
+      savedAt: (s.saved ?? {})[p.id],
+      readPct: (s.reads ?? {})[p.id]?.pct ?? 0,
+    };
+  });
+
+  /* Cross-author diffusion — the actual §8.1 graph pass, run once per
+     ranking (O(n), deterministic): heat you injected into an author's posts
+     forms that author's node temperature; one Laplacian pass lets it warm the
+     same author's other posts in your feed. 'heat' mode only — new/top/
+     contested are deliberate alternative lenses. */
+  let diff: Map<string, number> | null = null;
+  if (opts.mode === 'heat') {
+    diff = feedDiffusion(
+      rows.map((r) => ({
+        id: r.p.id,
+        authorHandle: r.p.authorHandle,
+        injected: r.heat.injected ?? 0,
+        temp: r.heat.temp,
+        mass: r.p.author?.thermalMass ?? 1,
+      }))
+    );
+  }
+
+  const scored = rows.map((r) => {
+    const dT = diff?.get(r.p.id) ?? 0;
+    const boost = diff ? diffusionBoost(dT, r.p.author?.thermalMass ?? 1) : 0;
+    const heat: HeatResult =
+      boost > 0.005
+        ? {
+            ...r.heat,
+            trace: [
+              ...r.heat.trace,
+              {
+                label: 'Diffusion',
+                value: Math.round(dT * 100) / 100,
+                hint: 'Laplacian pass — heat borrowed from your burns of this author',
+              },
+            ],
+          }
+        : r.heat;
+    return { ...r.p, heat, heated: r.heated, savedAt: r.savedAt, readPct: r.readPct, score: r.score + boost };
   });
 
   scored.sort((a, b) => b.score - a.score);

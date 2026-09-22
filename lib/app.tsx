@@ -213,6 +213,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (level === 3 || opts?.ignited) {
         ignite(id);
+        store.logEvent('ignite', id, { title: opts?.title, author: opts?.author });
         store.notify({
           type: 'ignite',
           actor: store.me?.handle ?? 'you',
@@ -222,6 +223,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
         toast('Ignition · inferno injected into the ranker', 'heat');
       } else if (level === 2 && prev < 2) {
+        store.logEvent('blaze', id, { title: opts?.title, author: opts?.author });
         toast('Blaze · heat doubled on this post', 'heat');
       } else if (level === 0 && prev > 0) {
         toast('Cooled down', 'cool');

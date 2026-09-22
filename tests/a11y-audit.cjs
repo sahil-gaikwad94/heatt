@@ -42,6 +42,7 @@ const wait = (ms = 60) => act(async () => new Promise((r) => setTimeout(r, ms)))
 let failures = 0;
 let passes = 0;
 let warnings = 0;
+const visitedSurfaces = new Set();
 function ok(msg) { passes++; console.log(`✓ ${msg}`); }
 function fail(msg) { failures++; console.log(`✗ ${msg}`); }
 function warn(msg) { warnings++; console.log(`· ${msg}`); }
@@ -161,6 +162,7 @@ async function visit(label, rel, opts = {}) {
   }
   if (opts.after) await opts.after();
   checkSurface(label);
+  visitedSurfaces.add(label);
 }
 
 (async () => {
@@ -231,7 +233,7 @@ async function visit(label, rel, opts = {}) {
   checkSurface('intro');
 
   // Report
-  console.log(`\nchecked ${new Set(issues.map(i => i.surface)).size} surfaces, found ${issues.length} potential issues\n`);
+  console.log(`\nchecked ${visitedSurfaces.size} surfaces, found ${issues.length} potential issues\n`);
 
   const byType = {};
   for (const iss of issues) {

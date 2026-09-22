@@ -448,6 +448,29 @@ body {
   73% { opacity: 0.85; }
 }
 
+/* §4.2 — CSS/WAAPI fallback when WebGL is absent or the GPU can't keep up.
+   Two drifting thermal gradients; the Web Animations API owns the motion so
+   per-frame JS cost is ~0 and the compositor stays happy. */
+.ht-cssheat-layer {
+  pointer-events: none;
+  overflow: hidden;
+  background: linear-gradient(180deg, #0a0a0b 0%, #060607 100%);
+}
+.ht-cssheat {
+  position: absolute;
+  inset: -25%;
+  background-size: 200% 200%;
+  will-change: background-position, opacity;
+}
+.ht-cssheat-a {
+  background: radial-gradient(58% 48% at 50% 100%, rgba(255, 92, 10, 0.36), rgba(255, 45, 18, 0.14) 46%, transparent 72%);
+  background-position: 50% 100%;
+}
+.ht-cssheat-b {
+  background: radial-gradient(46% 40% at 28% 18%, rgba(91, 75, 255, 0.17), transparent 66%);
+  background-position: 0% 0%;
+}
+
 /* Tailwind theme animation, also used by .ht-ember when a card burns */
 @keyframes ember-rise {
   0% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }

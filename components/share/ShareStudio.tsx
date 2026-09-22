@@ -441,7 +441,7 @@ export function ShareStudio() {
 
   function record(what: string, bad?: boolean) {
     setDone(what);
-    if (!bad && post) useStore.getState().addShare(post.id);
+    if (!bad && post) useStore.getState().addShare(post.id, { title: post.title ?? post.text, author: post.authorHandle });
     app.toast(`Card ${what}`, bad ? 'cool' : 'heat');
     window.setTimeout(() => setDone(null), 2200);
   }

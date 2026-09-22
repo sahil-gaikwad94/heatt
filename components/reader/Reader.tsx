@@ -90,7 +90,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
         const max = el.scrollHeight - el.clientHeight;
         const p = max > 40 ? Math.min(100, Math.max(0, (el.scrollTop / max) * 100)) : 0;
         setPct(p);
-        if (p > (s.reads[post.id]?.pct ?? 0)) s.setRead(post.id, Math.round(p), 0);
+        if (p > (s.reads[post.id]?.pct ?? 0)) s.setRead(post.id, Math.round(p), 0, { title: post.title, author: post.authorHandle });
       });
     };
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -109,7 +109,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
       cancelAnimationFrame(raf);
       clearInterval(tick);
       const finalPct = pctRef.current;
-      if (finalPct > 0) useStore.getState().setRead(post.id, Math.round(finalPct), Math.max(1, Math.round(elapsedRef.current / 60)));
+      if (finalPct > 0) useStore.getState().setRead(post.id, Math.round(finalPct), Math.max(1, Math.round(elapsedRef.current / 60)), { title: post.title, author: post.authorHandle });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post.id]);

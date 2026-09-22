@@ -146,7 +146,11 @@ async function until(fn, ms = 4000, label = 'condition') {
   ok('hold-to-heat records a level > 0', Object.values(S().heat).some((h) => h.level > 0), `levels: ${Object.values(S().heat).map((h) => h.level).join(',')}`);
   void lvl;
 
-  /* mute from the card menu */
+  /* mute from the card menu. Baseline the feed shape at the *current* store
+     state (the test has already injected heat, which legitimately re-ranks
+     the feed via diffusion), so the unmute comparison isn't polluted by it. */
+  await mountApp(page('app/(shell)/feed/page.js'));
+  const baseline = U.qa('.ht-card').length;
   const menu = U.q('[aria-label="Post options"]');
   ok('per-card ⋯ menu exists', !!menu);
   await U.click(menu);
@@ -165,7 +169,7 @@ async function until(fn, ms = 4000, label = 'condition') {
   await S().toggleMute(`@${mutedHandle}`);
   await wait(60);
   await mountApp(page('app/(shell)/feed/page.js'));
-  ok('unmute restores the feed', U.qa('.ht-card').length === cards.length, `${U.qa('.ht-card').length}`);
+  ok('unmute restores the feed', U.qa('.ht-card').length === baseline, `${U.qa('.ht-card').length} vs baseline ${baseline}`);
 
   /* ------------------------------------------------ 2. spark thread reply */
   step('spark thread');

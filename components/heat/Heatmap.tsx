@@ -13,8 +13,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useStore, streakOf } from '@/lib/store';
 import { cls } from '@/lib/util';
 import { useApp } from '@/lib/app';
+import { narrativeFor, kindWord } from '@/lib/heat-narrative';
 
-type Day = { key: string; date: Date; v: number; reads: number; heats: number; ignites: number; posts: number; minutes: number };
+type Day = { key: string; date: Date; v: number; reads: number; heats: number; blazes: number; ignites: number; posts: number; minutes: number };
 
 export function buildDays(activity: ReturnType<typeof useStore.getState>['activity'], weeks = 53): Day[][] {
   const today = new Date();
@@ -35,6 +36,8 @@ export function buildDays(activity: ReturnType<typeof useStore.getState>['activi
       v: Math.min(1, raw / 9),
       reads: a?.reads ?? 0,
       heats: a?.heats ?? 0,
+      /* older persisted stores predate blazes — read defensively */
+      blazes: a?.blazes ?? 0,
       ignites: a?.ignites ?? 0,
       posts: a?.posts ?? 0,
       minutes: a?.minutes ?? 0,
@@ -79,9 +82,7 @@ export function HeatmapCard({ handle, onOpen }: { handle: string; onOpen?: () =>
           <div className="mt-3 overflow-hidden rounded-[10px]">
             <Grid days={days} small onCell={() => setExpanded(true)} />
           </div>
-          <p className="mt-2 text-[11.5px] text-ink-faint">
-            {expanded ? 'Tap a day for its narrative' : 'Click the grid to expand the full year'}
-          </p>
+          <p className="mt-2 text-[11.5px] text-ink-faint">{cardSubline(flat, expanded)}</p>
         </motion.div>
       </div>
       <div className="flex items-center justify-between border-t border-white/[.06] px-4 py-2.5">
@@ -170,7 +171,15 @@ export function HeatDashboard() {
     .map((w, i) => ({ i, m: w[0]?.date.getMonth() }))
     .filter((x, i, arr) => x.m !== undefined && (i === 0 || arr[i - 1].m !== x.m));
 
-  const narrative = sel ? narrativeFor(sel, streak) : null;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const narrative = sel
+    ? narrativeFor(
+        { key: sel.key, v: sel.v, reads: sel.reads, heats: sel.heats, blazes: sel.blazes, ignites: sel.ignites, posts: sel.posts, minutes: sel.minutes, isToday: sel.key === todayKey },
+        flat.map((d) => ({ key: d.key, v: d.v, reads: d.reads, heats: d.heats, blazes: d.blazes, ignites: d.ignites, posts: d.posts, minutes: d.minutes, isToday: d.key === todayKey })),
+        streak,
+        s.events
+      )
+    : null;
 
   return (
     <div className="mx-auto w-full max-w-[900px]">
@@ -230,7 +239,25 @@ export function HeatDashboard() {
                   close
                 </button>
               </div>
-              <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">{narrative}</p>
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-dim">{narrative.text}</p>
+              {narrative.timeline.length > 0 && (
+                <ol className="mt-3 space-y-1 border-l border-ember-500/30 pl-3" aria-label="Memorable moments this day">
+                  {narrative.timeline.map((e) => (
+                    <li key={`${e.id}-${e.t}`} className="text-[12px] text-ink-mute">
+                      <span className="ht-num text-ember-300">{new Date(e.t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                      {' · '}
+                      <span className="uppercase tracking-[0.08em] text-[10.5px] text-ink-faint">{kindWord(e.kind)}</span>
+                      {' · '}
+                      {e.title ? (
+                        <>“{e.title.length > 56 ? e.title.slice(0, 55) + '…' : e.title}”</>
+                      ) : (
+                        'a post'
+                      )}
+                      {e.author ? <span className="text-ink-faint"> by @{e.author}</span> : null}
+                    </li>
+                  ))}
+                </ol>
+              )}
               <div className="mt-3 flex flex-wrap gap-2 text-[11.5px]">
                 <Metric label="reads" v={sel.reads} />
                 <Metric label="heats" v={sel.heats} />
@@ -291,15 +318,20 @@ function Metric({ label, v, hot }: { label: string; v: number; hot?: boolean }) 
   );
 }
 
-function narrativeFor(d: Day, streak: { current: number; longest: number }) {
-  const bits: string[] = [];
-  if (d.reads > 0) bits.push(`you finished ${d.reads} long-form ${d.reads === 1 ? 'piece' : 'pieces'}`);
-  if (d.heats > 0) bits.push(`you heated ${d.heats} post${d.heats === 1 ? '' : 's'} — ${Math.round(d.heats * 0.6)} of them rose above an ember`);
-  if (d.ignites > 0) bits.push(`${d.ignites} of those went to level 3 and caught fire`);
-  if (d.posts > 0) bits.push(`you published ${d.posts} time${d.posts === 1 ? '' : 's'}`);
-  if (!bits.length) return `A quiet day. The grid stays neutral rather than red — pausing is allowed, and ${d.key === new Date().toISOString().slice(0, 10) ? 'today is still open' : 'the streak is unbroken around it'}.`;
-  const cap = bits[0][0].toUpperCase() + bits[0].slice(1);
-  return `${cap}${bits.length > 1 ? `, and ${bits.slice(1).join(', ')}` : ''}. Heat index ${Math.round(d.v * 100)}/100 — ${d.v > 0.75 ? 'one of your incandescent days.' : d.v > 0.4 ? 'solidly burning.' : 'a warm, low-noise day.'}`;
+/** Collapsed-card subline: a live "today" summary when there is one to show. */
+function cardSubline(flat: Day[], expanded: boolean) {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const today = flat.find((d) => d.key === todayKey);
+  const parts: string[] = [];
+  if (today) {
+    if (today.reads) parts.push(`${today.reads} read${today.reads === 1 ? '' : 's'}`);
+    if (today.heats) parts.push(`${today.heats} heat${today.heats === 1 ? '' : 's'}`);
+    if (today.ignites) parts.push(`${today.ignites} ignition${today.ignites === 1 ? '' : 's'}`);
+    if (today.posts) parts.push(`${today.posts} post${today.posts === 1 ? '' : 's'}`);
+  }
+  const hint = expanded ? 'tap a day for its narrative' : 'click the grid to expand the full year';
+  if (parts.length) return `Today: ${parts.join(' · ')} — ${hint}`;
+  return expanded ? 'Tap a day for its narrative' : 'Click the grid to expand the full year';
 }
 
 function compactNum(n: number) {

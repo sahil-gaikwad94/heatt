@@ -49,6 +49,16 @@ in the code, and `computeHeat()` returns a `trace[]` so the UI can show you the 
 score = heat + log(1+heat)·0.9 − age_h·0.35   (velocity bonus, then cliff truncation)
 ```
 
+**The diffusion pass actually runs.** `rank()` builds the bipartite content↔author graph of the
+visible feed once per ranking (`feedDiffusion()` in `lib/heat.ts`): an author node's temperature
+is the heat *you* injected into that author's posts, weighted by their thermal mass, and one
+Laplacian pass (platform `κ`, stability-clamped at 0.5) lets it warm the same author's other posts
+in your feed. Ignite nyra's essay and her cold post rises — that is the "propagates to adjacent
+user feeds" the doc describes, not a comment. The boost is additive in logit space
+(`diffusionBoost`), heat-mode only (`new`/`top`/`contested` are deliberate alternative lenses),
+deterministic, O(n), and appears as a fifth "Diffusion" row in the "why am I seeing this?" trace
+whenever it contributes.
+
 Cooling is a *promise*, not a punishment: a post never disappears, it slides into the Archive.
 Feed rank modes are `heat · new · top · cliff`, and the cliff (the largest drop in crowd heat
 inside the top 40) truncates the feed with an honest "the crowd went cold here" line.
@@ -62,6 +72,14 @@ and — at ignition — the whole card catching fire for 2.4s.
 - **Cinematic intro** (`components/intro/CinematicIntro.tsx`) — ~8.4s of real-time WebGL: the
   thermal field ignites, the wordmark assembles out of embers, type-scale/measure/reading-mode
   proofs flicker past. Skip is always one click or keypress away; it runs once (`introSeen`).
+- **Adaptive GPU degradation** (`lib/gpu.ts` + `HeatField`) — spec §4.2, fully wired:
+  `probeGpu()` profiles cores/memory/UA/touch before the first frame and seeds the quality tier;
+  a frame-time governor (median of a rolling rAF window, 2.5s hysteresis) steps the tier down when
+  the GPU sags (DPR cap 2→1.5→1, render scale ×0.72 then ×0.5, pointer bloom off), and if even the
+  minimal tier can't hold, it swaps the canvas for a **Web-Animations-API-driven** CSS gradient
+  (~0 JS per frame, compositor-owned). `webglcontextlost`/`restored` are handled: loss → CSS
+  immediately, restore → shaders recompile and GL resumes. Cursor *and* gyroscope drive the focal
+  distortion; the current tier is exposed as `data-gpu-tier` (and `window.__heattGpu`).
 - **Onboarding** (`components/onboarding/Onboarding.tsx`) — pick interests, set thermal mass,
   choose reading defaults; seeds the first feed so nobody lands on an empty timeline.
 - **Feed** — ranked sparks + forges with inline covers, link previews, polls, "why am I seeing
@@ -76,9 +94,13 @@ and — at ignition — the whole card catching fire for 2.4s.
 - **Profile** — cover art, avatar, bio, links, thermal mass, tabs for sparks/forges/heated, and an
   editable profile (`components/profile/ProfileEditor.tsx`).
 - **Heat map** (`components/heat/Heatmap.tsx` + `/heatmap`) — GitHub-style annual grid, but scored
-  on **thermal output** (heats given, ignitions, reads, writes). Collapsed square on the profile
-  expands through a Framer Motion morph into the dashboard: day-level interrogation, 7-day
-  micro-histogram, streak as a promise, narrative summaries. Empty cells are neutral, never red —
+  on **thermal output** (heats given, ignitions, reads, writes; blazes tracked as their own day
+  split). Collapsed square on the profile expands through a Framer Motion morph into the dashboard:
+  day-level interrogation, 7-day micro-histogram, streak as a promise, and a **generated narrative**
+  (`lib/heat-narrative.ts`). The narrative is honest — every number comes from real stored data (no
+  invented percentages), and it cites *the exact time* of viral moments from a bounded 200-event
+  ring (`logEvent`) with a per-day timeline. Superlatives (top-10%, "best reading day on record")
+  only render once you have ≥7 active days to compare against. Empty cells are neutral, never red —
   and you are never ranked against another person.
 - **Share studio** (`components/share/ShareStudio.tsx`) — poster-grade PNG drawn on canvas at
   1080×1920 / 1080×1080 / 1200×675, palette auto-matched to the post's temperature, with crowd
@@ -95,10 +117,15 @@ and — at ignition — the whole card catching fire for 2.4s.
 title, excerpt, cover, tags, author, reactions, canonical URL. `s-maxage=600,
 stale-while-revalidate=86400` keeps it at the edge; the client caches 24h in localStorage.
 `/api/article` fetches `body_markdown` **per read** (never stored), which is then rendered through
-`lib/markdown.tsx` with highlighting. `/api/preview` fetches a URL and streams back only the
-`<head>` it needs for `og:image`/`og:title`/`twitter:card` before aborting, so link previews cost
-kilobytes rather than full page loads. Syndicated items are labelled and attributed, and deep-link
-to the canonical original.
+`lib/markdown.tsx` with highlighting. `/api/preview` is a thin Next.js wrapper over
+`lib/oghead.ts`: it fetches the target and reads **only the `<head>` byte-stream**, cancelling the
+reader the instant `</head>` is seen (body never downloaded), with a cap and a deadline guard for
+hostile servers. `extractOgMeta` handles free-form attribute order plus the common non-standard
+variants (`og:image:url`/`og:image:secure_url`, `twitter:image[:src]`, `link[rel=image_src]`),
+resolves relative images against the final URL, and decodes entities. So link previews cost
+kilobytes rather than full page loads — and the "we abort at `</head>`" claim is unit-tested in
+Node against a 400 KB fake body. Syndicated items are labelled and attributed, and deep-link to the
+canonical original.
 
 When the network is unavailable (offline demo, blocked egress) the app degrades to the seeded
 library — 7 fully written forges with structured blocks, 16 sparks, 8 profiles — and the wire
@@ -106,17 +133,28 @@ panel says so honestly instead of showing skeletons forever.
 
 ## Verification
 
-Three suites, all headless, all run with `npm test`:
+Six suites, all headless, all run with `npm test` (if no production build exists yet, the style
+audit runs `next build` once on its own — the chain is self-sufficient):
 
 ```bash
-npm run test:model   # 56 assertions on heat math, ranker, store reducers, seed corpus
-npm run test:smoke   # 100 assertions driving the real components in jsdom
-npm run test:styles  # style audit: every class rendered in the DOM compiles to a rule
+npm run test:model     # 99 assertions: heat math, diffusion ranker pass, store reducers,
+                       #   GPU probe/governor, streaming OG core, narratives, seed corpus
+npm run test:smoke     # 100 assertions driving the real components in jsdom
+npm run test:styles    # every class rendered in the DOM compiles to a production rule
+npm run test:integrity # 31 checks: assets, links, store keying, flagship wiring (no dead code)
+npm run test:a11y      # rendered-DOM a11y: alt text, icon-button labels, heading outline, inputs
+npm run test:bundle    # build output: art sizes, inline assets, tree-shaking
 ```
 
 `test:model` compiles the pure-TS core and checks the physics against the spec
 (`cool(9h) === e⁻¹`, ignite weight 6.5× ember, cliff detection, tab/handle/search
-filters, streak and activity reducers, every seeded forge having real blocks).
+filters, streak and activity reducers, every seeded forge having real blocks). It now also
+proves the flagship wiring: `diffuse()` honours κ (and clamps at 0.5), `feedDiffusion` warms an
+author's sibling post but never a stranger's, igniting one of nyra's forges measurably lifts the
+other one in `rank()` (with a Diffusion trace row), the GPU governor steps down on sustained lag,
+respects cooldown, and drops to CSS at the floor, `readHeadOnly` aborts a 400 KB body at
+`</head>` (411 bytes retained), and the heatmap narrative cites real exact-time moments without
+inventing statistics.
 
 `test:smoke` is the interesting one: it mounts `ShellProviders → BootLayer →
 shell layout → page` with react-dom/client inside jsdom, stubs `next/navigation`,
@@ -165,19 +203,24 @@ Together they found eight bugs no build step could:
 ```
 app/                     routes (landing, feed, explore, library, notifications, settings,
    (shell)/…             heatmap, u/[handle], read/[id]) + api/{feed,article,preview}
-components/gl/HeatField  WebGL thermal field (ambient + intro + cursor sparks)
+components/gl/HeatField  WebGL thermal field (ambient + intro + cursor/gyro sparks + governor)
 components/heat/         HeatButton (hold-to-heat), FireOverlay (ignition), Heatmap
 components/cards/        PostCard, LinkPreview, PollBlock
 components/reader/       ArticleReader — the long-form surface
 components/share/        ShareStudio — canvas poster export
-lib/                     heat math, ranking/feed, store (zustand+persist), markdown, syndicate, seed
+lib/heat.ts              heat math, diffuse()/feedDiffusion() Laplacian passes, cliff detection
+lib/gpu.ts               device probe + pure frame-time governor (spec §4.2)
+lib/oghead.ts            streaming <head>-only fetch + OG extraction core (spec §7.1)
+lib/heat-narrative.ts    day narratives for the heatmap (spec §5.2)
+lib/                     ranking/feed, store (zustand+persist), markdown, syndicate, seed
 public/art/              generated cover art used by seeded forges and the landing page
 ```
 
 State lives in one persisted zustand store (`heatt-store-v1`): heat given, reads, saves, shares,
-follows, mutes, replies, your sparks/forges, notifications, per-day activity, prefs. `lib/app.tsx`
-wraps it in an app context that owns navigation, the ignition queue (max 2 concurrent burns),
-toasts and syndication refresh.
+follows, mutes, replies, your sparks/forges, notifications, per-day activity (with the blaze
+split), a bounded 200-event memorable-moment ring, and prefs. `lib/app.tsx` wraps it in an app
+context that owns navigation, the ignition queue (max 2 concurrent burns), toasts and syndication
+refresh.
 
 Everything is intentionally local-first: heat you give is real input to the ranker, the streak is
 real, and the share cards are generated from that state.
