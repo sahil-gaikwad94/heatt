@@ -2,8 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   images: { unoptimized: true },
-  // The Arena preview proxies this app under a per-port host; allow it in dev.
-  experimental: { allowedOrigins: ['*.e2b.app', '*.heatt.app', 'localhost', '127.0.0.1'] },
   async headers() {
     return [
       {
