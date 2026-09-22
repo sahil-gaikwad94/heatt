@@ -61,7 +61,7 @@ export default function Landing() {
             <a href="#heat" className="transition-colors hover:text-ink">Heat</a>
             <a href="#reader" className="transition-colors hover:text-ink">Reader</a>
             <a href="#board" className="transition-colors hover:text-ink">The board</a>
-            <a href="#stack" className="transition-colors hover:text-ink">Zero-cost stack</a>
+            <a href="#stack" className="transition-colors hover:text-ink">Why heatt</a>
           </nav>
           <span className="flex-1" />
           <span className="hidden items-center gap-2 rounded-full border border-white/[.08] px-3 py-1.5 text-[11.5px] text-ink-mute sm:flex">
@@ -83,7 +83,7 @@ export default function Landing() {
           <div className="grid items-center gap-12 lg:grid-cols-[1.06fr_.94fr]">
             <div>
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="mb-5 flex flex-wrap items-center gap-2">
-                <span className="ht-chip !border-ember-500/40 !bg-ember-500/10 !text-ember-200">public beta</span>
+                <span className="ht-chip !border-cryo-teal/30 !bg-cryo-teal/10 !text-cryo-teal">a quieter place to think</span>
                 <span className="ht-chip !normal-case !tracking-normal">micro × long-form, one feed</span>
               </motion.div>
 

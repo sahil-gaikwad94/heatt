@@ -90,7 +90,7 @@ const DEFAULT_PREFS: Prefs = {
   measure: 'normal',
   serif: true,
   reduceMotion: false,
-  ambient: true,
+  ambient: false,
   autoplayVideo: true,
   haptics: true,
   ignitionFx: 'full',
@@ -103,7 +103,8 @@ export const useStore = create<State>()(
   persist(
     (set, get) => ({
       booted: false,
-      introSeen: false,
+      // The intro is an optional brand moment, never a gate between a user and the product.
+      introSeen: true,
       onboarded: false,
       me: null,
       prefs: DEFAULT_PREFS,

@@ -92,7 +92,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     );
     // calibration: depth → default rank mode + interest weighting
     useStore.setState((st) => ({
-      prefs: { ...st.prefs, ignitionFx: fx, ambient: true },
+      prefs: { ...st.prefs, ignitionFx: fx, ambient: false },
       interests: picked,
     }));
     // pre-warm today's activity so the heatmap starts lit
