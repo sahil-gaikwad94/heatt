@@ -91,13 +91,18 @@ export function computeHeat(sig: HeatSignals, now = Date.now()): HeatResult {
   const ageH = Math.max(0, (now - t0) / HOUR);
   const mass = sig.thermalMass ?? 1;
 
-  // --- crowd term: public counters, cooled by Newton's law --------------
+  /* --- crowd term: public counters, cooled by Newton's law -------------
+     Each counter is an *average over many events with their own arrival
+     times*, and a sum of exponentials with spread tᵢ decays slower than a
+     single one — so the aggregate uses a 3× longer effective constant than
+     the per-event τ. A heat you gave yourself cools at 1.6τ for the same
+     reason (it is one event you keep re-reading, not a fresh spark). */
   const crowd =
     ((sig.reactions ?? 0) * 0.55 +
       (sig.comments ?? 0) * K.replyW +
       (sig.reposts ?? 0) * K.shareW +
       (sig.saves ?? 0) * K.saveW) *
-    cool(ageH, K.tau + 30);
+    cool(ageH, K.tau * 3);
 
   // --- local term: my own heat, weighted by hold level ------------------
   const lvl = sig.mine?.level ?? 0;
@@ -205,6 +210,7 @@ export const LEVEL_META: Record<
   number,
   { name: string; hold: number; ring: string; copy: string; boost: number }
 > = {
+  0: { name: 'Cold', hold: 0, ring: '#6E6A66', copy: 'Cooled down', boost: 0 },
   1: { name: 'Ember', hold: 0, ring: '#FFB531', copy: 'Ember lit', boost: 1 },
   2: { name: 'Blaze', hold: 1150, ring: '#FF8A1F', copy: 'Blaze — heat doubled', boost: 2.6 },
   3: { name: 'Inferno', hold: 2450, ring: '#FF2D12', copy: 'IGNITED', boost: 6.5 },

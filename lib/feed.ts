@@ -165,32 +165,60 @@ function fromWire(items: WireItem[], s: State): Post[] {
 }
 
 export function assemble(s: State, wire: WireItem[]): Post[] {
-  return [
+  const all = [
     ...fromUserArticles(s),
     ...fromSparks(s.mySparks ?? [], s, 'user'),
     ...fromOriginals(),
     ...fromSparks(SPARKS, s, 'seed'),
     ...fromWire(wire ?? [], s),
   ];
+  /* Ids are React keys *and* the heat ledger's primary key, so a collision
+     would silently merge two posts' heat. First occurrence wins. */
+  const seen = new Set<string>();
+  /* Muting an author removes them from every surface — the only honest
+     version of "not interested". Muting a tag is handled in rank() as a
+     demotion so you can still find it through search. */
+  const blocked = new Set((s.muted ?? []).filter((m) => m.startsWith('@')).map((m) => m.slice(1)));
+  const visible = blocked.size ? all.filter((p) => !blocked.has(p.authorHandle)) : all;
+  const out: Post[] = [];
+  for (const p of visible) {
+    if (seen.has(p.id)) {
+      let n = 2;
+      while (seen.has(`${p.id}#${n}`)) n++;
+      out.push({ ...p, id: `${p.id}#${n}` });
+      seen.add(`${p.id}#${n}`);
+      continue;
+    }
+    seen.add(p.id);
+    out.push(p);
+  }
+  return out;
 }
 
 /* -------------------------------------------------------------------- ranking */
 
 export function heatFor(p: Post, s: State): HeatResult {
+  /* Callers pass partial views of the store (explore, profile, share studio),
+     so every map lookup is guarded rather than assumed. */
+  const saved = s.saved ?? {};
+  const reads = s.reads ?? {};
+  const shares = s.shares ?? {};
+  const heat = s.heat ?? {};
+  const counts = s.heatCounts ?? {};
   const crowd =
-    p.reactions + (p.comments ?? 0) * 2 + (p.reposts ?? 0) * 3 + Object.keys(s.saved).length * 0.001;
+    p.reactions + (p.comments ?? 0) * 2 + (p.reposts ?? 0) * 3 + Object.keys(saved).length * 0.001;
   return computeHeat({
-    reactions: p.reactions + (s.heatCounts[p.id] ?? 0),
+    reactions: p.reactions + (counts[p.id] ?? 0),
     comments: p.comments,
     reposts: p.reposts,
-    saves: s.saved[p.id] ? 1 : 0,
-    reads: s.reads[p.id]?.pct,
+    saves: saved[p.id] ? 1 : 0,
+    reads: reads[p.id]?.pct,
     mine: {
-      level: s.heat[p.id]?.level ?? 0,
-      at: s.heat[p.id]?.at,
-      read: (s.reads[p.id]?.pct ?? 0) > 70,
-      saved: !!s.saved[p.id],
-      shared: s.shares[p.id] ?? 0,
+      level: heat[p.id]?.level ?? 0,
+      at: heat[p.id]?.at,
+      read: (reads[p.id]?.pct ?? 0) > 70,
+      saved: !!saved[p.id],
+      shared: shares[p.id] ?? 0,
     },
     date: p.date,
     thermalMass: p.author?.thermalMass ?? 1 + Math.log1p(crowd) / 14,
@@ -213,16 +241,18 @@ export function rank(posts: Post[], s: State, opts: RankOpts) {
     const heat = heatFor(p, s);
     let score = heat.score;
     // personalization: follow boost + interest affinity
-    if (opts.followBoost && s.follows.includes(p.authorHandle)) score *= 1.55;
+    if (opts.followBoost && (s.follows ?? []).includes(p.authorHandle)) score *= 1.55;
     const aff = p.tags.filter((t) => (s.interests ?? []).includes(t)).length;
     if (aff) score *= 1 + aff * 0.12;
+    const demoted = p.tags.filter((t) => (s.muted ?? []).includes(`#${t}`)).length;
+    if (demoted) score *= 0.22;
     if (opts.mode === 'new') score = heat.temp * 0.2 + Math.max(0, 60 - (now - new Date(p.date).getTime()) / (1000 * 60 * 60 * 24)) * 3;
-    if (opts.mode === 'top') score = Math.log1p(p.reactions + (s.heatCounts[p.id] ?? 0)) * 2.4 + heat.score * 0.2;
+    if (opts.mode === 'top') score = Math.log1p(p.reactions + ((s.heatCounts ?? {})[p.id] ?? 0)) * 2.4 + heat.score * 0.2;
     if (opts.mode === 'contested') {
       // contested = high velocity, low total — the fight is happening now
       score = heat.velocity * 3 - Math.log1p(heat.temp) * 0.6;
     }
-    return { ...p, heat, heated: s.heat[p.id]?.level ?? 0, savedAt: s.saved[p.id], readPct: s.reads[p.id]?.pct ?? 0, score };
+    return { ...p, heat, heated: (s.heat ?? {})[p.id]?.level ?? 0, savedAt: (s.saved ?? {})[p.id], readPct: (s.reads ?? {})[p.id]?.pct ?? 0, score };
   });
 
   scored.sort((a, b) => b.score - a.score);
@@ -336,7 +366,7 @@ export function paraKey(postId: string, i: number) {
 
 export function myParaHeats(s: State, postId: string): Record<number, HeatLevel> {
   const out: Record<number, HeatLevel> = {};
-  for (const [k, v] of Object.entries(s.heat)) {
+  for (const [k, v] of Object.entries(s.heat ?? {})) {
     if (k.startsWith(`${postId}:p`)) out[Number(k.slice(postId.length + 2))] = v.level;
   }
   return out;

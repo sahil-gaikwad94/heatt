@@ -112,6 +112,10 @@ export default function SettingsPage() {
         </div>
       </Section>
 
+      <Section title="Muted & demoted" note="Your rules only — nobody else sees them, and nothing is deleted for the author.">
+        <MutedList />
+      </Section>
+
       <Section title="Your identity" note="Handle, avatar, cover, bio and interests.">
         <button onClick={() => router.push(`/u/${s.me?.handle ?? 'you'}`)} className="ht-btn ht-btn--heat !py-2 !text-[13px]">
           Open profile editor
@@ -174,5 +178,37 @@ function Toggle({ label, value, onChange, hint }: { label: string; value: boolea
         <span className="absolute top-1/2 h-[18px] w-[18px] -translate-y-1/2 rounded-full bg-white transition-all" style={{ left: value ? 24 : 4, boxShadow: '0 2px 8px rgba(0,0,0,.6)' }} />
       </button>
     </div>
+  );
+}
+
+function MutedList() {
+  const muted = useStore((s) => s.muted);
+  const app = useApp();
+  if (!muted.length)
+    return (
+      <p className="rounded-[12px] border border-dashed border-white/[.08] px-3 py-3 text-[12.5px] text-ink-faint">
+        No mutes yet. The ⋯ menu on any card can hide an author or cool a tag; muted authors disappear from every feed,
+        demoted tags stay searchable but rank cold.
+      </p>
+    );
+  return (
+    <ul className="space-y-1.5 pt-1">
+      {muted.map((m) => (
+        <li key={m} className="flex items-center gap-2 rounded-[12px] border border-white/[.06] bg-white/[.02] px-3 py-2">
+          <span className="ht-num text-[12.5px] text-ink">{m}</span>
+          <span className="text-[11.5px] text-ink-mute">{m.startsWith('@') ? 'author · hidden everywhere' : 'tag · demoted in ranking'}</span>
+          <span className="flex-1" />
+          <button
+            onClick={() => {
+              useStore.getState().toggleMute(m);
+              app.toast(`Removed rule ${m}`, 'cool');
+            }}
+            className="ht-btn ht-btn--ghost !px-2.5 !py-1 !text-[11.5px]"
+          >
+            Undo
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

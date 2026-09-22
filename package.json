@@ -2,12 +2,13 @@
   "name": "heatt",
   "version": "1.0.0",
   "private": true,
-  "description": "heatt — a next-generation microblogging + long-form hybrid platform with heat-driven engagement.",
+  "description": "heatt \u2014 a next-generation microblogging + long-form hybrid platform with heat-driven engagement.",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 3000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:model": "bash scripts/model-test.sh"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",

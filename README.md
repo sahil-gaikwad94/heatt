@@ -40,7 +40,12 @@ author↔reader graph instead of chronological or engagement-max ranking:
 
 ```
 heat(article) = Σ_i  w(type_i) · T_0,i · e^(−Δt_i / τ)     · velocity bonus   (τ = 9h)
-w(heat)=1 · w(heat, blaze)=2.6 · w(ignite)=6.5 · w(save)=1.3 · w(share)=2.2 · w(reply)=1.15
+w(heat)=1 · w(blaze)=2.6 · w(ignite)=6.5 · w(save)=1.3 · w(share)=2.2 · w(reply)=1.15
+
+Per-event τ is 9h. Aggregate counters (a post's public reaction total) cool at **3τ** and your own
+re-read heat at **1.6τ** — a sum of exponentials whose events arrived at different times decays
+slower than one event, so applying 9h to an aggregate would double-count age. `lib/heat.ts` says so
+in the code, and `computeHeat()` returns a `trace[]` so the UI can show you the arithmetic.
 score = heat + log(1+heat)·0.9 − age_h·0.35   (velocity bonus, then cliff truncation)
 ```
 

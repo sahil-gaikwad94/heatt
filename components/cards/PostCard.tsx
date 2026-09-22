@@ -104,6 +104,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
 
         <div className="flex items-center gap-1.5">
           <TempBadge temp={heat.temp} color={t.color} label={t.label} onTrace={() => setShowTrace((v) => !v)} active={showTrace} />
+          <CardMenu post={post} />
         </div>
       </header>
 
@@ -452,6 +453,114 @@ export const ShareIcon = () => (
     <path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
   </svg>
 );
+/** Per-post controls that every platform hides: mute the author, demote a tag,
+ *  copy the deep link. Here they are one click from the card itself. */
+export function CardMenu({ post }: { post: Post }) {
+  const app = useApp();
+  const [open, setOpen] = React.useState(false);
+  const wrap = React.useRef<HTMLDivElement | null>(null);
+  const mutedAuthor = useStore((s) => s.muted.includes(`@${post.authorHandle}`));
+  const tag = post.tags[0];
+  const mutedTag = useStore((s) => (tag ? s.muted.includes(`#${tag}`) : false));
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onEsc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [open]);
+
+  const item = 'flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim transition-colors hover:bg-white/[.05] hover:text-ink';
+
+  return (
+    <div ref={wrap} className="relative">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        aria-label="Post options"
+        aria-expanded={open}
+        className="ht-btn ht-btn--ghost !px-2 !py-1 !text-ink-mute"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <circle cx="5" cy="12" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="19" cy="12" r="1.7" />
+        </svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.16 }}
+            className="absolute right-0 top-[calc(100%+6px)] z-40 w-[228px] overflow-hidden rounded-[14px] border border-white/10 bg-[#0e0e11]/95 py-1 shadow-[0_28px_70px_-24px_rgba(0,0,0,.9)] backdrop-blur-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className={item}
+              onClick={() => {
+                const url = `${window.location.origin}/read/${post.id}`;
+                navigator.clipboard?.writeText(url).then(
+                  () => app.toast('Link copied', 'cool'),
+                  () => app.toast(url, 'plain')
+                );
+                setOpen(false);
+              }}
+            >
+              <span className="text-ink-faint">⧉</span> Copy link to this {post.kind === 'forge' ? 'forge' : 'spark'}
+            </button>
+            {post.kind === 'forge' && (
+              <button
+                className={item}
+                onClick={() => {
+                  app.setShare(post.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="text-ink-faint">↗</span> Make a share poster
+              </button>
+            )}
+            <div className="my-1 h-px bg-white/[.07]" />
+            <button
+              className={item}
+              onClick={() => {
+                useStore.getState().toggleMute(`#${tag}`);
+                app.toast(mutedTag ? `#${tag} demotion lifted` : `Demoted #${tag} in your feed`, mutedTag ? 'cool' : 'heat');
+                setOpen(false);
+              }}
+              disabled={!tag}
+            >
+              <span className="text-ink-faint">▽</span>
+              {tag ? (mutedTag ? `Restore #${tag}` : `Demote #${tag}`) : 'No tags to demote'}
+            </button>
+            <button
+              className={cls(item, '!text-magma')}
+              onClick={() => {
+                useStore.getState().toggleMute(`@${post.authorHandle}`);
+                app.toast(mutedAuthor ? `@${post.authorHandle} unmuted` : `Muted @${post.authorHandle}`, mutedAuthor ? 'cool' : 'heat');
+                setOpen(false);
+              }}
+            >
+              <span>⊘</span> {mutedAuthor ? `Unmute @${post.authorHandle}` : `Mute @${post.authorHandle}`}
+            </button>
+            <div className="border-t border-white/[.06] px-3 py-1.5 text-[10.5px] leading-relaxed text-ink-faint">
+              Muting is local — it changes what the ranker shows you, not what anyone else sees.
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export const BookmarkIcon = ({ active }: { active?: boolean }) => (
   <svg {...ico} fill={active ? 'currentColor' : 'none'}>
     <path d="M18.5 3.5H5.5A1.5 1.5 0 0 0 4 5v15.5l8-4.6 8 4.6V5a1.5 1.5 0 0 0-1.5-1.5Z" />

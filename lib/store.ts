@@ -72,6 +72,9 @@ export type State = {
   toggleSave: (id: HeatKey) => void;
   addShare: (id: HeatKey) => void;
   toggleFollow: (handle: string) => void;
+  /** `muted` holds `@handle` (hide everything by them) and `#tag` (demote a topic) */
+  toggleMute: (entry: string) => void;
+  isMuted: (entry: string) => boolean;
   addReply: (r: Omit<Reply, 'id' | 'at' | 'heat'>) => void;
   addSpark: (s: Omit<Spark, 'id' | 'date' | 'kind'>) => Spark;
   addArticle: (a: Omit<LocalArticle, 'id' | 'date' | 'kind' | 'minutes'>) => LocalArticle;
@@ -165,9 +168,22 @@ export const useStore = create<State>()(
         set({ heatCounts: { ...get().heatCounts, [id]: Math.max(0, (get().heatCounts[id] ?? 0) + delta) } }),
 
       setRead: (id, pct, minutes = 0) => {
-        const reads = { ...get().reads, [id]: { pct: Math.max(get().reads[id]?.pct ?? 0, pct), at: Date.now(), finished: pct >= 97 } };
-        set({ reads });
-        if (pct >= 97 && !get().reads[id]?.finished) get().logActivity('reads', minutes);
+        /* `finished` is edge-triggered: the day gets counted once, the first
+           time you cross 97%, and never un-counted by scrolling back up. */
+        const clean = Math.max(0, Math.min(100, Math.round(Number.isFinite(pct) ? pct : 0)));
+        const prev = get().reads[id];
+        const crossing = clean >= 97 && !prev?.finished;
+        set({
+          reads: {
+            ...get().reads,
+            [id]: {
+              pct: Math.max(prev?.pct ?? 0, clean),
+              at: Date.now(),
+              finished: clean >= 97 || !!prev?.finished,
+            },
+          },
+        });
+        if (crossing) get().logActivity('reads', minutes);
       },
 
       toggleSave: (id) => {
@@ -186,6 +202,12 @@ export const useStore = create<State>()(
         const has = get().follows.includes(handle);
         set({ follows: has ? get().follows.filter((h) => h !== handle) : [...get().follows, handle] });
       },
+
+      toggleMute: (entry) => {
+        const has = get().muted.includes(entry);
+        set({ muted: has ? get().muted.filter((m) => m !== entry) : [...get().muted, entry] });
+      },
+      isMuted: (entry) => get().muted.includes(entry),
 
       addReply: (r) =>
         set({ replies: [...get().replies, { ...r, id: uid('re'), at: Date.now(), heat: 0 }] }),
