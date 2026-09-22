@@ -71,7 +71,7 @@ export function HeatmapCard({ handle, onOpen }: { handle: string; onOpen?: () =>
       <div className="flex items-center gap-3 p-4">
         <motion.div layout className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="ht-title text-[15px]">Heat map</h3>
+            <h2 className="ht-title text-[15px]">Heat map</h2>
             <span className="ht-num text-[11.5px] text-ink-mute">
               {total} actions · <span className="text-ember-300">{streak.current}d</span> lit
             </span>

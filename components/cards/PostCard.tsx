@@ -154,12 +154,12 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
           {post.cover && <CoverArt src={post.cover} alt={post.title ?? ''} burning={burning} />}
 
           <button onClick={() => app.openPost(post.id)} className="block w-full text-left">
-            <h3
+            <h2
               className="ht-title mt-3 text-[clamp(1.2rem,1.05rem+0.7vw,1.6rem)] text-ink transition-colors group-hover:text-white"
               style={{ lineHeight: 1.16 }}
             >
               {post.title}
-            </h3>
+            </h2>
             {post.dek && (
               <p className="mt-2 line-clamp-3 text-[14.5px] leading-[1.62] text-ink-dim">{post.dek}</p>
             )}

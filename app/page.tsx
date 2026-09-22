@@ -407,7 +407,7 @@ function HeroCard() {
           <div className="mt-3 overflow-hidden rounded-[14px] border border-white/[.06]">
             <img src={art.cover} alt="" className="aspect-[16/7] w-full object-cover" />
           </div>
-          <h3 className="ht-title mt-3 text-[21px] leading-tight">{art.title}</h3>
+          <h2 className="ht-title mt-3 text-[21px] leading-tight">{art.title}</h2>
           <p className="mt-2 line-clamp-2 text-[13.5px] leading-relaxed text-ink-dim">{art.dek}</p>
           <div className="mt-3 flex items-center gap-3">
             <span className="ht-label shrink-0 !text-[9px]">crowd</span>

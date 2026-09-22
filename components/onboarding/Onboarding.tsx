@@ -532,7 +532,7 @@ function LivePreview({
             </div>
             <button className="ht-btn ht-btn--heat !px-4 !py-1.5 !text-[12px]">Follow</button>
           </div>
-          <h3 className="mt-3 text-[19px] font-bold tracking-tight text-ink">{name}</h3>
+          <h2 className="mt-3 text-[19px] font-bold tracking-tight text-ink">{name}</h2>
           <p className="text-[13px] text-ink-mute">
             @{handle}
             {interests.length > 0 && <span className="text-ink-faint"> · {initialsOf(name).toUpperCase()}</span>}

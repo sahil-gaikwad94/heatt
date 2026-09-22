@@ -161,7 +161,7 @@ export default function FeedPage() {
 
           {visible.length === 0 && (
             <div className="ht-panel mt-8 p-8 text-center">
-              <h3 className="ht-title text-[22px]">Nothing is burning here yet</h3>
+              <h2 className="ht-title text-[22px]">Nothing is burning here yet</h2>
               <p className="mx-auto mt-2 max-w-[42ch] text-[13.5px] leading-relaxed text-ink-dim">
                 {app.tab === 'following'
                   ? 'Your follow list is not heating anything. Explore the board, or follow a few high thermal-mass voices.'
@@ -181,7 +181,7 @@ export default function FeedPage() {
                 <span className="absolute inset-[10px] rounded-full bg-[#0c0c0f]" />
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="ht-title text-[16px]">You reached the cliff</h4>
+                <h2 className="ht-title text-[16px]">You reached the cliff</h2>
                 <p className="mt-1 text-[13px] leading-relaxed text-ink-mute">
                   {hidden} item{hidden === 1 ? '' : 's'} fell off the engagement cliff — their heat is still high, but the velocity is gone. We demote them instead of padding your scroll.
                 </p>
