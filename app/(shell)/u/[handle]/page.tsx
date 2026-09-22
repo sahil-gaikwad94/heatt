@@ -59,7 +59,7 @@ export default function ProfilePage() {
         return { ...p, heat: heatFor(p as any, s as any) };
       });
     }
-    return mine.sort((a, b) => (b.heat!.score ?? 0) - (a.heat!.score ?? 0));
+    return mine.sort((a, b) => (b.heat?.score ?? 0) - (a.heat?.score ?? 0));
   }, [app.posts, handle, s, app.wire]);
 
   const filtered = posts.filter((p) =>

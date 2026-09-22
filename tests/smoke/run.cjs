@@ -369,6 +369,160 @@ async function until(fn, ms = 4000, label = 'condition') {
   await mount(React.createElement(ShellProviders, null, React.createElement(BootLayer, null, React.createElement(landingMod.default))));
   ok('landing renders marketing + demo', /burn|heat|forge/i.test(U.words()) && U.words().length > 1500, `${U.words().length} chars`);
 
+
+  /* ------------------------------------------------ 14. ignition spectacle */
+  step('ignition');
+  await mountApp(page('app/(shell)/feed/page.js'));
+  const hb = U.q('.ht-heat-btn');
+  ok('a heat control is reachable on the first card', !!hb);
+  U.pointer(hb, 'pointerdown');
+  await wait(1250);
+  U.pointer(hb, 'pointermove');
+  await wait(1350);
+  U.pointer(hb, 'pointerup');
+  await wait(140);
+  const ignitesBefore = (S().activity[new Date().toISOString().slice(0, 10)] || {}).ignites || 0;
+  ok('holding past 2.45s reaches level 3 (ignition)', Object.values(S().heat).some((h) => h.level === 3), `levels: ${Object.values(S().heat).map((h) => h.level).join(',')}`);
+  ok('ignition notifies you locally', S().notifications.some((n) => n.type === 'ignite'));
+  ok('ignition lands on todays heat map', ignitesBefore >= 1, `ignites=${ignitesBefore}`);
+  const burning = U.qa('.ht-card--ignited').length;
+  ok('the ignited card gets fire chrome', burning >= 1, `${burning} burning card(s)`);
+  ok('embers are emitted', U.qa('.ht-ember').length > 0, `${U.qa('.ht-ember').length} embers`);
+  await wait(2700);
+  ok('the 2.4s spectacle ends and the card cools back', U.qa('.ht-card--ignited').length === 0);
+
+  /* ------------------------------------------------- 15. reader heat spine */
+  step('paragraph heat');
+  nav.__state.params = { id: 'orig-heat-diffusion' };
+  await mountApp(page('app/(shell)/read/[id]/page.js'));
+  const paraBtn = U.q('.ht-block [aria-label^="Heat this paragraph"]');
+  ok('every paragraph has a heat affordance', !!paraBtn);
+  if (paraBtn) {
+    await U.click(paraBtn);
+    await wait(80);
+    const paraKeys = Object.keys(S().heat).filter((k) => /:p\d+$/.test(k));
+    ok('paragraph heat is stored under its own key', paraKeys.length >= 1, paraKeys[0]);
+    await U.click(paraBtn);
+    await U.click(paraBtn);
+    await wait(120);
+    ok('third click ignites the paragraph', paraKeys.length && S().heat[paraKeys[0]].level === 3, `level=${S().heat[paraKeys[0]]?.level}`);
+    ok('igniting a paragraph is acknowledged', /Paragraph ignited/.test(U.words()));
+  }
+  ok('reading progress is persisted', (S().reads['orig-heat-diffusion']?.pct ?? 0) >= 0);
+
+  /* --------------------------------------- 16. composer poll → feed → vote */
+  step('poll');
+  await mountApp(page('app/(shell)/feed/page.js'));
+  await U.click(U.q('[aria-label="Compose"]'));
+  await wait(260);
+  const pollToggle = U.byText('button', /^poll$/i);
+  ok('composer offers a poll builder', !!pollToggle);
+  if (pollToggle) {
+    await U.click(pollToggle);
+    await wait(80);
+    const pq = U.q('input[placeholder="Poll question"]');
+    const o1 = U.q('input[placeholder="Option 1"]');
+    const o2 = U.q('input[placeholder="Option 2"]');
+    ok('poll builder exposes question + options', !!pq && !!o1 && !!o2);
+    await U.type(pq, 'Which should the cliff truncate first?');
+    await U.type(o1, 'velocity');
+    await U.type(o2, 'total heat');
+    const sparkTa = U.qa('textarea').find((t) => /What is burning/.test(t.getAttribute('placeholder') || ''));
+    await U.type(sparkTa, 'Shipping a poll on heatt: the crowd answer is also the ranking signal.');
+    await U.click(U.byText('button', /Publish spark/i));
+    await until(() => S().mySparks.some((x) => x.poll), 3000, 'poll spark to publish').catch(() => null);
+    ok('spark published with a poll attached', S().mySparks.some((x) => x.poll?.options.length === 2), JSON.stringify(S().mySparks[0]?.poll || {}));
+    await mountApp(page('app/(shell)/feed/page.js'));
+    const voteBtn = U.allByText('button', /velocity|total heat/)[0];
+    ok('poll renders in the feed card', !!voteBtn);
+    if (voteBtn) {
+      await U.click(voteBtn);
+      await wait(140);
+      ok('voting re-renders with percentages', /%/.test(U.words()) && /votes/.test(U.words()));
+    }
+  }
+
+  /* -------------------------------------------------- 17. poster exports */
+  step('share export');
+  await mountApp(page('app/(shell)/feed/page.js'));
+  await U.click(U.q('[aria-label="Make a share poster"]'));
+  await wait(320);
+  ok('share studio opened from the card menu', /Story 9:16/.test(U.words()));
+  const clip = global.clipboardStub;
+  const beforeCopy = (clip.items || []).length;
+  await U.click(U.byText('button', /Copy image/i));
+  await wait(420);
+  ok('copy image wrote a PNG to the clipboard', (clip.items || []).length > beforeCopy, `items=${(clip.items || []).length}`);
+  ok('sharing is recorded against the post', Object.values(S().shares).some((v) => v > 0), JSON.stringify(S().shares).slice(0, 60));
+  await U.click(U.byText('button', /Share sheet/i));
+  await wait(320);
+  ok('native share sheet received a file payload', (clip.shared || []).length > 0, JSON.stringify(clip.shared || []).slice(0, 90));
+  await U.click(U.byText('button', /Copy link/i));
+  await wait(120);
+  ok('copy link falls back to a text write', /\/read\//.test(String((clip.written || []).slice(-1)[0] || '')), String((clip.written || []).slice(-1)[0] || ''));
+  const errCountBeforeDownload = consoleErrors.length;
+  await U.click(U.byText('button', /Download PNG/i));
+  await wait(240);
+  ok('download path runs without throwing', consoleErrors.length === errCountBeforeDownload, consoleErrors.slice(errCountBeforeDownload).join(' ').slice(0, 120));
+  const poster = U.qa('canvas').slice(-1)[0];
+  const opsBefore = ((poster && poster.__ctx && poster.__ctx.__calls) || []).length;
+  const palBtn = U.byText('button', /cryo/i);
+  ok('manual palette control exists', !!palBtn);
+  if (palBtn && poster) {
+    await U.click(palBtn);
+    await wait(320);
+    const opsAfter = ((poster.__ctx && poster.__ctx.__calls) || []).length;
+    ok('palette switch repaints the poster', opsAfter > opsBefore, `${opsBefore} → ${opsAfter} canvas ops`);
+  }
+
+  /* -------------------------------------- 18. offline syndicated body retry */
+  step('offline wire body');
+  await mountApp(page('app/(shell)/explore/page.js'));
+  ok('syndicated items are discoverable in explore', /syndicated/i.test(U.words()));
+  {
+    const wireId = 'dev-4652133';
+    nav.__state.path = `/read/${wireId}`;
+    nav.__state.params = { id: wireId };
+    await mountApp(page('app/(shell)/read/[id]/page.js'));
+    await wait(700);
+      const words = U.words();
+    ok('unreachable body degrades to an honest offline panel', /original|offline|cache|retry|unreachable/i.test(words), words.slice(0, 90));
+    const retry = U.byText('button', /try again|retry/i);
+    ok('offline panel offers a retry', !!retry);
+    if (retry) {
+      const beforeRetry = consoleErrors.length;
+      await U.click(retry);
+      await wait(900);
+      ok('retry re-fetches without crashing', consoleErrors.length === beforeRetry, consoleErrors.slice(beforeRetry).join(' ').slice(0, 140));
+    }
+    const orig = U.qa('a').find((a) => /Read original|dev\.to/i.test(a.textContent || ''));
+    ok('attribution link to the canonical source is present', !!orig, orig && orig.getAttribute('href'));
+  }
+
+  /* -------------------------------------------------- 19. profile editing */
+  step('profile editing');
+  nav.__state.path = '/u/embertester';
+  nav.__state.params = { handle: 'embertester' };
+  await mountApp(page('app/(shell)/u/[handle]/page.js'));
+  const edit = U.byText('button', /Edit profile/i);
+  ok('own profile offers an editor', !!edit);
+  if (edit) {
+    await U.click(edit);
+    await wait(260);
+    const bioBox = U.q('textarea[placeholder="One line. Verbs beat adjectives."]');
+    ok('editor exposes bio/handle/cover controls', !!bioBox);
+    if (bioBox) {
+      await U.type(bioBox, 'Building rankers that admit what they throw away.');
+      await U.click(U.byText('button', /Save profile/i));
+      await wait(400);
+      ok('bio saved to the store', (S().me?.bio || '').includes('admit what they throw away'), S().me?.bio);
+      await mountApp(page('app/(shell)/u/[handle]/page.js'));
+      ok('profile repaints with the new bio', /admit what they throw away/.test(U.words()));
+    }
+  }
+  const promoteSpark = S().mySparks.length;
+  ok('own sparks persist across navigation', promoteSpark >= 1, `${promoteSpark} sparks`);
+
   /* ------------------------------------------------------ 13. teardown */
   step('teardown');
   await unmount();

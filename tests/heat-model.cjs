@@ -42,6 +42,11 @@ ok('assemble dedupe renames collisions', (()=>{const dup=F.assemble({mySparks:[{
 const partial={heat:{},heatCounts:{}}; // deliberately incomplete
 let threw=false; try{F.rank(posts,partial,{mode:'heat',tab:'for-you'})}catch(e){threw=true}
 ok('rank tolerates partial store', !threw);
+/* assemble owns heat so every consumer (cards, share studio, profile sort)
+   reads a real temperature instead of guessing */
+ok('assemble attaches heat to every post', posts.every(p=>p.heat && Number.isFinite(p.heat.temp) && Number.isFinite(p.heat.score)), `temps ${posts.slice(0,4).map(p=>p.heat.temp).join(',')}`);
+ok('assembled temperatures actually differ per post', new Set(posts.map(p=>p.heat.temp)).size > Math.min(6, posts.length), `${new Set(posts.map(p=>p.heat.temp)).size} distinct of ${posts.length}`);
+ok('assembled heat carries a readable trace', posts.every(p=>p.heat.trace.length===4));
 const r=F.rank(posts,{...partial,saved:{},reads:{},shares:{},follows:[],interests:[]},{mode:'heat',tab:'for-you'});
 ok('rank sorts descending', r.items.every((p,i,a)=>i===0||a[i-1].score>=p.score-1e-9), `${r.items.length}/${r.total} kept after cliff=${r.cliff}`);
 const ign={...r.items[0],id:r.items[0].id};

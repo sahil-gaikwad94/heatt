@@ -109,8 +109,8 @@ panel says so honestly instead of showing skeletons forever.
 Two suites, both headless, both run with `npm test`:
 
 ```bash
-npm run test:model   # 45 assertions on heat math, ranker, store reducers, seed corpus
-npm run test:smoke   # 65 assertions driving the real components in jsdom
+npm run test:model   # 56 assertions on heat math, ranker, store reducers, seed corpus
+npm run test:smoke   # 100 assertions driving the real components in jsdom
 ```
 
 `test:model` compiles the pure-TS core and checks the physics against the spec
@@ -127,7 +127,7 @@ is repainted at 1080×1080 with ~3k draw calls and zero unknown canvas APIs),
 ⌘K navigation, heat-grid day selection, and every settings toggle reaching
 `<html>`. It fails on any console error, uncaught rejection, or React warning.
 
-It found four bugs no build step could: a `useMemo` inside JSX after an early
+It found six bugs no build step could: a `useMemo` inside JSX after an early
 `return` in `BootLayer` (hook-order violation that crashed the first-visit boot),
 the poster canvas painting a frame *before* the modal mounted its children (every
 share image would have been blank), `muted` missing from the `posts` dependency

@@ -127,7 +127,10 @@ function install({ url = 'http://localhost:3000/feed' } = {}) {
   const { window } = dom;
   global.IS_REACT_ACT_ENVIRONMENT = true;
 
-  const gp = ['window', 'document', 'navigator', 'location', 'history', 'HTMLElement', 'HTMLAnchorElement', 'HTMLCanvasElement', 'HTMLInputElement', 'HTMLTextAreaElement', 'Element', 'Node', 'Event', 'CustomEvent', 'KeyboardEvent', 'MouseEvent', 'Blob', 'File', 'ClipboardItem', 'Image', 'getComputedStyle', 'localStorage', 'sessionStorage', 'DOMParser', 'requestAnimationFrame', 'cancelAnimationFrame', 'ResizeObserver'];
+  /* URL + Blob must come from the jsdom realm, otherwise Node's
+     URL.createObjectURL rejects a jsdom Blob and the download path looks broken
+     in the harness while working fine in a browser. */
+  const gp = ['URL', 'URLSearchParams', 'window', 'document', 'navigator', 'location', 'history', 'HTMLElement', 'HTMLAnchorElement', 'HTMLCanvasElement', 'HTMLInputElement', 'HTMLTextAreaElement', 'Element', 'Node', 'Event', 'CustomEvent', 'KeyboardEvent', 'MouseEvent', 'Blob', 'File', 'ClipboardItem', 'Image', 'getComputedStyle', 'localStorage', 'sessionStorage', 'DOMParser', 'requestAnimationFrame', 'cancelAnimationFrame', 'ResizeObserver'];
   for (const k of gp) {
     if (window[k] === undefined) continue;
     try {
@@ -185,7 +188,8 @@ function install({ url = 'http://localhost:3000/feed' } = {}) {
     return null; // WebGL unsupported → exercises the documented fallback
   };
   window.HTMLCanvasElement.prototype.toBlob = function (cb, type) {
-    setTimeout(() => cb(new global.Blob(['\x89PNG-stub'], { type: type || 'image/png' })), 0);
+    // must be the *window* realm's Blob or jsdom's ClipboardItem rejects it
+    setTimeout(() => cb(new window.Blob(['\x89PNG-stub'], { type: type || 'image/png' })), 0);
   };
   window.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,c3R1Yg==';
 
@@ -214,6 +218,12 @@ function install({ url = 'http://localhost:3000/feed' } = {}) {
   };
   if (RealImage) void 0;
 
+  /* jsdom has no object-URL store; the download path only needs a stable URL */
+  if (!window.URL.createObjectURL) {
+    window.URL.createObjectURL = () => `blob:heatt/${Math.random().toString(36).slice(2)}`;
+    window.URL.revokeObjectURL = () => {};
+  }
+
   /* clipboard + share + vibrate */
   const clip = { written: [], items: [], shared: [] };
   Object.defineProperty(window.navigator, 'clipboard', {
@@ -237,6 +247,12 @@ function install({ url = 'http://localhost:3000/feed' } = {}) {
       return Promise.resolve();
     },
   });
+  window.ClipboardItem = global.ClipboardItem = class FakeClipboardItem {
+    constructor(items) {
+      this.items = items;
+      clip.items.push(items);
+    }
+  };
   Object.defineProperty(window.navigator, 'canShare', { configurable: true, value: () => true });
   Object.defineProperty(window.navigator, 'vibrate', { configurable: true, value: () => true });
   global.clipboardStub = clip;
@@ -282,7 +298,9 @@ function install({ url = 'http://localhost:3000/feed' } = {}) {
   /* capture uncaught errors from effects/handlers that React would rethrow */
   window.addEventListener('error', (e) => consoleErrors.push(`[window:${activeLabel}] ${e.message}`));
   window.addEventListener('unhandledrejection', (e) => consoleErrors.push(`[rejection:${activeLabel}] ${(e.reason && e.reason.message) || e.reason}`));
-  process.on('unhandledRejection', (r) => consoleErrors.push(`[node-rejection:${activeLabel}] ${(r && r.message) || r}`));
+  process.on('unhandledRejection', (r) =>
+    consoleErrors.push(`[node-rejection:${activeLabel}] ${(r && r.message) || r}\n${(r && r.stack) || ''}`.split('\n').slice(0, 6).join('\n'))
+  );
 
   const origWarn = console.warn;
   console.error = (...a) => {

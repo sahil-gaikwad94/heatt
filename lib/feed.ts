@@ -192,7 +192,10 @@ export function assemble(s: State, wire: WireItem[]): Post[] {
     seen.add(p.id);
     out.push(p);
   }
-  return out;
+  /* Heat is part of the post, not part of a ranking pass: cards, the share
+     studio, related rows and the profile sort all read `posts` directly, and
+     each of them used to re-derive (or guess) a temperature. */
+  return out.map((p) => ({ ...p, heat: heatFor(p, s) }));
 }
 
 /* -------------------------------------------------------------------- ranking */
@@ -238,7 +241,9 @@ export type RankOpts = {
 export function rank(posts: Post[], s: State, opts: RankOpts) {
   const now = Date.now();
   const scored = posts.map((p) => {
-    const heat = heatFor(p, s);
+    // assemble() already attached heat (and recomputes it when any input map
+    // changes), so ranking reuses it instead of re-deriving per render pass.
+    const heat = p.heat ?? heatFor(p, s);
     let score = heat.score;
     // personalization: follow boost + interest affinity
     if (opts.followBoost && (s.follows ?? []).includes(p.authorHandle)) score *= 1.55;

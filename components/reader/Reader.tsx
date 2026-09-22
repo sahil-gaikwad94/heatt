@@ -422,6 +422,7 @@ function BlockWithHeat(props: {
         style={{ opacity: hover || lvl > 0 ? 1 : 0, transform: `translateX(${hover || lvl > 0 ? 0 : -6}px)`, transition: 'opacity .25s, transform .25s' }}
       >
         <button
+          aria-label={`Heat this paragraph (level ${lvl} of 3)`}
           onClick={() => {
             const next = lvl >= 3 ? 0 : (Math.min(3, lvl + 1) as any);
             useStore.getState().setHeat(paraKey(postId, index), next);
@@ -796,10 +797,10 @@ function EndCard({ post, pct, elapsed, onClose }: { post: Post; pct: number; ela
         <div className="rounded-[16px] border border-white/[.07] bg-black/25 p-4">
           <div className="flex items-center justify-between">
             <span className="ht-label">your heat</span>
-            <span className="ht-num text-[12px] text-ember-300">{kelvin(post.heat!.temp)}</span>
+            <span className="ht-num text-[12px] text-ember-300">{kelvin(post.heat?.temp ?? 0)}</span>
           </div>
           <div className="mt-3 flex items-center gap-2">
-            <HeatButton level={app.heatOf(post.id)} count={app.countOf(post)} temp={post.heat!.temp} onChange={(lv, meta) => app.setHeat(post.id, lv, { ignited: meta.ignited, title: post.title, author: post.authorHandle })} />
+            <HeatButton level={app.heatOf(post.id)} count={app.countOf(post)} temp={post.heat?.temp ?? 0} onChange={(lv, meta) => app.setHeat(post.id, lv, { ignited: meta.ignited, title: post.title, author: post.authorHandle })} />
             <span className="text-[11.5px] leading-tight text-ink-mute">
               tap = ember
               <br />
@@ -858,7 +859,7 @@ function EndCard({ post, pct, elapsed, onClose }: { post: Post; pct: number; ela
               <button key={r.id} onClick={() => app.openPost(r.id)} className="ht-card p-3.5 text-left">
                 <span className="ht-label">{r.kind === 'forge' ? `${r.minutes} min` : 'spark'}</span>
                 <span className="mt-1.5 line-clamp-3 block text-[13.5px] font-semibold leading-snug text-ink">{r.title ?? r.text}</span>
-                <span className="mt-2 block text-[11.5px] text-ink-mute">@{r.authorHandle} · {kelvin(r.heat!.temp)}</span>
+                <span className="mt-2 block text-[11.5px] text-ink-mute">@{r.authorHandle} · {kelvin(r.heat?.temp ?? 0)}</span>
               </button>
             ))}
           </div>
