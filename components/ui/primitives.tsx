@@ -77,8 +77,8 @@ export function Avatar({
             width: Math.max(8, size / 4.5),
             height: Math.max(8, size / 4.5),
             borderRadius: 99,
-            background: '#2BE0C8',
-            boxShadow: '0 0 10px rgba(43,224,200,.9)',
+            background: '#3DDCFF',
+            boxShadow: '0 0 10px rgba(61,220,255,.9)',
             border: '2px solid var(--ht-void)',
           }}
         />
@@ -151,7 +151,7 @@ export function Modal({
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'radial-gradient(90% 70% at 50% 40%, rgba(6,6,8,.72), rgba(4,4,5,.9))',
+          background: 'radial-gradient(90% 70% at 50% 40%, rgba(0,0,0,.72), rgba(4,4,5,.9))',
           backdropFilter: 'blur(10px) saturate(120%)',
           WebkitBackdropFilter: 'blur(10px) saturate(120%)',
           animation: 'ht-fade .28s ease-out',
@@ -268,8 +268,8 @@ export function Toast({
           className="ht-glass pointer-events-auto flex items-center gap-2.5 rounded-full px-4 py-2.5 text-[13px] font-semibold"
           style={{
             animation: 'ht-toast .5s cubic-bezier(.2,1,.3,1)',
-            borderColor: t.tone === 'heat' ? 'rgba(255,92,10,.4)' : t.tone === 'cool' ? 'rgba(43,224,200,.35)' : 'var(--ht-line)',
-            boxShadow: t.tone === 'heat' ? '0 18px 50px -18px rgba(255,92,10,.7)' : '0 18px 50px -20px rgba(0,0,0,.9)',
+            borderColor: t.tone === 'heat' ? 'rgba(0,201,140,.34)' : t.tone === 'cool' ? 'rgba(61,220,255,.35)' : 'var(--ht-line)',
+            boxShadow: t.tone === 'heat' ? '0 18px 50px -18px rgba(0,229,160,.6)' : '0 18px 50px -20px rgba(0,0,0,.9)',
           }}
         >
           {t.icon}
@@ -317,7 +317,7 @@ export function Meter({ value, className }: { value: number; className?: string 
         style={{
           width: `${v * 100}%`,
           background: 'linear-gradient(90deg,var(--ht-magma),var(--ht-flame) 60%,var(--ht-whitehot))',
-          boxShadow: '0 0 12px rgba(255,92,10,.8)',
+          boxShadow: '0 0 12px rgba(0,229,160,.7)',
           transition: 'width .6s cubic-bezier(.2,1,.3,1)',
         }}
       />

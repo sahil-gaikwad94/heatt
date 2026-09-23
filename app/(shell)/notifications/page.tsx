@@ -1,7 +1,11 @@
 'use client';
 /* ============================================================================
-   /notifications — the heat log. Every level-3 ignition you cause, every
-   reply, every milestone, plus a generated "today's heat" digest card.
+   /notifications — the heat log.
+
+   Structured like the rest of the board: an avatar-led row per event, a lime
+   highlight card when something genuinely good happened to you, quick actions
+   inline, and a collapsed "Older" pile so the top of the page is always the
+   part that is still warm.
    ==========================================================================*/
 
 import * as React from 'react';
@@ -13,31 +17,41 @@ import { Avatar } from '@/components/ui/primitives';
 import { getUser } from '@/lib/seed/users';
 import { cls, timeAgo } from '@/lib/util';
 import { dailyDigest } from '@/lib/feed';
+import type { Notification } from '@/lib/types';
 
-const ICON: Record<string, { glyph: string; tone: string }> = {
-  ignite: { glyph: '🔥', tone: 'linear-gradient(140deg,rgba(255,45,18,.3),rgba(255,181,49,.1))' },
-  heat: { glyph: '▲', tone: 'linear-gradient(140deg,rgba(255,138,31,.2),transparent)' },
-  follow: { glyph: '+', tone: 'linear-gradient(140deg,rgba(43,224,200,.16),transparent)' },
-  reply: { glyph: '↩', tone: 'linear-gradient(140deg,rgba(255,255,255,.06),transparent)' },
-  milestone: { glyph: '★', tone: 'linear-gradient(140deg,rgba(255,181,49,.22),transparent)' },
-  digest: { glyph: '◷', tone: 'linear-gradient(140deg,rgba(91,75,255,.2),transparent)' },
+const TONE: Record<string, string> = {
+  ignite: 'linear-gradient(140deg,rgba(0,229,160,.22),transparent)',
+  heat: 'linear-gradient(140deg,rgba(0,201,140,.16),transparent)',
+  follow: 'linear-gradient(140deg,rgba(61,220,255,.14),transparent)',
+  reply: 'linear-gradient(140deg,rgba(255,255,255,.05),transparent)',
+  milestone: 'linear-gradient(140deg,rgba(124,255,208,.18),transparent)',
+  digest: 'linear-gradient(140deg,rgba(90,169,255,.14),transparent)',
+};
+
+const VERB: Record<string, string> = {
+  ignite: 'ignited something of yours',
+  heat: 'heated one of your pieces',
+  follow: 'started following you',
+  reply: 'replied to you',
+  milestone: 'a milestone on heatt',
+  digest: 'your day in heat',
 };
 
 export default function NotificationsPage() {
   const app = useApp();
   const s = useStore();
   const digest = React.useMemo(() => dailyDigest(app.posts, s as any), [app.posts, s]);
-  const [seen, setSeen] = React.useState(false);
+  const [openOlder, setOpenOlder] = React.useState(false);
 
   React.useEffect(() => {
     if (s.notifications.length === 0) {
       const d = new Date();
       const t = (h: number) => new Date(d.getTime() - h * 3600_000).toISOString();
       const seed = [
-        { type: 'ignite' as const, actor: 'amara', text: `@amara ignited your spark about reading progress — ${2} levels above your usual heat`, postId: 'sp-04', level: 3 as const },
-        { type: 'heat' as const, actor: 'k-vasiliev', text: '@k-vasiliev heated “Heat Diffusion: ranking a feed like a cooling body” to blaze', postId: 'orig-heat-diffusion', level: 2 as const },
-        { type: 'follow' as const, actor: 'sena', text: '@sena started following you — thermal mass 1.44, so their heat counts more', read: true },
-        { type: 'milestone' as const, actor: 'heatt', text: 'Your reading crossed 3 forges finished this week. Heatmap row is now fully lit.', read: true },
+        { type: 'ignite' as const, actor: 'amara', text: '@amara ignited your spark about reading progress', postId: 'sp-04', level: 3 as const },
+        { type: 'heat' as const, actor: 'k-vasiliev', text: '@k-vasiliev heated your piece on long-form layout', postId: 'orig-heat-diffusion', level: 2 as const },
+        { type: 'follow' as const, actor: 'sena', text: '@sena started following you', read: true },
+        { type: 'milestone' as const, actor: 'heatt', text: 'You finished three forges this week.', read: true },
       ];
       seed.forEach((n, i) => setTimeout(() => useStore.getState().notify({ ...n, read: false, at: t(i * 3) } as any), 300 + i * 260));
     }
@@ -45,100 +59,275 @@ export default function NotificationsPage() {
   }, []);
 
   const list = s.notifications;
+  const fresh = list.filter((n) => !n.read);
+  const older = list.filter((n) => n.read);
+  /* the one that deserves a lime card: the most recent ignition or milestone */
+  const highlight = fresh.find((n) => n.type === 'ignite' || n.type === 'milestone') ?? null;
+
+  const dismiss = (id: string) =>
+    useStore.setState((st) => ({ notifications: st.notifications.filter((x) => x.id !== id) }));
 
   return (
-    <div className="mx-auto w-full max-w-[680px]">
+    <div className="mx-auto w-full max-w-[680px] pb-6">
       <TopBar
-        title="Heat log"
-        sub={list.length ? `${list.filter((n) => !n.read).length} new` : 'quiet'}
+        title={`Notifications${fresh.length ? ` (${fresh.length})` : ''}`}
+        sub={list.length ? `${older.length} older` : 'quiet'}
         right={
           list.length > 0 ? (
-            <button onClick={() => (setSeen(true), app.markAll())} className="ht-btn ht-btn--ghost !text-[12px]">
-              Mark read
+            <button onClick={() => useStore.getState().markAllRead()} className="ht-btn ht-btn--ghost !px-3 !py-1.5 !text-[12px]">
+              Clean all
             </button>
           ) : undefined
         }
       />
 
-      {/* digest */}
-      <section className="ht-panel mt-1 overflow-hidden p-5">
+      {/* ------------------------------------------------------------- digest */}
+      <section className="mt-1 overflow-hidden rounded-[24px] border border-white/[.07] bg-white/[.02] p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <span className="ht-label">today’s heat</span>
-            <h2 className="ht-title mt-1 text-[20px]">
-              The board is at <span className="ht-heat-text">{digest.totalHeat}°</span> total
-            </h2>
+            <span className="ht-label">today</span>
+            <h2 className="ht-title mt-1.5 text-[21px]">What happened while you were away</h2>
             <p className="mt-1.5 text-[13px] leading-relaxed text-ink-dim">
-              {digest.items} items ranked · {digest.contested.length} contested right now · {digest.cooling.length} cooling off.
+              {digest.items} new pieces on the board{fresh.length ? ` · ${fresh.length} waiting on you` : ''}.
             </p>
           </div>
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[18px]" style={{ background: 'radial-gradient(circle at 40% 30%,rgba(255,181,49,.35),rgba(255,45,18,.14))', boxShadow: '0 0 30px -8px rgba(255,92,10,.8)' }}>
+          <span
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/[.08] text-[17px] text-ink-dim"
+            style={{ background: 'radial-gradient(circle at 38% 30%, rgba(0,229,160,.22), rgba(255,255,255,.02))' }}
+          >
             ◷
           </span>
         </div>
         {digest.hottest && (
-          <button onClick={() => app.openPost(digest.hottest!.id)} className="mt-3.5 flex w-full items-center gap-3 rounded-[14px] border border-ember-500/25 bg-ember-500/[.05] p-3 text-left transition-all hover:border-ember-500/50">
-            <span className="ht-num shrink-0 text-[11px] font-black uppercase tracking-[0.14em] text-ember-300">hottest</span>
+          <button
+            onClick={() => app.openPost(digest.hottest!.id)}
+            className="mt-4 flex w-full items-center gap-3 rounded-[16px] border border-white/[.07] bg-black/30 p-3 text-left transition-colors hover:border-ember-500/40"
+          >
+            <span className="ht-num shrink-0 rounded-full bg-[var(--ht-ember)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#04140E]">
+              top pick
+            </span>
             <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-ink">{digest.hottest.title}</span>
-            <span className="ht-num shrink-0 text-[13px] font-black text-ember-200">{digest.hottest.temp}°</span>
+            <span className="shrink-0 text-[12px] text-ink-mute">
+              {digest.hottest.minutes ? `${digest.hottest.minutes} min` : 'spark'}
+            </span>
           </button>
         )}
       </section>
 
-      <div className="mt-4 space-y-2 pb-8">
+      {/* ---------------------------------------------------------- new events */}
+      <section className="mt-3.5 space-y-2.5">
         <AnimatePresence initial={false}>
-          {list.map((n, i) => {
-            const u = getUser(n.actor);
-            const meta = ICON[n.type] ?? ICON.heat;
-            return (
-              <motion.div
-                key={n.id}
-                layout
-                initial={{ opacity: 0, x: -14 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: Math.min(0.3, i * 0.05), duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className={cls('ht-card flex items-start gap-3 p-3.5', !n.read && '!border-ember-500/30')}
-                style={{ background: `linear-gradient(90deg, ${meta.tone}, transparent 40%), linear-gradient(180deg, rgba(24,24,28,.86), rgba(12,12,15,.94))` }}
-              >
-                <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-black/40 text-[15px]">
-                  {meta.glyph === '🔥' ? (
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ht-flare)" strokeWidth="1.8">
-                      <path d="M12 3c1 2.6.2 3.9-1 5.2C9.7 9.6 8.2 10.8 8.2 13.4A4.4 4.4 0 0 0 16.4 18c.1-2.2-1.3-3.6-1.8-5.6 2 1.9 3.2 4 3.2 6.4A5.8 5.8 0 1 1 6.2 11C6.2 6.9 9.6 4.4 12 3Z" />
-                    </svg>
-                  ) : (
-                    meta.glyph
-                  )}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13.5px] leading-relaxed text-ink-dim">
-                    <b className="text-ink">{u.name}</b> {n.text.replace(`@${n.actor}`, '').trim()}
-                  </p>
-                  <div className="mt-1.5 flex items-center gap-2 text-[11.5px] text-ink-mute">
-                    <span>{timeAgo(n.at)}</span>
-                    {n.postId && (
-                      <button onClick={() => app.openPost(n.postId!)} className="font-bold text-ember-300 hover:underline">
-                        view post →
-                      </button>
-                    )}
-                    {!n.read && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cryo-teal shadow-[0_0_8px_#2BE0C8]" />}
-                  </div>
-                </div>
-                <Avatar name={u.name} handle={u.handle} src={u.avatar} size={30} />
-              </motion.div>
-            );
-          })}
+          {fresh.map((n, i) => (
+            <NotificationRow
+              key={n.id}
+              n={n}
+              index={i}
+              featured={highlight?.id === n.id}
+              onOpen={() => n.postId && app.openPost(n.postId)}
+              onDismiss={() => dismiss(n.id)}
+            />
+          ))}
         </AnimatePresence>
 
         {list.length === 0 && (
-          <div className="ht-panel p-10 text-center">
+          <div className="rounded-[24px] border border-white/[.07] bg-white/[.02] p-10 text-center">
             <h3 className="ht-title text-[19px]">No heat on you yet</h3>
-            <p className="mt-2 text-[13.5px] text-ink-dim">Publish a spark or a forge — ignitions, replies and milestones land here.</p>
+            <p className="mx-auto mt-2 max-w-[38ch] text-[13.5px] leading-relaxed text-ink-dim">
+              Publish a spark or a forge — ignitions, replies and milestones land here.
+            </p>
             <button onClick={() => app.setComposer(true)} className="ht-btn ht-btn--heat mt-4">
               Write something
             </button>
           </div>
         )}
-      </div>
+      </section>
+
+      {/* -------------------------------------------------------------- older */}
+      {older.length > 0 && (
+        <section className="mt-6">
+          <button
+            onClick={() => setOpenOlder((v) => !v)}
+            aria-expanded={openOlder}
+            className="flex w-full items-center justify-between rounded-[18px] px-1 py-3 text-left"
+          >
+            <span className="ht-title text-[19px] text-ink">Older</span>
+            <span className="flex items-center gap-2 text-[12px] text-ink-mute">
+              {older.length}
+              <motion.svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                animate={{ rotate: openOlder ? 180 : 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                <path d="m6 9 6 6 6-6" strokeLinecap="round" />
+              </motion.svg>
+            </span>
+          </button>
+          <AnimatePresence initial={false}>
+            {openOlder && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-2.5 pt-1">
+                  {older.map((n, i) => (
+                    <NotificationRow
+                      key={n.id}
+                      n={n}
+                      index={i}
+                      onOpen={() => n.postId && app.openPost(n.postId)}
+                      onDismiss={() => dismiss(n.id)}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </section>
+      )}
     </div>
+  );
+}
+
+function NotificationRow({
+  n,
+  index,
+  featured,
+  onOpen,
+  onDismiss,
+}: {
+  n: Notification;
+  index: number;
+  featured?: boolean;
+  onOpen: () => void;
+  onDismiss: () => void;
+}) {
+  const u = getUser(n.actor);
+  const tone = TONE[n.type] ?? TONE.heat;
+  const body = n.text.replace(`@${n.actor}`, '').trim();
+
+  if (featured) {
+    /* the lime card — reserved for things that actually happened to you */
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98 }}
+        transition={{ delay: Math.min(0.25, index * 0.05), duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        className="relative overflow-hidden rounded-[24px] p-4 text-[#04140E]"
+        style={{ background: 'var(--ht-ember)' }}
+      >
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#04140E]/10">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+              <path d="M12 3c1 2.6.2 3.9-1 5.2C9.7 9.6 8.2 10.8 8.2 13.4A4.4 4.4 0 0 0 16.4 18c.1-2.2-1.3-3.6-1.8-5.6 2 1.9 3.2 4 3.2 6.4A5.8 5.8 0 1 1 6.2 11C6.2 6.9 9.6 4.4 12 3Z" />
+            </svg>
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15.5px] font-black leading-tight">
+              {n.type === 'ignite' ? 'Ignition!' : 'Good news'}
+            </p>
+            <p className="mt-1 text-[13px] leading-relaxed text-[#062E23]">{body}</p>
+          </div>
+          <button
+            onClick={onOpen}
+            aria-label="Open the post"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#04140E] text-[#F2FFFA] transition-transform hover:scale-[1.04]"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M7 17 17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+        <div className="mt-3.5 flex items-center gap-2">
+          <button
+            onClick={onOpen}
+            className="rounded-full bg-[#04140E]/10 px-3.5 py-1.5 text-[12.5px] font-bold transition-colors hover:bg-[#04140E]/20"
+          >
+            {n.level === 3 ? 'See the ignition' : 'See the forge'}
+          </button>
+          <button
+            onClick={onDismiss}
+            className="rounded-full border border-[#04140E]/20 px-3.5 py-1.5 text-[12.5px] font-bold transition-colors hover:bg-[#04140E]/10"
+          >
+            Maybe later
+          </button>
+          <span className="flex-1" />
+          <button
+            onClick={onDismiss}
+            aria-label="Dismiss"
+            className="grid h-9 w-9 place-items-center rounded-full bg-[#04140E]/10 transition-colors hover:bg-[#04140E]/20"
+          >
+            <TrashIcon />
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      transition={{ delay: Math.min(0.25, index * 0.05), duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className={cls('ht-card p-4', !n.read && '!border-ember-500/25')}
+    >
+      <div className="flex items-start gap-3">
+        <Avatar name={u.name} handle={u.handle} src={u.avatar} size={38} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-x-1.5">
+            <span className="text-[13.5px] font-bold text-ink">{u.name}</span>
+            <span className="text-[12px] text-ink-mute">{VERB[n.type] ?? 'sent you heat'}</span>
+            <span className="text-ink-faint">·</span>
+            <span className="ht-num text-[12px] text-ink-mute">{timeAgo(n.at)}</span>
+          </div>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-ink-dim">{body}</p>
+        </div>
+        <button
+          onClick={onOpen}
+          aria-label="Open"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#04140E] transition-transform hover:scale-[1.04]"
+          style={{ background: 'var(--ht-ember)' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1">
+            <path d="M7 17 17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="mt-3 flex items-center gap-2 border-t border-white/[.05] pt-3">
+        {n.postId && (
+          <button onClick={onOpen} className="rounded-full border border-white/[.09] px-3.5 py-1.5 text-[12px] font-bold text-ink-dim transition-colors hover:border-ember-500/40 hover:text-ink">
+            Open thread
+          </button>
+        )}
+        <button onClick={onDismiss} className="rounded-full border border-white/[.09] px-3.5 py-1.5 text-[12px] font-bold text-ink-mute transition-colors hover:text-ink">
+          Maybe later
+        </button>
+        <span className="flex-1" />
+        {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-[var(--ht-ember)] shadow-[0_0_10px_rgba(0,229,160,.8)]" />}
+        <button onClick={onDismiss} aria-label="Dismiss" className="grid h-8 w-8 place-items-center rounded-full border border-white/[.09] text-ink-mute transition-colors hover:text-magma">
+          <TrashIcon />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+      <path d="M4 7h16M9 7V4.6h6V7M6.5 7l.9 12.2A1.6 1.6 0 0 0 9 20.6h6a1.6 1.6 0 0 0 1.6-1.4L17.5 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

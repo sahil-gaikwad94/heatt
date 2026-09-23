@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/lib/app';
 import { TopBar } from '@/components/shell/Shell';
 import { matches } from '@/lib/feed';
-import { computeHeat, kelvin, tempLabel } from '@/lib/heat';
+import { computeHeat, tempLabel } from '@/lib/heat';
 import { Avatar, Sparkline } from '@/components/ui/primitives';
 import { cls, compact, timeAgo } from '@/lib/util';
 import { getUser } from '@/lib/seed/users';
@@ -125,8 +125,7 @@ function ExploreInner() {
     <div className="mx-auto w-full max-w-[760px]">
       <TopBar title="Explore" sub={`${pool.length} items in range`} />
 
-      {/* search */}
-      <div className="sticky top-[52px] z-30 -mx-4 border-b border-white/[.06] bg-[#08080a]/85 px-4 pb-3 pt-2 backdrop-blur-2xl sm:-mx-6 sm:px-6">
+      {/* search */}        <div className="sticky top-[52px] z-30 -mx-4 border-b border-white/[.06] bg-[#050505]/85 px-4 pb-3 pt-2 backdrop-blur-2xl sm:-mx-6 sm:px-6">
         <div className="flex items-center gap-2 rounded-[16px] border border-white/[.09] bg-white/[.035] px-3 py-2 transition-all focus-within:border-ember-500/50 focus-within:bg-ember-500/[.05]">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--ht-ink-mute)" strokeWidth="1.9">
             <circle cx="11" cy="11" r="7" />
@@ -161,15 +160,32 @@ function ExploreInner() {
           <span className="ht-label hidden !text-[9px] sm:block">↵ open</span>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {(['all', 'forges', 'sparks', 'people', 'tags'] as const).map((w) => (
-            <button key={w} onClick={() => setWhich(w)} className={cls('ht-chip !normal-case !tracking-normal', which === w && '!border-ember-500/50 !bg-ember-500/12 !text-ember-200')}>
-              {w}
-            </button>
-          ))}
+        <div className="mt-2.5 flex items-center gap-1.5">
+          {(['all', 'forges', 'sparks', 'people', 'tags'] as const).map((w) => {
+            const active = which === w;
+            return (
+              <button
+                key={w}
+                onClick={() => setWhich(w)}
+                className={cls(
+                  'shrink-0 rounded-full border px-3.5 py-2 text-[13px] font-semibold capitalize transition-colors',
+                  active ? 'border-transparent bg-[var(--ht-ember)] text-[#04140E]' : 'border-white/[.09] text-ink-dim hover:border-white/25 hover:text-ink'
+                )}
+              >
+                {w === 'all' ? 'All' : w}
+              </button>
+            );
+          })}
           <span className="flex-1" />
           {RANGES.map((r) => (
-            <button key={r.key} onClick={() => setRange(r.key)} className={cls('ht-chip !normal-case !tracking-normal !text-[10px]', range === r.key && '!border-cryo-teal/45 !bg-cryo-teal/10 !text-cryo-teal')}>
+            <button
+              key={r.key}
+              onClick={() => setRange(r.key)}
+              className={cls(
+                'shrink-0 rounded-full px-2.5 py-1.5 text-[11.5px] font-bold transition-colors',
+                range === r.key ? 'bg-white/[.09] text-ink' : 'text-ink-mute hover:text-ink-dim'
+              )}
+            >
               {r.label}
             </button>
           ))}
@@ -192,7 +208,7 @@ function ExploreInner() {
       {tagParam && (
         <div className="mt-4 flex items-center gap-2 rounded-[16px] border border-ember-500/30 bg-ember-500/[.07] px-4 py-3">
           <span className="ht-title text-[18px] ht-heat-text">#{tagParam}</span>
-          <span className="text-[12.5px] text-ink-dim">{pool.filter((p) => p.tags.includes(tagParam)).length} items · heat-weighted</span>
+          <span className="text-[12.5px] text-ink-dim">{pool.filter((p) => p.tags.includes(tagParam)).length} items</span>
           <button onClick={() => app.go('/explore')} className="ht-btn ht-btn--ghost ml-auto !py-1 !text-[11px]">
             clear
           </button>
@@ -202,7 +218,7 @@ function ExploreInner() {
       {/* board shape */}
       <section className="mt-5 rounded-[18px] border border-white/[.06] bg-white/[.017] p-4">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="ht-title text-[14px]">Board shape · temperature distribution</h2>
+          <h2 className="ht-title text-[14px]">Board shape</h2>
           <span className="ht-num text-[11px] text-ink-mute">{pool.length} items</span>
         </div>
         <div className="flex h-[54px] items-end gap-1">
@@ -216,7 +232,7 @@ function ExploreInner() {
                   animate={{ height: `${Math.max(2, h)}%` }}
                   transition={{ delay: i * 0.03, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
                   className="w-full rounded-t-[3px]"
-                  style={{ background: `linear-gradient(180deg, ${c.color}, rgba(255,92,10,.12))`, opacity: v ? 0.95 : 0.25 }}
+                  style={{ background: `linear-gradient(180deg, ${c.color}, rgba(0,229,160,.16))`, opacity: v ? 0.95 : 0.28 }}
                 />
                 <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/80 px-1.5 py-0.5 text-[9.5px] opacity-0 transition-opacity group-hover/bar:opacity-100">
                   {i * 8}–{i * 8 + 8}° · {v}
@@ -226,14 +242,14 @@ function ExploreInner() {
           })}
         </div>
         <p className="mt-2 text-[11.5px] text-ink-faint">
-          A long left tail is healthy: most writing is warm, a few things burn. A spike on the right means one post is eating the board.
+Most of the board sits in the middle. A tall bar at the right means one post is eating everything else.
         </p>
       </section>
 
       {/* tags */}
       {(which === 'all' || which === 'tags') && (
         <section className="mt-5">
-          <h2 className="ht-title mb-2.5 text-[15px]">Tags by heat</h2>
+          <h2 className="ht-title mb-2.5 text-[15px]">Tags</h2>
           <div className="grid gap-2 sm:grid-cols-2">
             {tagPool.slice(0, 12).map((x, i) => (
               <button
@@ -246,11 +262,8 @@ function ExploreInner() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14px] font-bold">#{x.tag}</span>
                   <span className="block text-[11.5px] text-ink-mute">
-                    {x.count} item{x.count === 1 ? '' : 's'} · +{x.momentum} momentum
+                    {x.count} item{x.count === 1 ? '' : 's'} on the board
                   </span>
-                </span>
-                <span className="ht-num text-[13px] font-bold" style={{ color: tempLabel(x.heat / Math.max(1, x.count)).color }}>
-                  {kelvin(x.heat / Math.max(1, x.count))}
                 </span>
                 <Sparkline values={[x.heat * 0.3, x.heat * 0.5, x.heat * 0.45, x.heat * 0.8, x.heat, x.heat + x.momentum]} w={40} h={14} fill={false} />
               </button>
@@ -262,7 +275,7 @@ function ExploreInner() {
       {/* people */}
       {(which === 'all' || which === 'people') && (
         <section className="mt-6">
-          <h2 className="ht-title mb-2.5 text-[15px]">High thermal mass</h2>
+          <h2 className="ht-title mb-2.5 text-[15px]">People worth following</h2>
           <div className="ht-panel divide-y divide-white/[.05]">
             {people.map((x) => {
               const u = getUser(x.handle);
@@ -274,10 +287,9 @@ function ExploreInner() {
                       {u.name} {u.verified && <span className="text-ember-400">✓</span>}
                     </button>
                     <span className="block truncate text-[12px] text-ink-mute">
-                      @{u.handle} · mass {u.thermalMass.toFixed(2)} · {compact(u.followers)} followers · {x.posts} item{x.posts === 1 ? '' : 's'} here
+                      @{u.handle} · {compact(u.followers)} followers · {x.posts} item{x.posts === 1 ? '' : 's'} here
                     </span>
                   </div>
-                  <span className="ht-num hidden text-[12px] text-ember-300 sm:block">{Math.round(x.heat)}°</span>
                   <button onClick={() => app.toggleFollow(u.handle)} className={cls('ht-btn !px-3 !py-1.5 !text-[12px]', app.follows.includes(u.handle) && '!border-ember-500/40 !text-ember-200')}>
                     {app.follows.includes(u.handle) ? 'Following' : 'Follow'}
                   </button>
@@ -297,7 +309,6 @@ function ExploreInner() {
         <div className="space-y-2">
           <AnimatePresence initial={false}>
             {results.map((p, i) => {
-              const t = tempLabel(p.cooled.temp);
               return (
                 <motion.button
                   key={p.id}
@@ -337,12 +348,7 @@ function ExploreInner() {
                       ))}
                     </span>
                   </span>
-                  <span className="shrink-0 text-right">
-                    <span className="ht-num block text-[15px] font-black" style={{ color: t.color }}>
-                      {kelvin(p.cooled.temp)}
-                    </span>
-                    <span className="block text-[10.5px] uppercase tracking-[0.1em] text-ink-faint">{t.label}</span>
-                  </span>
+                  <span className="shrink-0 text-[16px] text-ink-faint">→</span>
                 </motion.button>
               );
             })}

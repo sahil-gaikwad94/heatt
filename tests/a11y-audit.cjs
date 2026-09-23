@@ -47,6 +47,7 @@ function fail(msg) { failures++; console.log(`✗ ${msg}`); }
 function warn(msg) { warnings++; console.log(`· ${msg}`); }
 
 const issues = []; // { surface, type, el, msg }
+let visitedSurfaces = 0;
 
 function checkSurface(label) {
   // 1. Images without alt
@@ -161,6 +162,7 @@ async function visit(label, rel, opts = {}) {
   }
   if (opts.after) await opts.after();
   checkSurface(label);
+  visitedSurfaces++;
 }
 
 (async () => {
@@ -224,14 +226,16 @@ async function visit(label, rel, opts = {}) {
   await mount(React.createElement(ShellProviders, null, React.createElement(BootLayer, null, React.createElement('div', null, 'app'))));
   await flush(4);
   checkSurface('onboarding');
+  visitedSurfaces++;
 
   useStore.setState({ introSeen: false, onboarded: false });
   await mount(React.createElement(ShellProviders, null, React.createElement(BootLayer, null, React.createElement('div', null, 'app'))));
   await flush(6);
   checkSurface('intro');
+  visitedSurfaces++;
 
   // Report
-  console.log(`\nchecked ${new Set(issues.map(i => i.surface)).size} surfaces, found ${issues.length} potential issues\n`);
+  console.log(`\nchecked ${visitedSurfaces} surfaces, found ${issues.length} potential issues\n`);
 
   const byType = {};
   for (const iss of issues) {

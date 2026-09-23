@@ -39,7 +39,7 @@ export function ThreadSheet() {
     <Modal open={open} onClose={app.closePost} align="top" wide={false}>
       {post && (
         <div className="max-h-[86vh] overflow-y-auto overscroll-contain">
-          <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[.06] bg-[#0c0c0f]/88 px-4 py-3 backdrop-blur-xl">
+          <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[.06] bg-[#0a0a0a]/88 px-4 py-3 backdrop-blur-xl">
             <div className="flex items-center gap-2">
               <span className="ht-label">Thread</span>
               <span className="ht-num text-[12px] text-ink-mute">{replies.length + seedReplies.length} replies</span>

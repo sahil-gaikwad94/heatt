@@ -15,18 +15,31 @@ edge-friendly proxy routes for caching. No database in the demo; the store is sw
 
 ---
 
-## Why it looks like this ("dark tech")
+## Why it looks like this ("obsidian")
 
-Near-black charcoal panels (`#0A0A0B`, never pure black), restrained colour, sharp geometry,
-**luminescent gradients that read as heat**, and a WebGL ember field behind the app. Fire is not
-decoration here — temperature is the ranking model, so colour carries meaning:
+True-black rooms (`#000000`) holding frosted charcoal glass (`#121212` → `#1E1E1E`), pure white for
+primary text and silver (`#A0A0A0`) for everything secondary, and exactly **one** accent: electric
+emerald. Temperature is the ranking model, so colour is data — the ramp runs from electric cyan
+("cooled") through emerald ("alive") to incandescent ice ("read to the end"), and the accent is
+reserved for things that are actually happening: active states, ignition, live numbers. A glow
+always means something, which is what keeps a dark UI from looking cheap.
 
 | token | value | meaning |
 | --- | --- | --- |
-| `--ht-magma` | `#FF2D12` | ignition, level-3 heat |
-| `--ht-ember-300/500` | `#FF8A1F` / `#FF5C0A` | hot, active |
-| `--ht-flare` / `--ht-whitehot` | `#FFC94B` / `#FFF6DE` | peak, sparks |
-| `--ht-cryo-indigo/violet/teal` | `#5B4BFF` / `#8B5CF6` / `#2BE0C8` | cold, decayed, archived |
+| `--ht-void` / `--ht-base` | `#000000` / `#050505` | the room |
+| `--ht-panel` → `--ht-lift` | `#121212` → `#1E1E1E` | elevated surfaces, all frosted glass |
+| `--ht-ink` / `--ht-ink-dim` | `#FFFFFF` / `#A0A0A0` | primary / secondary text |
+| `--ht-ember` / `--ht-magma` | `#00E5A0` / `#7CFFD0` | active, ignition |
+| `--ht-flame` / `--ht-flare` | `#00C98C` / `#B8FFE3` | burning, peak |
+| `--ht-whitehot` | `#F2FFFA` | incandescent |
+| `--ht-cryo-teal` / `--ht-jade` | `#3DDCFF` / `#2EF2A6` | cooled, smouldering |
+| `--ht-cryo-indigo/violet` | `#7AA2FF` / `#B07CFF` | archived, decayed |
+| `--ht-paper` / `--ht-paper-soft` | `#0B0B0B` / `#101010` | the long-form reading sheet |
+
+One system, two depths: **the board is a black room, the page is an obsidian sheet** — forges and the
+reader lift their body onto `ht-paper` / `ht-prose--paper`, a charcoal panel with generous measure and
+silver secondary text, never a white page. The environment behind the app is `components/gl/Atmosphere`
+— two soft glows and a single ~52s drift, pure CSS, no canvas: motion is punctuation, not wallpaper.
 
 Type is fluid (`clamp()`), single-column at 65–75ch (`max-inline-size: 68ch`), with a display face
 (Bricolage Grotesque), a reading face (Newsreader), a UI face (Inter) and JetBrains Mono for data.
@@ -59,11 +72,16 @@ and — at ignition — the whole card catching fire for 2.4s.
 
 ## What's in the app
 
-- **Cinematic intro** (`components/intro/CinematicIntro.tsx`) — ~8.4s of real-time WebGL: the
-  thermal field ignites, the wordmark assembles out of embers, type-scale/measure/reading-mode
-  proofs flicker past. Skip is always one click or keypress away; it runs once (`introSeen`).
-- **Onboarding** (`components/onboarding/Onboarding.tsx`) — pick interests, set thermal mass,
-  choose reading defaults; seeds the first feed so nobody lands on an empty timeline.
+- **Cinematic intro** (`components/intro/CinematicIntro.tsx`) — ~4.4s parallax title sequence: two
+  plates pan against each other behind a soft depth-of-field while the type fades in rather than
+  slamming in, then the wordmark resolves and the room hands off. No canvas, no streak field.
+  Skip is always one click or keypress away; it runs once (`introSeen`), and collapses to the final
+  frame under `prefers-reduced-motion`.
+- **Onboarding** (`components/onboarding/Onboarding.tsx`) — a cinematic, **form-free** sequence:
+  three full-bleed scenes with a parallax camera pan (blurred plate behind, sharp plate in front,
+  both drifting against pointer/gyro), type that fades in word by word, and exactly one control —
+  a glass **swipe to start** slider. An identity is generated for you and stays editable from the
+  profile, so nobody lands on an empty timeline or a sign-up form.
 - **Feed** — ranked sparks + forges with inline covers, link previews, polls, "why am I seeing
   this?" transparency panel, digest cards, live syndication ticker, `j/k/h/l/↵` keyboard control.
 - **Reader** (`components/reader/Reader.tsx`) — a *route* (`/read/[id]`), not a redirect: reading
@@ -73,8 +91,12 @@ and — at ignition — the whole card catching fire for 2.4s.
   density, and paragraph-level heating.
 - **Explore** — search over posts/tags/authors with heat-ranked results, trending tags, tag/board
   histograms, source filters, top authors.
-- **Profile** — cover art, avatar, bio, links, thermal mass, tabs for sparks/forges/heated, and an
-  editable profile (`components/profile/ProfileEditor.tsx`).
+- **Profile** — centered identity: a large avatar ringed with floating gyro-drifting badges (streak,
+  thermal mass, temperature), plain stat rows, accent pill tags, then the body of work as a masonry
+  board. Editable in place (`components/profile/ProfileEditor.tsx`).
+- **Navigation** — a translucent glass pill bar on phones with the active icon lit in the accent, a
+  rail with live badges on desktop, and the right rail (board is burning / streak / syndication)
+  pushed to `xl`. Buttons answer a press with a short accent bloom; nothing animates for its own sake.
 - **Heat map** (`components/heat/Heatmap.tsx` + `/heatmap`) — GitHub-style annual grid, but scored
   on **thermal output** (heats given, ignitions, reads, writes). Collapsed square on the profile
   expands through a Framer Motion morph into the dashboard: day-level interrogation, 7-day
@@ -165,7 +187,7 @@ Together they found eight bugs no build step could:
 ```
 app/                     routes (landing, feed, explore, library, notifications, settings,
    (shell)/…             heatmap, u/[handle], read/[id]) + api/{feed,article,preview}
-components/gl/HeatField  WebGL thermal field (ambient + intro + cursor sparks)
+components/gl/          Atmosphere (CSS room tone) + HeatField (WebGL, intro-only legacy)
 components/heat/         HeatButton (hold-to-heat), FireOverlay (ignition), Heatmap
 components/cards/        PostCard, LinkPreview, PollBlock
 components/reader/       ArticleReader — the long-form surface

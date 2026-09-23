@@ -5,7 +5,7 @@
    Left: navigation rail with a heat indicator per destination.
    Right: a live "board is burning" rail — the ranker made visible, plus your
    streak and syndication status. On mobile the rail collapses to a tab bar
-   with a molten FAB and the right rail moves into /explore.
+   with a lime FAB and the right rail moves into /explore.
    ==========================================================================*/
 
 import * as React from 'react';
@@ -46,7 +46,7 @@ export function NavRail() {
   const app = useApp();
   const me = app.me;
   const unread = app.notifications.filter((n) => !n.read).length;
-  const heat = useStore((s) => Object.values(s.heat).reduce((a: number, h: any) => a + (h?.level ?? 0), 0));
+  const savedCount = useStore((s) => Object.keys(s.saved).length);
   const path = usePathnameSafe();
 
   return (
@@ -79,11 +79,11 @@ export function NavRail() {
       <div className="mt-auto hidden min-w-0 xl:block">
         <div className="rounded-[16px] border border-white/[.06] bg-white/[.02] p-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="ht-label !text-[9px]">session heat</span>
-            <span className="ht-num text-[11px] font-bold text-ember-300">{heat}</span>
+            <span className="ht-label !text-[9px]">your library</span>
+            <span className="ht-num text-[11px] font-bold text-ember-300">{savedCount}</span>
           </div>
           <div className="flex items-center gap-2 text-[11.5px] text-ink-mute">
-            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: app.live ? '#2BE0C8' : '#6E6A66', boxShadow: app.live ? '0 0 10px #2BE0C8' : undefined }} />
+            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: app.live ? '#3DDCFF' : '#6F6F6F', boxShadow: app.live ? '0 0 10px #3DDCFF' : undefined }} />
             {app.live ? 'wire: live' : 'wire: snapshot'}
           </div>
         </div>
@@ -119,14 +119,14 @@ function NavItem({ item, active, badge }: { item: (typeof NAV)[number]; active: 
         <motion.span
           layoutId="nav-active"
           className="absolute left-0 top-1/2 hidden h-[22px] w-[3px] -translate-y-1/2 rounded-r-full xl:block"
-          style={{ background: 'linear-gradient(180deg,var(--ht-flare),var(--ht-magma))', boxShadow: '0 0 14px rgba(255,92,10,.9)' }}
+          style={{ background: 'linear-gradient(180deg,var(--ht-flare),var(--ht-magma))', boxShadow: '0 0 14px rgba(0,229,160,.9)' }}
           transition={{ type: 'spring', stiffness: 420, damping: 32 }}
         />
       )}
       <span className="relative mx-auto xl:mx-0" style={{ color: active ? 'var(--ht-flame)' : 'var(--ht-ink-dim)' }}>
         {item.icon({ color: 'currentColor' })}
         {badge > 0 && (
-          <span className="ht-num absolute -right-2 -top-1.5 grid h-[15px] min-w-[15px] place-items-center rounded-full px-[3px] text-[9px] font-black text-[#170a03]" style={{ background: 'linear-gradient(120deg,var(--ht-flare),var(--ht-magma))' }}>
+          <span className="ht-num absolute -right-2 -top-1.5 grid h-[15px] min-w-[15px] place-items-center rounded-full px-[3px] text-[9px] font-black text-[#04140E]" style={{ background: 'linear-gradient(120deg,var(--ht-flare),var(--ht-magma))' }}>
             {badge > 9 ? '9+' : badge}
           </span>
         )}
@@ -152,16 +152,16 @@ export function RightRail() {
       .map(getUser);
   }, [app.posts, app.follows, app.me]);
 
-  const today = s.activity[new Date().toISOString().slice(0, 10)];
-
   return (
-    <aside className="sticky top-0 hidden h-[100dvh] w-[330px] shrink-0 overflow-y-auto overscroll-contain border-l border-white/[.05] px-5 py-5 backdrop-blur-sm xl:block ht-no-scrollbar">
+    <aside className="ht-no-scrollbar sticky top-0 hidden h-[100dvh] w-[330px] shrink-0 overflow-y-auto overscroll-contain border-l border-white/[.05] px-5 py-5 backdrop-blur-sm xl:block">
       <section className="ht-panel p-4">
         <header className="mb-3 flex items-center justify-between">
-          <h2 className="ht-title text-[15px] text-ink">The board is burning</h2>
-          <span className="ht-chip !border-transparent !bg-ember-500/12 !text-[9px] !text-ember-200">heat diffusion</span>
+          <h2 className="ht-title text-[15px] text-ink">Trending now</h2>
+          <button onClick={() => app.setMode('top')} className="ht-chip !text-[9px]">
+            see all
+          </button>
         </header>
-        <ol className="space-y-2.5">
+        <ol className="space-y-3">
           {board.map((p, i) => (
             <li key={p.id}>
               <button onClick={() => app.openPost(p.id)} className="group/row flex w-full items-start gap-2.5 text-left">
@@ -170,14 +170,10 @@ export function RightRail() {
                   <span className="line-clamp-2 text-[13px] font-semibold leading-snug text-ink-dim transition-colors group-hover/row:text-ink">
                     {p.title ?? p.text?.slice(0, 90)}
                   </span>
-                  <span className="mt-1 flex items-center gap-2">
-                    <span className="text-[11px] text-ink-mute">@{p.authorHandle}</span>
-                    <span className="ht-num text-[10.5px] font-bold" style={{ color: `hsl(${8 + (p.heat?.heat ?? 0) * 0.4} 100% ${52 + (p.heat?.heat ?? 0) * 0.16}%)` }}>
-                      {Math.round(p.heat?.temp ?? 0)}°
-                    </span>
-                    <span className="flex-1 opacity-70">
-                      <WaveBars values={waveformFor(p, s)} h={9} />
-                    </span>
+                  <span className="mt-1 flex items-center gap-2 text-[11px] text-ink-mute">
+                    <span>@{p.authorHandle}</span>
+                    <span aria-hidden>·</span>
+                    <span>{compact(app.countOf(p))} likes</span>
                   </span>
                 </span>
               </button>
@@ -189,31 +185,26 @@ export function RightRail() {
       <section className="ht-panel mt-4 p-4">
         <header className="mb-3 flex items-center justify-between">
           <h2 className="ht-title text-[15px]">Your streak</h2>
-          <span className="ht-num text-[11px] text-ink-mute">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+          <span className="text-[11px] text-ink-mute">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
         </header>
         <div className="flex items-end gap-3">
-          <span className="ht-title ht-heat-text text-[38px] leading-none">{app.streak.current}</span>
+          <span className="ht-title text-[34px] leading-none text-white">{app.streak.current}</span>
           <span className="pb-1 text-[12px] text-ink-mute">
-            days lit
+            days in a row
             <br />
             <span className="text-ink-faint">best {app.streak.longest}</span>
           </span>
           <span className="flex-1" />
           <MiniGrid activity={s.activity} />
         </div>
-        <p className="mt-3 text-[12px] leading-relaxed text-ink-mute">
-          {today
-            ? `Today: ${today.reads} read${today.reads === 1 ? '' : 's'}, ${today.heats} heats, ${today.ignites} ignition${today.ignites === 1 ? '' : 's'}, ${today.posts} post${today.posts === 1 ? '' : 's'}.`
-            : 'Nothing logged today. One heat is enough to keep the grid lit.'}
-        </p>
         <Link href="/heatmap" className="ht-btn mt-3 w-full !py-2 !text-[12.5px]">
-          Open heat dashboard →
+          Open activity →
         </Link>
       </section>
 
       {suggested.length > 0 && (
         <section className="ht-panel mt-4 p-4">
-          <h2 className="ht-title mb-3 text-[15px]">High thermal mass</h2>
+          <h2 className="ht-title mb-3 text-[15px]">Worth following</h2>
           <div className="space-y-3">
             {suggested.map((u) => (
               <div key={u.handle} className="flex items-center gap-2.5">
@@ -224,7 +215,7 @@ export function RightRail() {
                   <Link href={`/u/${u.handle}`} className="block truncate text-[13px] font-bold hover:underline">
                     {u.name}
                   </Link>
-                  <span className="block truncate text-[11.5px] text-ink-mute">mass {u.thermalMass.toFixed(2)} · {compact(u.followers)}</span>
+                  <span className="block truncate text-[11.5px] text-ink-mute">{compact(u.followers)} followers</span>
                 </div>
                 <button onClick={() => app.toggleFollow(u.handle)} className={cls('ht-btn !px-3 !py-1.5 !text-[11.5px]', app.follows.includes(u.handle) && '!border-ember-500/40 !text-ember-200')}>
                   {app.follows.includes(u.handle) ? 'Following' : 'Follow'}
@@ -237,13 +228,13 @@ export function RightRail() {
 
       <section className="mt-4 rounded-[18px] border border-white/[.06] p-3.5 text-[11.5px] leading-relaxed text-ink-faint">
         <div className="mb-1.5 flex items-center gap-2">
-          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: app.live ? '#2BE0C8' : '#FF8A1F' }} />
+          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: app.live ? '#3DDCFF' : '#00E5A0' }} />
           <span className="ht-label !text-[9px]">syndication</span>
         </div>
         {app.live ? (
-          <>Wire is live: free public long-form from the Forem API, refreshed with stale-while-revalidate. Bodies render natively — no redirects.</>
+          <>Live wire: free public long-form from the Forem API, refreshed at the edge. Bodies render natively — no redirects.</>
         ) : (
-          <>Wire unreachable from here, so the bundled library is serving the board. Everything still reads in-app, fully formatted.</>
+          <>Wire unreachable from here, so the bundled library is serving the board. Everything still reads in-app.</>
         )}
         <div className="mt-2 flex items-center justify-between">
           <span>{app.wire.length} syndicated · {app.posts.length} total</span>
@@ -275,8 +266,8 @@ export function MiniGrid({ activity, days = 35 }: { activity: Record<string, any
           key={c.key}
           className="h-[7px] w-[7px] rounded-[2px]"
           style={{
-            background: c.v > 0 ? `hsl(${18 - c.v * 12} 100% ${28 + c.v * 42}%)` : 'rgba(255,255,255,.055)',
-            boxShadow: c.v > 0.55 ? `0 0 8px hsl(14 100% 52% / ${c.v * 0.8})` : undefined,
+            background: c.v > 0 ? `hsl(${168 - c.v * 96} 88% ${30 + c.v * 38}%)` : 'rgba(255,255,255,.055)',
+            boxShadow: c.v > 0.55 ? `0 0 8px hsl(72 92% 62% / ${c.v * 0.7})` : undefined,
           }}
         />
       ))}
@@ -290,39 +281,47 @@ export function MobileTabs() {
   const app = useApp();
   const path = usePathnameSafe();
   const me = app.me;
-  const items: { key: NavKey; href: string; label: string }[] = [
-    { key: 'feed', href: '/feed', label: 'Feed' },
-    { key: 'explore', href: '/explore', label: 'Explore' },
-    { key: 'notifications', href: '/notifications', label: 'Heat' },
-    { key: 'library', href: '/library', label: 'Library' },
-    { key: 'profile', href: `/u/${me?.handle ?? 'you'}`, label: 'You' },
+  const items: { key: NavKey; href: string; label: string; icon: string }[] = [
+    { key: 'feed', href: '/feed', label: 'Feed', icon: 'M4 11 12 4l8 7M6 10v9h12v-9' },
+    { key: 'explore', href: '/explore', label: 'Explore', icon: 'M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16ZM20 20l-4.2-4.2' },
+    { key: 'notifications', href: '/notifications', label: 'Heat', icon: 'M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7M10.3 20a2 2 0 0 0 3.4 0' },
+    { key: 'library', href: '/library', label: 'Saved', icon: 'M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-3.8L5.5 20.5v-16a1 1 0 0 1 1-1Z' },
+    { key: 'profile', href: `/u/${me?.handle ?? 'you'}`, label: 'You', icon: 'M12 12a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4ZM4.2 20.4a7.8 7.8 0 0 1 15.6 0' },
   ];
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t border-white/[.07] bg-[#08080a]/88 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl md:hidden">
+      <nav className="ht-glass fixed inset-x-0 bottom-0 z-50 mx-auto mb-[max(10px,env(safe-area-inset-bottom))] flex w-[min(93vw,420px)] items-center justify-between gap-1 !rounded-full px-2 py-1.5 md:hidden">
         {items.map((it) => {
           const active = it.key === 'profile' ? path.startsWith('/u/') : path === it.href;
           return (
             <Link
               key={it.key}
               href={it.href}
-              className={cls('relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.1em] transition-colors', active ? 'text-ember-300' : 'text-ink-mute')}
+              aria-label={it.label}
+              className={cls('relative grid h-11 w-11 place-items-center rounded-full transition-colors', active ? 'text-[#04140E]' : 'text-ink-mute hover:text-ink')}
             >
               {active && (
-                <motion.span layoutId="mtab" className="absolute -top-px h-[2px] w-10 rounded-full" style={{ background: 'linear-gradient(90deg,var(--ht-magma),var(--ht-flare))', boxShadow: '0 0 12px rgba(255,92,10,.9)' }} />
+                <motion.span
+                  layoutId="mtab"
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: 'var(--ht-ember)', boxShadow: '0 10px 26px -10px rgba(0,229,160,.85)' }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                />
               )}
+              <span className="relative">
+                <Icon d={it.icon} color="currentColor" />
+              </span>
               {it.key === 'notifications' && app.notifications.some((n) => !n.read) && (
-                <span className="absolute right-[22%] top-1.5 h-1.5 w-1.5 rounded-full bg-cryo-teal shadow-[0_0_8px_#2BE0C8]" />
+                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-cryo-teal" />
               )}
-              {it.label}
             </Link>
           );
         })}
       </nav>
       <button
         onClick={() => app.setComposer(true)}
-        className="fixed bottom-[86px] right-4 z-50 grid h-[54px] w-[54px] place-items-center rounded-full text-[#170a03] md:hidden"
-        style={{ background: 'linear-gradient(140deg,var(--ht-flare),var(--ht-ember) 45%,var(--ht-magma))', boxShadow: '0 16px 44px -12px rgba(255,92,10,.85)' }}
+        className="fixed bottom-[92px] right-4 z-50 grid h-[52px] w-[52px] place-items-center rounded-full text-[#04140E] md:hidden"
+        style={{ background: 'var(--ht-ember)', boxShadow: '0 16px 40px -14px rgba(0,229,160,.8)' }}
         aria-label="Compose"
       >
         <ForgeGlyph />
@@ -343,7 +342,7 @@ export function TopBar({ title, sub, right }: { title?: string; sub?: string; ri
     <div
       className={cls(
         'sticky top-0 z-40 -mx-4 mb-3 border-b px-4 backdrop-blur-xl transition-all sm:-mx-6 sm:px-6',
-        scrolled ? 'border-white/[.07] bg-[#08080a]/80' : 'border-transparent'
+        scrolled ? 'border-white/[.07] bg-[#050505]/80' : 'border-transparent'
       )}
       style={{ paddingTop: 'max(10px, env(safe-area-inset-top))' }}
     >
@@ -368,15 +367,45 @@ export function TopBar({ title, sub, right }: { title?: string; sub?: string; ri
   );
 }
 
+export function GreetingBar() {
+  const app = useApp();
+  const me = app.me;
+  const hour = new Date().getHours();
+  const part = hour < 5 ? 'Still up' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const name = (me?.name ?? 'forger').split(' ')[0];
+  return (
+    <header className="flex items-center gap-3 px-1 pb-4 pt-3">
+      <Link href={me ? `/u/${me.handle}` : '/settings'} aria-label="Your profile">
+        <Avatar name={me?.name ?? 'Guest'} handle={me?.handle ?? 'guest'} src={me?.avatar} size={44} />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[12.5px] text-ink-mute">{part}</p>
+        <h1 className="ht-title truncate text-[22px] leading-tight text-ink">
+          Hi, {name} <span aria-hidden>👋</span>
+        </h1>
+      </div>
+      <button onClick={() => app.setComposer(true)} className="ht-btn ht-btn--heat !px-4 !py-2 !text-[13px]" aria-label="Compose">
+        Compose
+      </button>
+      <button onClick={() => app.setPalette(true)} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/[.09] text-ink-dim transition-colors hover:text-ink" aria-label="Search and commands">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-4.2-4.2" strokeLinecap="round" />
+        </svg>
+      </button>
+    </header>
+  );
+}
+
 export function Logo() {
   return (
     <span className="relative grid h-[30px] w-[30px] shrink-0 place-items-center">
       <svg viewBox="0 0 32 32" className="h-full w-full" aria-label="heatt">
         <defs>
           <linearGradient id="htlogo" x1="0" y1="1" x2="0.7" y2="0">
-            <stop offset="0" stopColor="#FF2D12" />
-            <stop offset="0.5" stopColor="#FF8A1F" />
-            <stop offset="1" stopColor="#FFF6DE" />
+            <stop offset="0" stopColor="#00C98C" />
+            <stop offset="0.5" stopColor="#00E5A0" />
+            <stop offset="1" stopColor="#F2FFFA" />
           </linearGradient>
         </defs>
         <path
@@ -385,7 +414,7 @@ export function Logo() {
           fill="url(#htlogo)"
         />
       </svg>
-      <span aria-hidden className="absolute inset-0 -z-10 rounded-full blur-lg" style={{ background: 'radial-gradient(circle,rgba(255,92,10,.55),transparent 70%)' }} />
+      <span aria-hidden className="absolute inset-0 -z-10 rounded-full blur-lg" style={{ background: 'radial-gradient(circle,rgba(0,229,160,.55),transparent 70%)' }} />
     </span>
   );
 }
@@ -400,39 +429,47 @@ function ForgeGlyph() {
 
 export function FeedTabs() {
   const app = useApp();
-  const tabs: { key: any; label: string }[] = [
-    { key: 'for-you', label: 'For you' },
+  const tabs: { key: string; label: string; badge?: string }[] = [
+    { key: 'for-you', label: 'All' },
+    { key: 'forges', label: 'Long-form' },
     { key: 'sparks', label: 'Sparks' },
-    { key: 'forges', label: 'Forges' },
     { key: 'following', label: 'Following' },
-    { key: 'library', label: 'Library' },
+    { key: 'library', label: 'Saved' },
   ];
-  const modes: { key: any; label: string }[] = [
-    { key: 'heat', label: 'Heat' },
-    { key: 'new', label: 'New' },
-    { key: 'top', label: 'Top' },
-    { key: 'contested', label: 'Contested' },
+  const modes: { key: string; label: string }[] = [
+    { key: 'heat', label: 'For you' },
+    { key: 'new', label: 'Fresh' },
+    { key: 'top', label: 'Popular' },
+    { key: 'contested', label: 'Discussed' },
   ];
   return (
-    <div className="sticky top-[52px] z-30 -mx-4 mb-4 border-b border-white/[.06] bg-[#08080a]/72 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6">
-      <div className="flex items-center gap-1 overflow-x-auto ht-no-scrollbar">
-        {tabs.map((t) => {
-          const active = app.tab === t.key;
-          return (
-            <button key={t.key} onClick={() => app.setTab(t.key)} className={cls('relative shrink-0 px-3 py-2.5 text-[13.5px] font-bold tracking-[-0.01em] transition-colors', active ? 'text-ink' : 'text-ink-mute hover:text-ink-dim')}>
-              {t.label}
-              {active && <motion.span layoutId="feedtab" className="absolute inset-x-2 -bottom-px h-[2px] rounded-full" style={{ background: 'linear-gradient(90deg,var(--ht-magma),var(--ht-flare))', boxShadow: '0 0 12px rgba(255,92,10,.85)' }} />}
-            </button>
-          );
-        })}
-        <span className="flex-1" />
-        <div className="hidden shrink-0 items-center gap-1 pr-1 sm:flex">
-          {modes.map((m) => (
-            <button key={m.key} onClick={() => app.setMode(m.key)} className={cls('ht-chip !normal-case !tracking-normal !text-[10.5px]', app.mode === m.key && '!border-ember-500/50 !bg-ember-500/10 !text-ember-200')}>
-              {m.label}
-            </button>
-          ))}
-        </div>
+    <div className="-mx-4 mb-4 flex items-center gap-2 overflow-x-auto px-4 ht-no-scrollbar sm:-mx-6 sm:px-6">
+      {tabs.map((t) => {
+        const active = app.tab === t.key;
+        return (
+          <button
+            key={t.key}
+            onClick={() => app.setTab(t.key)}
+            className={cls(
+              'shrink-0 rounded-full border px-4 py-2 text-[13.5px] font-semibold transition-colors',
+              active ? 'border-transparent bg-[var(--ht-ember)] text-[#04140E]' : 'border-white/[.09] text-ink-dim hover:border-white/20 hover:text-ink'
+            )}
+          >
+            {t.label}
+          </button>
+        );
+      })}
+      <span className="flex-1" />
+      <div className="hidden shrink-0 items-center gap-1 pr-1 sm:flex">
+        {modes.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => app.setMode(m.key as never)}
+            className={cls('shrink-0 rounded-full px-3 py-1.5 text-[11.5px] font-semibold transition-colors', app.mode === m.key ? 'bg-white/[.09] text-ink' : 'text-ink-mute hover:text-ink-dim')}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
     </div>
   );

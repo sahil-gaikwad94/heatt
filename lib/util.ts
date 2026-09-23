@@ -67,18 +67,19 @@ export function initialsOf(name: string): string {
  */
 export function avatarDataUri(name: string, handle = name): string {
   const h = hash(handle);
-  const a = (h % 360) - 20;
+  const a = 150 + (h % 76); // emerald → cyan
   const b = ((h >> 8) % 60) + 20;
   const c = ((h >> 16) % 90) + 12;
-  const bg = `hsl(${a < 0 ? 350 : 18 + (a % 22)} 88% ${9 + (h % 5)}%)`;
-  const g1 = `hsl(${18 + (h % 26)} 100% ${52 + (h % 12)}%)`;
-  const g2 = `hsl(${6 + (b % 16)} 96% ${44 + (c % 10)}%)`;
+  const hue = (h >> 4) % 13 === 0 ? 232 + (h % 22) : a; // rare indigo for contrast
+  const bg = `hsl(${hue} 55% ${4 + (h % 4)}%)`;
+  const g1 = `hsl(${hue + 12} 94% ${52 + (h % 12)}%)`;
+  const g2 = `hsl(${hue - 18} 90% ${42 + (c % 10)}%)`;
   const rot = (h >> 5) % 360;
   const initials = initialsOf(name);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
 <defs>
 <linearGradient id="g" gradientTransform="rotate(${rot} .5 .5)">
-<stop offset="0" stop-color="${g1}"/><stop offset=".55" stop-color="${g2}"/><stop offset="1" stop-color="#120a06"/>
+<stop offset="0" stop-color="${g1}"/><stop offset=".55" stop-color="${g2}"/><stop offset="1" stop-color="#04140E"/>
 </linearGradient>
 <radialGradient id="r" cx=".5" cy=".15" r=".9">
 <stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
@@ -91,7 +92,7 @@ export function avatarDataUri(name: string, handle = name): string {
 <rect width="160" height="160" fill="url(#r)"/>
 <text x="80" y="80" text-anchor="middle" dominant-baseline="central"
  font-family="Inter,system-ui,sans-serif" font-size="62" font-weight="700"
- letter-spacing="-3" fill="#0a0705" opacity=".92">${initials}</text>
+ letter-spacing="-3" fill="#04140E" opacity=".92">${initials}</text>
 <text x="80" y="80" text-anchor="middle" dominant-baseline="central"
  font-family="Inter,system-ui,sans-serif" font-size="62" font-weight="700"
  letter-spacing="-3" fill="#fff" opacity=".16" transform="translate(0 -2)">${initials}</text>
@@ -106,15 +107,15 @@ export function coverDataUri(seed: string): string {
     const x = (hash(`${seed}x${i}`) % 1000) / 10;
     const y = (hash(`${seed}y${i}`) % 1000) / 10;
     const r = 24 + ((hash(`${seed}r${i}`) % 400) / 10);
-    const hue = 4 + ((h >> i) % 34);
+    const hue = 146 + ((h >> i) % 66);
     return `<circle cx="${x}%" cy="${y}%" r="${r}%" fill="hsl(${hue} 100% ${18 + (i * 7) % 34}%)" opacity=".8"/>`;
   }).join('');
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
 <defs><filter id="bl"><feGaussianBlur stdDeviation="70"/></filter>
 <linearGradient id="v" x1="0" x2="0" y1="0" y2="1">
-<stop offset="0" stop-color="#0a0a0b" stop-opacity=".1"/><stop offset="1" stop-color="#060607" stop-opacity=".95"/>
+<stop offset="0" stop-color="#050505" stop-opacity=".1"/><stop offset="1" stop-color="#000000" stop-opacity=".95"/>
 </linearGradient></defs>
-<rect width="1200" height="400" fill="#0b0b0d"/>
+<rect width="1200" height="400" fill="#0a0a0a"/>
 <g filter="url(#bl)">${blobs}</g>
 <rect width="1200" height="400" fill="url(#v)"/>
 </svg>`;

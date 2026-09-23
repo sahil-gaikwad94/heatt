@@ -402,6 +402,7 @@ export function dailyDigest(posts: Post[], s: State) {
           temp: Math.round(hottest.h.temp),
           author: hottest.p.authorName,
           kind: hottest.p.kind,
+          minutes: hottest.p.minutes,
         }
       : undefined,
     cooling: cooling.map((c) => ({ id: c.p.id, title: c.p.title ?? c.p.text?.slice(0, 40) ?? '' })),
