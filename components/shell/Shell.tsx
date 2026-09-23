@@ -5,7 +5,7 @@
    Left: navigation rail with a heat indicator per destination.
    Right: a live "board is burning" rail — the ranker made visible, plus your
    streak and syndication status. On mobile the rail collapses to a tab bar
-   with a lime FAB and the right rail moves into /explore.
+   with an amber FAB and the right rail moves into /explore.
    ==========================================================================*/
 
 import * as React from 'react';
@@ -83,7 +83,7 @@ export function NavRail() {
             <span className="ht-num text-[11px] font-bold text-ember-300">{savedCount}</span>
           </div>
           <div className="flex items-center gap-2 text-[11.5px] text-ink-mute">
-            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: app.live ? '#3DDCFF' : '#6F6F6F', boxShadow: app.live ? '0 0 10px #3DDCFF' : undefined }} />
+            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: app.live ? '#63D8F5' : '#6F6F6F', boxShadow: app.live ? '0 0 10px #63D8F5' : undefined }} />
             {app.live ? 'wire: live' : 'wire: snapshot'}
           </div>
         </div>
@@ -116,17 +116,28 @@ function NavItem({ item, active, badge }: { item: (typeof NAV)[number]; active: 
       title={`${item.label} · ${item.hint}`}
     >
       {active && (
-        <motion.span
-          layoutId="nav-active"
-          className="absolute left-0 top-1/2 hidden h-[22px] w-[3px] -translate-y-1/2 rounded-r-full xl:block"
-          style={{ background: 'linear-gradient(180deg,var(--ht-flare),var(--ht-magma))', boxShadow: '0 0 14px rgba(0,229,160,.9)' }}
-          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-        />
+        <>
+          <motion.span
+            layoutId="nav-active"
+            className="absolute inset-0 rounded-[14px]"
+            style={{
+              background: 'linear-gradient(90deg, rgba(255,180,84,.13), rgba(255,180,84,.03) 70%, transparent)',
+              boxShadow: '0 1px 0 rgba(255,255,255,.05) inset',
+            }}
+            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+          />
+          <motion.span
+            layoutId="nav-active-bar"
+            className="absolute left-0 top-1/2 h-[22px] w-[3px] -translate-y-1/2 rounded-r-full"
+            style={{ background: 'linear-gradient(180deg,var(--ht-flare),var(--ht-ember))', boxShadow: '0 0 14px rgba(255,180,84,.9)' }}
+            transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+          />
+        </>
       )}
-      <span className="relative mx-auto xl:mx-0" style={{ color: active ? 'var(--ht-flame)' : 'var(--ht-ink-dim)' }}>
+      <span className="relative mx-auto xl:mx-0" style={{ color: active ? 'var(--ht-ember-300)' : 'var(--ht-ink-dim)' }}>
         {item.icon({ color: 'currentColor' })}
         {badge > 0 && (
-          <span className="ht-num absolute -right-2 -top-1.5 grid h-[15px] min-w-[15px] place-items-center rounded-full px-[3px] text-[9px] font-black text-[#04140E]" style={{ background: 'linear-gradient(120deg,var(--ht-flare),var(--ht-magma))' }}>
+          <span className="ht-num absolute -right-2 -top-1.5 grid h-[15px] min-w-[15px] place-items-center rounded-full px-[3px] text-[9px] font-black text-[#1A0E02]" style={{ background: 'linear-gradient(120deg,var(--ht-flare),var(--ht-magma))' }}>
             {badge > 9 ? '9+' : badge}
           </span>
         )}
@@ -228,7 +239,7 @@ export function RightRail() {
 
       <section className="mt-4 rounded-[18px] border border-white/[.06] p-3.5 text-[11.5px] leading-relaxed text-ink-faint">
         <div className="mb-1.5 flex items-center gap-2">
-          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: app.live ? '#3DDCFF' : '#00E5A0' }} />
+          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: app.live ? '#63D8F5' : '#FFB454' }} />
           <span className="ht-label !text-[9px]">syndication</span>
         </div>
         {app.live ? (
@@ -266,8 +277,11 @@ export function MiniGrid({ activity, days = 35 }: { activity: Record<string, any
           key={c.key}
           className="h-[7px] w-[7px] rounded-[2px]"
           style={{
-            background: c.v > 0 ? `hsl(${168 - c.v * 96} 88% ${30 + c.v * 38}%)` : 'rgba(255,255,255,.055)',
-            boxShadow: c.v > 0.55 ? `0 0 8px hsl(72 92% 62% / ${c.v * 0.7})` : undefined,
+            background:
+              c.v > 0
+                ? `hsl(${Math.round(196 - c.v * 158)} 92% ${28 + c.v * 42}%)`
+                : 'rgba(255,255,255,.055)',
+            boxShadow: c.v > 0.55 ? `0 0 9px hsl(38 92% 62% / ${c.v * 0.75})` : undefined,
           }}
         />
       ))}
@@ -290,7 +304,7 @@ export function MobileTabs() {
   ];
   return (
     <>
-      <nav className="ht-glass fixed inset-x-0 bottom-0 z-50 mx-auto mb-[max(10px,env(safe-area-inset-bottom))] flex w-[min(93vw,420px)] items-center justify-between gap-1 !rounded-full px-2 py-1.5 md:hidden">
+      <nav className="ht-dock fixed inset-x-0 bottom-0 z-50 mx-auto mb-[max(12px,env(safe-area-inset-bottom))] flex w-[min(93vw,430px)] items-center justify-between gap-0.5 px-2 py-1.5 md:hidden">
         {items.map((it) => {
           const active = it.key === 'profile' ? path.startsWith('/u/') : path === it.href;
           return (
@@ -298,13 +312,13 @@ export function MobileTabs() {
               key={it.key}
               href={it.href}
               aria-label={it.label}
-              className={cls('relative grid h-11 w-11 place-items-center rounded-full transition-colors', active ? 'text-[#04140E]' : 'text-ink-mute hover:text-ink')}
+              data-active={active || undefined}
+              className="ht-dock-item"
             >
               {active && (
                 <motion.span
                   layoutId="mtab"
-                  className="absolute inset-0 rounded-full"
-                  style={{ background: 'var(--ht-ember)', boxShadow: '0 10px 26px -10px rgba(0,229,160,.85)' }}
+                  className="ht-dock-active"
                   transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                 />
               )}
@@ -320,8 +334,11 @@ export function MobileTabs() {
       </nav>
       <button
         onClick={() => app.setComposer(true)}
-        className="fixed bottom-[92px] right-4 z-50 grid h-[52px] w-[52px] place-items-center rounded-full text-[#04140E] md:hidden"
-        style={{ background: 'var(--ht-ember)', boxShadow: '0 16px 40px -14px rgba(0,229,160,.8)' }}
+        className="fixed bottom-[96px] right-4 z-50 grid h-[54px] w-[54px] place-items-center rounded-full text-[#1A0E02] transition-transform active:scale-95 md:hidden"
+        style={{
+          background: 'linear-gradient(135deg,var(--ht-ember),var(--ht-flare))',
+          boxShadow: '0 16px 40px -14px rgba(255,180,84,.85), 0 1px 0 rgba(255,255,255,.5) inset',
+        }}
         aria-label="Compose"
       >
         <ForgeGlyph />
@@ -381,7 +398,7 @@ export function GreetingBar() {
       <div className="min-w-0 flex-1">
         <p className="truncate text-[12.5px] text-ink-mute">{part}</p>
         <h1 className="ht-title truncate text-[22px] leading-tight text-ink">
-          Hi, {name} <span aria-hidden>👋</span>
+          Hi, <span className="ht-heat-text">{name}</span>
         </h1>
       </div>
       <button onClick={() => app.setComposer(true)} className="ht-btn ht-btn--heat !px-4 !py-2 !text-[13px]" aria-label="Compose">
@@ -403,9 +420,9 @@ export function Logo() {
       <svg viewBox="0 0 32 32" className="h-full w-full" aria-label="heatt">
         <defs>
           <linearGradient id="htlogo" x1="0" y1="1" x2="0.7" y2="0">
-            <stop offset="0" stopColor="#00C98C" />
-            <stop offset="0.5" stopColor="#00E5A0" />
-            <stop offset="1" stopColor="#F2FFFA" />
+            <stop offset="0" stopColor="#F59A2B" />
+            <stop offset="0.5" stopColor="#FFB454" />
+            <stop offset="1" stopColor="#FFF6E8" />
           </linearGradient>
         </defs>
         <path
@@ -414,7 +431,7 @@ export function Logo() {
           fill="url(#htlogo)"
         />
       </svg>
-      <span aria-hidden className="absolute inset-0 -z-10 rounded-full blur-lg" style={{ background: 'radial-gradient(circle,rgba(0,229,160,.55),transparent 70%)' }} />
+      <span aria-hidden className="absolute inset-0 -z-10 rounded-full blur-lg" style={{ background: 'radial-gradient(circle,rgba(255,180,84,.55),transparent 70%)' }} />
     </span>
   );
 }
@@ -450,10 +467,9 @@ export function FeedTabs() {
           <button
             key={t.key}
             onClick={() => app.setTab(t.key)}
-            className={cls(
-              'shrink-0 rounded-full border px-4 py-2 text-[13.5px] font-semibold transition-colors',
-              active ? 'border-transparent bg-[var(--ht-ember)] text-[#04140E]' : 'border-white/[.09] text-ink-dim hover:border-white/20 hover:text-ink'
-            )}
+            aria-selected={active}
+            role="tab"
+            className="ht-tab !px-4 !py-2 !text-[13.5px]"
           >
             {t.label}
           </button>

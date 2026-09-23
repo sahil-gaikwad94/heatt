@@ -79,7 +79,7 @@ export function LinkPreview({ url, seed }: { url: string; seed?: SeedLink }) {
       ) : (
         <div
           className="relative flex aspect-[16/6] w-full items-end p-3"
-          style={{ background: 'radial-gradient(80% 120% at 10% 110%, rgba(0,229,160,.16), transparent 62%), linear-gradient(140deg,#151a15,#0b0e0b)' }}
+          style={{ background: 'radial-gradient(80% 120% at 10% 110%, rgba(255,180,84,.16), transparent 62%), linear-gradient(140deg,#151a15,#0b0e0b)' }}
         >
           {state === 'loading' && (
             <motion.span

@@ -160,22 +160,23 @@ function ExploreInner() {
           <span className="ht-label hidden !text-[9px] sm:block">↵ open</span>
         </div>
 
-        <div className="mt-2.5 flex items-center gap-1.5">
-          {(['all', 'forges', 'sparks', 'people', 'tags'] as const).map((w) => {
-            const active = which === w;
-            return (
-              <button
-                key={w}
-                onClick={() => setWhich(w)}
-                className={cls(
-                  'shrink-0 rounded-full border px-3.5 py-2 text-[13px] font-semibold capitalize transition-colors',
-                  active ? 'border-transparent bg-[var(--ht-ember)] text-[#04140E]' : 'border-white/[.09] text-ink-dim hover:border-white/25 hover:text-ink'
-                )}
-              >
-                {w === 'all' ? 'All' : w}
-              </button>
-            );
-          })}
+        <div className="mt-3 flex items-center gap-1.5">
+          <div className="ht-tabrail -ml-2 max-w-full" role="tablist" aria-label="What to search">
+            {(['all', 'forges', 'sparks', 'people', 'tags'] as const).map((w) => {
+              const active = which === w;
+              return (
+                <button
+                  key={w}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setWhich(w)}
+                  className="ht-tab !px-3.5 !py-2 !text-[13px] capitalize"
+                >
+                  {w === 'all' ? 'All' : w}
+                </button>
+              );
+            })}
+          </div>
           <span className="flex-1" />
           {RANGES.map((r) => (
             <button
@@ -216,9 +217,9 @@ function ExploreInner() {
       )}
 
       {/* board shape */}
-      <section className="mt-5 rounded-[18px] border border-white/[.06] bg-white/[.017] p-4">
+      <section className="mt-5 rounded-[20px] border border-white/[.07] bg-white/[.02] p-4">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="ht-title text-[14px]">Board shape</h2>
+          <h2 className="ht-title text-[15px]">Board shape</h2>
           <span className="ht-num text-[11px] text-ink-mute">{pool.length} items</span>
         </div>
         <div className="flex h-[54px] items-end gap-1">
@@ -232,7 +233,7 @@ function ExploreInner() {
                   animate={{ height: `${Math.max(2, h)}%` }}
                   transition={{ delay: i * 0.03, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
                   className="w-full rounded-t-[3px]"
-                  style={{ background: `linear-gradient(180deg, ${c.color}, rgba(0,229,160,.16))`, opacity: v ? 0.95 : 0.28 }}
+                  style={{ background: `linear-gradient(180deg, ${c.color}, rgba(255,180,84,.16))`, opacity: v ? 0.95 : 0.28 }}
                 />
                 <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/80 px-1.5 py-0.5 text-[9.5px] opacity-0 transition-opacity group-hover/bar:opacity-100">
                   {i * 8}–{i * 8 + 8}° · {v}

@@ -135,7 +135,7 @@ export function Composer() {
               <button
                 key={k}
                 onClick={() => setKind(k)}
-                className={cls('rounded-full px-3 py-1 text-[12px] font-bold capitalize transition-all', kind === k ? 'text-[#04140E]' : 'text-ink-mute hover:text-ink')}
+                className={cls('rounded-full px-3 py-1 text-[12px] font-bold capitalize transition-all', kind === k ? 'text-[#1A0E02]' : 'text-ink-mute hover:text-ink')}
                 style={kind === k ? { background: 'linear-gradient(120deg,var(--ht-flare),var(--ht-ember))' } : undefined}
               >
                 {k}
@@ -175,7 +175,7 @@ export function Composer() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                className="mt-2 flex items-center gap-3 rounded-[14px] border border-ember-500/35 bg-[linear-gradient(100deg,rgba(0,229,160,.09),transparent)] p-3"
+                className="mt-2 flex items-center gap-3 rounded-[14px] border border-ember-500/35 bg-[linear-gradient(100deg,rgba(255,180,84,.09),transparent)] p-3"
               >
                 <span className="text-[13px] leading-snug text-ink-dim">
                   This outgrew a spark ({len} chars). Promote it into a <b className="text-ember-300">forge</b> so the ranker scores it by read-through instead of velocity?
@@ -255,7 +255,7 @@ export function Composer() {
 
           <div className="ht-card p-3.5">
             <div className="mb-2 flex items-center gap-2">
-              <span className="grid h-7 w-7 place-items-center rounded-full text-[11px] font-black" style={{ background: 'linear-gradient(140deg,#7CFFD0,#2EF2A6)', color: '#04140E' }}>
+              <span className="grid h-7 w-7 place-items-center rounded-full text-[11px] font-black" style={{ background: 'linear-gradient(140deg,#FFC978,#EFCB8B)', color: '#1A0E02' }}>
                 {(s.me?.name ?? 'Y')[0]}
               </span>
               <span className="text-[13px] font-bold">{s.me?.name ?? 'You'}</span>
@@ -268,7 +268,7 @@ export function Composer() {
                 {cover ? (
                   <img src={cover} alt="" className="mt-2.5 aspect-[16/8] w-full rounded-[12px] object-cover" />
                 ) : (
-                  <div className="mt-2.5 grid aspect-[16/8] w-full place-items-center rounded-[12px] border border-white/[.06]" style={{ background: 'radial-gradient(80% 120% at 10% 110%,rgba(0,229,160,.16),transparent 62%),#0a0a0a' }}>
+                  <div className="mt-2.5 grid aspect-[16/8] w-full place-items-center rounded-[12px] border border-white/[.06]" style={{ background: 'radial-gradient(80% 120% at 10% 110%,rgba(255,180,84,.16),transparent 62%),#0a0a0a' }}>
                     <span className="text-[11px] uppercase tracking-[0.2em] text-ink-faint">no cover</span>
                   </div>
                 )}

@@ -56,7 +56,7 @@ export default function SettingsPage() {
             Wire status
             <span
               className="ml-2 rounded-full px-2 py-0.5 text-[10.5px] font-bold"
-              style={{ background: app.live ? 'rgba(61,220,255,.14)' : 'rgba(0,229,160,.1)', color: app.live ? 'var(--ht-cryo-teal)' : 'var(--ht-flare)' }}
+              style={{ background: app.live ? 'rgba(99,216,245,.14)' : 'rgba(255,180,84,.1)', color: app.live ? 'var(--ht-cryo-teal)' : 'var(--ht-flare)' }}
             >
               {app.live ? 'LIVE · Forem API' : 'SNAPSHOT'}
             </span>
@@ -127,7 +127,7 @@ export default function SettingsPage() {
 
 function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
-    <section className="ht-panel mt-4 p-4">
+    <section className="ht-panel mt-4 p-5">
       <header className="mb-3">
         <h2 className="ht-title text-[16px]">{title}</h2>
         {note && <p className="mt-0.5 text-[12px] text-ink-mute">{note}</p>}
@@ -166,9 +166,9 @@ function Toggle({ label, value, onChange, hint }: { label: string; value: boolea
         onClick={() => onChange(!value)}
         className="relative h-[26px] w-[46px] shrink-0 rounded-full border transition-all"
         style={{
-          borderColor: value ? 'rgba(0,229,160,.4)' : 'var(--ht-line)',
-          background: value ? 'linear-gradient(90deg,rgba(46,242,166,.42),rgba(124,255,208,.3))' : 'rgba(255,255,255,.05)',
-          boxShadow: value ? '0 0 18px -4px rgba(0,229,160,.65)' : undefined,
+          borderColor: value ? 'rgba(255,180,84,.4)' : 'var(--ht-line)',
+          background: value ? 'linear-gradient(90deg,rgba(255,180,84,.42),rgba(255,203,120,.3))' : 'rgba(255,255,255,.05)',
+          boxShadow: value ? '0 0 18px -4px rgba(255,180,84,.65)' : undefined,
         }}
       >
         <span className="absolute top-1/2 h-[18px] w-[18px] -translate-y-1/2 rounded-full bg-white transition-all" style={{ left: value ? 24 : 4, boxShadow: '0 2px 8px rgba(0,0,0,.6)' }} />

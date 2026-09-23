@@ -18,23 +18,36 @@ edge-friendly proxy routes for caching. No database in the demo; the store is sw
 ## Why it looks like this ("obsidian")
 
 True-black rooms (`#000000`) holding frosted charcoal glass (`#121212` → `#1E1E1E`), pure white for
-primary text and silver (`#A0A0A0`) for everything secondary, and exactly **one** accent: electric
-emerald. Temperature is the ranking model, so colour is data — the ramp runs from electric cyan
-("cooled") through emerald ("alive") to incandescent ice ("read to the end"), and the accent is
-reserved for things that are actually happening: active states, ignition, live numbers. A glow
-always means something, which is what keeps a dark UI from looking cheap.
+primary text and silver (`#A0A0A0`) for everything secondary — and **two** signal colours, not five:
+
+* **molten amber** (`#FFB454`) — the accent. Active states, ignition, live numbers, anything that is
+  *happening right now*.
+* **ice cyan** (`#63D8F5`) — the counterweight. Cooled, archived, unread, settled.
+
+Temperature is the ranking model, so colour is data: the ramp walks from ice through amber to a warm
+bone white ("read to the end"), and a glow always reports state. There is deliberately no neon green
+— high-chroma green on black is the most tired accent in dark UI, and it fights the metaphor. The
+palette is built like a forge, not a terminal.
 
 | token | value | meaning |
 | --- | --- | --- |
 | `--ht-void` / `--ht-base` | `#000000` / `#050505` | the room |
-| `--ht-panel` → `--ht-lift` | `#121212` → `#1E1E1E` | elevated surfaces, all frosted glass |
+| `--ht-panel` → `--ht-raise` | `#121212` → `#242424` | elevated surfaces, all frosted glass |
 | `--ht-ink` / `--ht-ink-dim` | `#FFFFFF` / `#A0A0A0` | primary / secondary text |
-| `--ht-ember` / `--ht-magma` | `#00E5A0` / `#7CFFD0` | active, ignition |
-| `--ht-flame` / `--ht-flare` | `#00C98C` / `#B8FFE3` | burning, peak |
-| `--ht-whitehot` | `#F2FFFA` | incandescent |
-| `--ht-cryo-teal` / `--ht-jade` | `#3DDCFF` / `#2EF2A6` | cooled, smouldering |
-| `--ht-cryo-indigo/violet` | `#7AA2FF` / `#B07CFF` | archived, decayed |
+| `--ht-ink-mute` / `--ht-ink-faint` | `#6F6F6F` / `#484848` | metadata, then whispers |
+| `--ht-ember` / `--ht-magma` | `#FFB454` / `#FFC978` | active, ignition |
+| `--ht-flame` / `--ht-flare` | `#F59A2B` / `#FFE3B0` | burning, peak |
+| `--ht-whitehot` | `#FFF6E8` | incandescent |
+| `--ht-copper` | `#C9743A` | the deepest ember, gradients only |
+| `--ht-cryo-teal` / `--ht-cryo-ice` | `#63D8F5` / `#CFEFFF` | cooled, settled |
+| `--ht-cryo-indigo/violet` | `#8AA6FF` / `#B98CFF` | archived, decayed |
+| `--ht-jade` | `#EFCB8B` | champagne metal: verified, held, saved |
 | `--ht-paper` / `--ht-paper-soft` | `#0B0B0B` / `#101010` | the long-form reading sheet |
+
+Elevation on black cannot be a drop shadow — there is no light to cast one — so every surface step is
+a 1px inset highlight on its top edge plus a wider ambient pool beneath, with frosted glass between
+the two. That pair is what tells the eye an edge is nearer, and it is why the dark theme reads as
+*deep* rather than flat.
 
 One system, two depths: **the board is a black room, the page is an obsidian sheet** — forges and the
 reader lift their body onto `ht-paper` / `ht-prose--paper`, a charcoal panel with generous measure and
@@ -72,16 +85,22 @@ and — at ignition — the whole card catching fire for 2.4s.
 
 ## What's in the app
 
-- **Cinematic intro** (`components/intro/CinematicIntro.tsx`) — ~4.4s parallax title sequence: two
-  plates pan against each other behind a soft depth-of-field while the type fades in rather than
-  slamming in, then the wordmark resolves and the room hands off. No canvas, no streak field.
-  Skip is always one click or keypress away; it runs once (`introSeen`), and collapses to the final
-  frame under `prefers-reduced-motion`.
-- **Onboarding** (`components/onboarding/Onboarding.tsx`) — a cinematic, **form-free** sequence:
-  three full-bleed scenes with a parallax camera pan (blurred plate behind, sharp plate in front,
-  both drifting against pointer/gyro), type that fades in word by word, and exactly one control —
-  a glass **swipe to start** slider. An identity is generated for you and stays editable from the
-  profile, so nobody lands on an empty timeline or a sign-up form.
+- **Cinematic intro** (`components/intro/CinematicIntro.tsx`) — a ~4.6s title sequence in three acts.
+  `VOID`: a single point of amber ignites in a black room and blooms. `SPREAD`: the camera pushes
+  through the keyhole plate — a heavily blurred far layer panning against a sharp near layer, with
+  horizontal light streaks building as it travels — under letterbox bars and a hairline timeline with
+  act ticks. `FORM`: the wordmark resolves letter by letter with a specular pass, the frame blows out
+  to amber, and the room hands over. No canvas, no WebGL, one rAF loop. Skip is always one click,
+  one key, anywhere on the frame; it runs once (`introSeen`), and collapses to its final frame under
+  `prefers-reduced-motion`.
+- **Onboarding** (`components/onboarding/Onboarding.tsx`) — "the reel". Four cinematic scenes, each a
+  full-bleed depth-of-field stack (blurred far plate drifting one way, sharp near plate the other,
+  both answering pointer/gyro), type that resolves out of a blur word by word, and a **live
+  demonstration** instead of a screenshot: light pushing through a gateway, a reading sheet filling
+  with ink, a hold-to-heat ring charging to ignition, a heat grid igniting cell by cell. The only
+  control is a glass **swipe to start** capsule with a travelling sheen and a progress hairline —
+  which also answers a click, `↵`, `space` or `→`. **No form, no fields, no profile creation**; an
+  identity is minted locally and stays editable from the profile, so nobody lands on a sign-up wall.
 - **Feed** — ranked sparks + forges with inline covers, link previews, polls, "why am I seeing
   this?" transparency panel, digest cards, live syndication ticker, `j/k/h/l/↵` keyboard control.
 - **Reader** (`components/reader/Reader.tsx`) — a *route* (`/read/[id]`), not a redirect: reading
@@ -91,12 +110,19 @@ and — at ignition — the whole card catching fire for 2.4s.
   density, and paragraph-level heating.
 - **Explore** — search over posts/tags/authors with heat-ranked results, trending tags, tag/board
   histograms, source filters, top authors.
-- **Profile** — centered identity: a large avatar ringed with floating gyro-drifting badges (streak,
-  thermal mass, temperature), plain stat rows, accent pill tags, then the body of work as a masonry
-  board. Editable in place (`components/profile/ProfileEditor.tsx`).
-- **Navigation** — a translucent glass pill bar on phones with the active icon lit in the accent, a
-  rail with live badges on desktop, and the right rail (board is burning / streak / syndication)
-  pushed to `xl`. Buttons answer a press with a short accent bloom; nothing animates for its own sake.
+- **Profile** — the reference layout, rebuilt in obsidian: a floating glass bar that densifies on
+  scroll, a full-bleed cover that parallaxes and cools as content rises over it, a centered portrait
+  inside a conic amber→ice ring with a slow orbit tick, brushed-metal badges drifting on a
+  gyroscope, one divided stat row (followers · following · streak · reads) with animated counters,
+  trait pills, then the body of work as a CSS-columns masonry board behind pill tabs. Editable in
+  place (`components/profile/ProfileEditor.tsx`).
+- **Navigation** — a floating translucent `ht-dock` pill on phones where the active item slides
+  between destinations via a shared `layoutId`, a rail with live badges on desktop, and the right
+  rail (board is burning / streak / syndication) pushed to `xl`. Buttons answer a press with a short
+  amber bloom; nothing animates for its own sake.
+- **The design system is on the landing page** (`#system`) — the real token ramps, live component
+  specimens and the four principles the UI is built on. It is the product's actual claim, so it is
+  documented where people can see it rather than in a Figma file nobody opens.
 - **Heat map** (`components/heat/Heatmap.tsx` + `/heatmap`) — GitHub-style annual grid, but scored
   on **thermal output** (heats given, ignitions, reads, writes). Collapsed square on the profile
   expands through a Framer Motion morph into the dashboard: day-level interrogation, 7-day

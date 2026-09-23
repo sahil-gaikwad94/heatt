@@ -61,9 +61,9 @@ export default function LibraryPage() {
       {/* page header — same anatomy as the feed's greeting bar */}
       <header className="flex items-center gap-3 px-1 pb-4 pt-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[12.5px] text-ink-mute">saved · resumable · offline</p>
-          <h1 className="ht-title truncate text-[24px] leading-tight text-ink">
-            Your library <span aria-hidden>🔖</span>
+          <p className="ht-eyebrow">saved · resumable · offline</p>
+          <h1 className="ht-title mt-1.5 truncate text-[26px] leading-tight text-ink">
+            Your <span className="ht-heat-text">library</span>
           </h1>
         </div>
         <span className="hidden items-center gap-1.5 rounded-full border border-white/[.09] px-3 py-1.5 text-[11.5px] text-ink-mute sm:flex">
@@ -87,23 +87,24 @@ export default function LibraryPage() {
         <StatCard label="finished" value={String(done)} foot={`${minutes} min read · ${totalWords.toLocaleString()} words`} />
       </div>
 
-      {/* pill filter row — lime active pill, same as the board */}
-      <div className="mt-4 -mx-4 mb-4 flex items-center gap-2 overflow-x-auto px-4 ht-no-scrollbar sm:-mx-6 sm:px-6">
-        {(['all', 'saved', 'reading', 'done'] as const).map((f) => {
-          const active = filter === f;
-          return (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cls(
-                'shrink-0 rounded-full border px-4 py-2 text-[13px] font-semibold transition-colors',
-                active ? 'border-transparent bg-[var(--ht-ember)] text-[#04140E]' : 'border-white/[.09] text-ink-dim hover:border-white/20 hover:text-ink'
-              )}
-            >
-              {f === 'all' ? 'Everything' : f === 'reading' ? 'In progress' : f === 'done' ? 'Finished' : 'Saved'}
-            </button>
-          );
-        })}
+      {/* pill filter row — the amber pill marks the active view */}
+      <div className="mt-4 mb-4 flex items-center gap-1.5">
+        <div className="ht-tabrail -ml-2 max-w-full" role="tablist" aria-label="Filter your library">
+          {(['all', 'saved', 'reading', 'done'] as const).map((f) => {
+            const active = filter === f;
+            return (
+              <button
+                key={f}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setFilter(f)}
+                className="ht-tab !px-4 !py-2 !text-[13px]"
+              >
+                {f === 'all' ? 'Everything' : f === 'reading' ? 'In progress' : f === 'done' ? 'Finished' : 'Saved'}
+              </button>
+            );
+          })}
+        </div>
         <span className="flex-1" />
         <span className="ht-num hidden shrink-0 pr-1 text-[11.5px] text-ink-faint sm:block">{rows.length} item{rows.length === 1 ? '' : 's'}</span>
       </div>
@@ -172,7 +173,7 @@ function PaperRow({ row, index, onOpen, onRemove }: { row: Row; index: number; o
                 initial={{ width: 0 }}
                 animate={{ width: `${row.pct}%` }}
                 transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.12 }}
-                style={{ background: 'linear-gradient(90deg,#2EF2A6,#00E5A0)' }}
+                style={{ background: 'linear-gradient(90deg,#EFCB8B,#FFB454)' }}
               />
             </span>
           )}

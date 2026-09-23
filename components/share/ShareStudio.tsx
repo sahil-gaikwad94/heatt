@@ -26,10 +26,10 @@ type Fmt = 'story' | 'square' | 'card';
 const DIMS: Record<Fmt, [number, number]> = { story: [1080, 1920], square: [1080, 1080], card: [1200, 675] };
 type Palette = 'ember' | 'cryo' | 'mono' | 'ash';
 const PAL: Record<Palette, { a: string; b: string; c: string; text: string; sub: string }> = {
-  ember: { a: '#2EF2A6', b: '#00E5A0', c: '#7CFFD0', text: '#F2FFFA', sub: 'rgba(242,255,250,.72)' },
-  cryo: { a: '#5B4BFF', b: '#3DDCFF', c: '#D9FFFB', text: '#F2FFFF', sub: 'rgba(230,255,252,.7)' },
+  ember: { a: '#EFCB8B', b: '#FFB454', c: '#FFC978', text: '#FFF6E8', sub: 'rgba(255,246,232,.72)' },
+  cryo: { a: '#5B4BFF', b: '#63D8F5', c: '#D9FFFB', text: '#F2FFFF', sub: 'rgba(230,255,252,.7)' },
   mono: { a: '#3A3A40', b: '#9A9794', c: '#EDEDED', text: '#FFFFFF', sub: 'rgba(255,255,255,.62)' },
-  ash: { a: '#00A876', b: '#00C98C', c: '#B8FFE3', text: '#EFFFF8', sub: 'rgba(239,255,248,.66)' },
+  ash: { a: '#D97B12', b: '#F59A2B', c: '#FFE3B0', text: '#FFF6E8', sub: 'rgba(255,246,232,.68)' },
 };
 
 export function ShareStudio() {
@@ -523,7 +523,7 @@ export function ShareStudio() {
                   <canvas
                     ref={attachCanvas}
                     className="rounded-[26px]"
-                    style={{ width: DIMS[fmt][0], height: DIMS[fmt][1], boxShadow: '0 60px 140px -50px rgba(0,229,160,.45), 0 0 0 1px rgba(255,255,255,.09)' }}
+                    style={{ width: DIMS[fmt][0], height: DIMS[fmt][1], boxShadow: '0 60px 140px -50px rgba(255,180,84,.45), 0 0 0 1px rgba(255,255,255,.09)' }}
                   />
                   {/* tap zones, like every story you have ever used */}
                   <button onClick={prev} aria-label="Previous frame" className="absolute inset-y-0 left-0 w-1/3" />
@@ -631,7 +631,7 @@ function Check({ label, value, onChange }: { label: string; value: boolean; onCh
   return (
     <button onClick={() => onChange(!value)} className="flex w-full items-center justify-between rounded-[12px] border border-white/[.07] px-3 py-2 text-[13px] text-ink-dim transition-colors hover:border-white/20">
       {label}
-      <span className="grid w-[18px] place-items-center rounded-[5px] border" style={{ borderColor: value ? 'var(--ht-flame)' : 'var(--ht-line)', background: value ? 'rgba(0,229,160,.16)' : 'transparent', height: 18 }}>
+      <span className="grid w-[18px] place-items-center rounded-[5px] border" style={{ borderColor: value ? 'var(--ht-flame)' : 'var(--ht-line)', background: value ? 'rgba(255,180,84,.16)' : 'transparent', height: 18 }}>
         {value && (
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ht-whitehot)" strokeWidth="3.4">
             <path d="m5 13 4.5 4.5L19 7" strokeLinecap="round" />

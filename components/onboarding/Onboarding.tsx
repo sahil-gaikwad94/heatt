@@ -1,43 +1,92 @@
 'use client';
 /* ============================================================================
-   components/onboarding/Onboarding — a cinematic, form-free introduction.
+   components/onboarding/Onboarding — the reel.
 
-   Three full-bleed scenes, each with a parallax camera pan (a blurred plate
-   behind, a sharp plate in front, both drifting against pointer/gyro), type
-   that fades in word by word, and one glowing control: **swipe to start**.
-   Nothing to fill in — the account already exists, and every detail is editable
-   later from the profile. No forms, no fences.
+   The brief was explicit and it is the right call: **no profile creation, no
+   fields, no fences.** A first-time visitor gets a cinematic sequence, one
+   gesture, and then the app. Their identity is generated for them and stays
+   editable from the profile forever after.
+
+   Four scenes, each a full-bleed plate composed like a film frame:
+
+     · a depth-of-field stack — a heavily blurred far plate drifting one way
+       behind a sharper near plate drifting the other, so the camera *pans*
+       rather than cross-fades
+     · type that resolves (words fade up out of a blur, in order)
+     · a scene-specific demonstration, not a screenshot: the light pushes in,
+       a reader sheet rises out of the dark, a heat ring fills under a finger,
+       a year of temperature ignites cell by cell
+     · one control at the bottom: a glass capsule you drag, or click, or press
+       ← → / ↵ / space to advance. Nothing is gated behind the gesture.
+
+   Gyroscope/pointer drift moves the plates, so the frame feels physical in the
+   hand. Everything collapses to a static scene under reduced motion.
    ==========================================================================*/
 
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Atmosphere } from '@/components/gl/Atmosphere';
+import { EASE, EASE_CINEMA } from '@/lib/motion';
+import { useDrift } from '@/components/ui/motion';
 import { useStore } from '@/lib/store';
-import { useTilt } from '@/lib/tilt';
+import { cls } from '@/lib/util';
 
-const EASE = [0.22, 1, 0.36, 1] as const;
-const SCENE_MS = 5200;
+const SCENE_MS = 6200;
 
 const INTERESTS = ['design', 'engineering', 'reading'];
 
-const SCENES = [
+/* ---------------------------------------------------------------- scenes */
+
+type Scene = {
+  id: string;
+  img: string;
+  sub?: string;
+  kicker: string;
+  title: string;
+  body: string;
+  /** which live demonstration plays inside this frame */
+  demo: 'gate' | 'sheet' | 'ring' | 'year';
+  accent: 'heat' | 'cryo';
+};
+
+const SCENES: Scene[] = [
   {
-    img: '/art/hero-forge.jpg',
+    id: 'curiosity',
+    img: '/art/sky-gateway.jpg',
+    sub: '/art/ember-forge.jpg',
+    demo: 'gate',
+    accent: 'heat',
     kicker: 'two modalities, one feed',
     title: 'Chase your curiosity',
-    sub: 'A 280-character spark and a 4,000-word forge live in the same board — ranked by the same physics, read in the same place.',
+    body: 'A 280-character spark and a 4,000-word forge live on the same board — ranked by the same physics, read in the same place.',
   },
   {
-    img: '/art/deep-read.jpg',
+    id: 'reader',
+    img: '/art/obsidian-atelier.jpg',
+    sub: '/art/quiet-kiln.jpg',
+    demo: 'sheet',
+    accent: 'heat',
     kicker: 'long-form, all of it',
     title: 'Read it here, not elsewhere',
-    sub: 'Full articles render natively: real typography, inline code, figures and references. No redirects, no “keep reading” wall.',
+    body: 'Full articles render natively — real typography, inline code, figures, footnotes. No redirects and no “keep reading over there” wall.',
   },
   {
-    img: '/art/story-canvas.jpg',
+    id: 'heat',
+    img: '/art/ember-forge.jpg',
+    demo: 'ring',
+    accent: 'heat',
     kicker: 'your heat is the algorithm',
     title: 'Attention with a temperature',
-    sub: 'Hold to heat, hold longer to ignite. Every read warms the board for the people who arrive after you — cooling is a promise, not a punishment.',
+    body: 'Hold to heat. Hold longer to ignite. Every read warms the board for whoever arrives after you — and cooling is a promise, never a punishment.',
+  },
+  {
+    id: 'year',
+    img: '/art/aurora-drift.jpg',
+    sub: '/art/signal-grid.jpg',
+    demo: 'year',
+    accent: 'cryo',
+    kicker: 'a year, in one square',
+    title: 'Consistency you can see',
+    body: 'Your profile keeps a heat map of real thermal output. Empty days stay neutral — you are never ranked against another person.',
   },
 ];
 
@@ -54,13 +103,13 @@ const NAMES: [string, string][] = [
   ['early', 'draft'],
 ];
 
-const COVER = '/art/deep-read.jpg';
+const COVER = '/art/obsidian-atelier.jpg';
 
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const [i, setI] = React.useState(0);
   const [starting, setStarting] = React.useState(false);
   const [seed] = React.useState(() => Math.floor(Math.random() * 1e6));
-  const tilt = useTilt();
+  const drift = useDrift();
   const [reduced, setReduced] = React.useState(false);
 
   React.useEffect(() => {
@@ -70,7 +119,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     );
   }, []);
 
-  /* auto-advance the reel — but never while the user is mid-gesture */
+  /* the reel advances itself — but never while the visitor is mid-gesture */
   React.useEffect(() => {
     if (reduced || starting) return;
     const id = window.setInterval(() => setI((v) => (v + 1) % SCENES.length), SCENE_MS);
@@ -81,178 +130,261 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const handle = `${a}-${b}-${(seed % 89) + 10}`;
   const name = `${a} ${b}`.replace(/\b\w/g, (c) => c.toUpperCase());
 
+  /* The only "account" step in the whole flow: nothing is asked, nobody waits.
+     An identity is minted locally and can be rewritten from the profile. */
   const start = React.useCallback(() => {
     if (starting) return;
     setStarting(true);
     const s = useStore.getState();
-    s.completeOnboarding(
-      { handle, name, bio: 'New here. Reading first.', cover: COVER },
-      INTERESTS
-    );
+    s.completeOnboarding({ handle, name, bio: 'New here. Reading first.', cover: COVER }, INTERESTS);
     useStore.setState((st) => ({
       prefs: { ...st.prefs, ignitionFx: 'subtle', ambient: true },
       interests: INTERESTS,
     }));
     s.logActivity('reads');
-    window.setTimeout(onDone, 900);
+    window.setTimeout(onDone, 1150);
   }, [handle, name, onDone, starting]);
 
-  /* ↵ / space / → start, ← → step */
+  /* keyboard: ↵ / space starts · ← → step. Skip is always available. */
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
+      if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        if (e.key === 'ArrowRight' && !starting) setI((v) => (v + 1) % SCENES.length);
-        else start();
+        start();
       }
       if (e.key === 'Escape') start();
-      if (e.key === 'ArrowLeft') setI((v) => (v - 1 + SCENES.length) % SCENES.length);
+      if (e.key === 'ArrowRight' && !starting) setI((v) => (v + 1) % SCENES.length);
+      if (e.key === 'ArrowLeft' && !starting) setI((v) => (v - 1 + SCENES.length) % SCENES.length);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [start, starting]);
 
   const scene = SCENES[i];
-  const px = reduced ? 0 : tilt.x;
-  const py = reduced ? 0 : tilt.y;
 
   return (
     <div className="fixed inset-0 z-[190] overflow-hidden bg-black">
-      {/* ------------------------------------------------------------- plates */}
+      {/* ------------------------------------------------------- the plates */}
       <AnimatePresence>
         <motion.div
-          key={scene.img}
+          key={scene.id}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 1.15, ease: EASE }}
+          transition={{ duration: reduced ? 0 : 1.25, ease: EASE_CINEMA }}
           className="absolute inset-0"
           aria-hidden
         >
-          {/* blurred plate, drifting one way */}
-          <img
-            src={scene.img}
+          {/* far plane: blurred, drifts one way and never quite settles */}
+          <motion.span
+            className="absolute inset-[-6%]"
+            style={{ x: drift.x, y: drift.y }}
+            aria-hidden
+          >
+            <motion.img
+              src={scene.img}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{ filter: 'blur(40px) saturate(112%) brightness(.55)' }}
+              animate={reduced ? undefined : { scale: [1.32, 1.26, 1.32], x: [0, -14, 0] }}
+              transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          </motion.span>
+          {/* near plane: the subject, resolving sharp against it */}
+          <motion.img
+            src={scene.sub ?? scene.img}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
-            style={{
-              transform: `scale(1.28) translate3d(${px * -14}px, ${py * -10}px, 0)`,
-              filter: 'blur(34px) saturate(115%) brightness(.62)',
-            }}
+            style={{ scale: 1.08, filter: 'saturate(106%) contrast(106%)' }}
           />
-          {/* sharp plate, drifting the other way — the camera pan */}
-          <img
-            src={scene.img}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
+          {/* the room: scrims that keep type legible over any photograph */}
+          <span
+            className="absolute inset-0"
             style={{
-              transform: `scale(1.06) translate3d(${px * 10}px, ${py * 7}px, 0)`,
-              filter: 'saturate(104%) contrast(104%)',
+              background:
+                'linear-gradient(180deg, rgba(0,0,0,.78) 0%, rgba(0,0,0,.3) 30%, rgba(0,0,0,.62) 62%, #000 100%)',
             }}
           />
           <span
             className="absolute inset-0"
             style={{
               background:
-                'linear-gradient(180deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.28) 32%, rgba(0,0,0,.78) 72%, #000 100%)',
+                scene.accent === 'heat'
+                  ? 'radial-gradient(85% 60% at 20% 76%, rgba(255,180,84,.24), transparent 62%)'
+                  : 'radial-gradient(85% 60% at 22% 74%, rgba(99,216,245,.2), transparent 62%)',
             }}
-          />
-          <span
-            className="absolute inset-0"
-            style={{ background: 'radial-gradient(90% 70% at 22% 78%, rgba(0,229,160,.16), transparent 62%)' }}
           />
         </motion.div>
       </AnimatePresence>
 
-      <div className="pointer-events-none absolute inset-0 opacity-60">
-        <Atmosphere />
+      {/* drifting pointer parallax on a thin light layer — the "camera" breathes */}
+      <motion.span
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          x: drift.x,
+          y: drift.y,
+          background:
+            'radial-gradient(40% 30% at 78% 18%, rgba(255,246,232,.12), transparent 70%)',
+        }}
+      />
+
+      <div className="pointer-events-none absolute inset-0 opacity-70">
+        <span className="ht-atmos-noise absolute inset-0" />
       </div>
 
-      {/* --------------------------------------------------------- content */}
-      <div className="relative z-10 mx-auto flex h-full w-full max-w-[1180px] flex-col px-6 pb-8 pt-8 sm:px-10">
-        <header className="flex items-center justify-between gap-4">
-          <span className="ht-title ht-heat-text text-[22px] leading-none">heatt</span>
-          <div className="flex items-center gap-2" role="tablist" aria-label="Scenes">
+      {/* ------------------------------------------------------- the frame */}
+      <div className="relative z-10 mx-auto flex h-full w-full max-w-[1240px] flex-col px-6 pb-7 pt-7 sm:px-10 sm:pb-10">
+        <header className="flex items-center gap-4">
+          <span className="ht-display ht-heat-text text-[24px] leading-none">heatt</span>
+          <span className="hidden text-[10px] font-bold uppercase tracking-[0.32em] text-white/35 sm:block">
+            the reel
+          </span>
+          <span className="flex-1" />
+          {/* scene ticks: hairline, amber fill tracks the scene duration */}
+          <div className="flex items-center gap-1.5" role="tablist" aria-label="Scenes">
             {SCENES.map((s, idx) => (
               <button
-                key={s.img}
+                key={s.id}
                 onClick={() => setI(idx)}
+                role="tab"
+                aria-selected={idx === i}
                 aria-label={`Scene ${idx + 1}: ${s.kicker}`}
-                className="relative h-[3px] w-8 overflow-hidden rounded-full bg-white/15 sm:w-12"
+                className="relative h-[3px] w-8 overflow-hidden rounded-full bg-white/15 transition-[width] duration-500 hover:bg-white/25 sm:w-14"
               >
                 <motion.span
                   className="absolute inset-y-0 left-0 rounded-full"
                   style={{ background: 'var(--ht-ember)' }}
-                  animate={{ width: idx < i ? '100%' : idx === i ? '100%' : '0%' }}
-                  transition={{ duration: idx === i && !reduced ? SCENE_MS / 1000 : 0.4, ease: 'linear' }}
                   initial={{ width: '0%' }}
+                  animate={{ width: idx < i ? '100%' : idx === i ? '100%' : '0%' }}
+                  transition={{
+                    duration: idx === i && !reduced ? SCENE_MS / 1000 : 0.45,
+                    ease: 'linear',
+                  }}
                 />
               </button>
             ))}
           </div>
         </header>
 
-        <div className="flex flex-1 items-end pb-10 sm:pb-14">
-          <div className="max-w-[46rem]">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={scene.title}
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -14 }}
-                transition={{ duration: 0.7, ease: EASE }}
-              >
-                <p className="ht-label text-ember-300">{scene.kicker}</p>
-                <h1 className="ht-title mt-3 text-[clamp(2.4rem,1.5rem+5.2vw,5.4rem)] leading-[0.98] text-white">
-                  {scene.title.split(' ').map((w, idx) => (
-                    <motion.span
-                      key={`${w}-${idx}`}
-                      initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
-                      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                      transition={{ delay: 0.05 + idx * 0.07, duration: 0.7, ease: EASE }}
-                      className="mr-[0.24em] inline-block"
-                    >
-                      {w}
-                    </motion.span>
-                  ))}
-                </h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4, duration: 0.8 }}
-                  className="mt-5 max-w-[54ch] text-[clamp(.95rem,.88rem+.35vw,1.15rem)] leading-relaxed text-ink-dim"
+        {/* the composition: copy low-left, demonstration floating right */}
+        <div className="relative flex flex-1 items-end">
+          <div className="grid w-full items-end gap-10 lg:grid-cols-[1.05fr_.95fr]">
+            <div className="max-w-[38rem] pb-8 sm:pb-12">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={scene.title}
+                  initial="hidden"
+                  animate="show"
+                  exit={{ opacity: 0, y: -16, filter: 'blur(10px)', transition: { duration: 0.45 } }}
                 >
-                  {scene.sub}
-                </motion.p>
-              </motion.div>
-            </AnimatePresence>
+                  <motion.p
+                    variants={{
+                      hidden: { opacity: 0, y: 10 },
+                      show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE } },
+                    }}
+                    className="ht-kicker"
+                  >
+                    {scene.kicker}
+                  </motion.p>
+
+                  <h1 className="ht-display mt-4 text-[clamp(2.6rem,1.5rem+5.6vw,5.6rem)] text-white">
+                    {scene.title.split(' ').map((w, idx) => (
+                      <motion.span
+                        key={`${w}-${idx}`}
+                        variants={{
+                          hidden: { opacity: 0, y: 26, filter: 'blur(12px)' },
+                          show: {
+                            opacity: 1,
+                            y: 0,
+                            filter: 'blur(0px)',
+                            transition: { delay: 0.08 + idx * 0.075, duration: 0.8, ease: EASE_CINEMA },
+                          },
+                        }}
+                        className="mr-[0.22em] inline-block"
+                        style={{ textShadow: '0 6px 40px rgba(0,0,0,.65)' }}
+                      >
+                        {w}
+                      </motion.span>
+                    ))}
+                  </h1>
+
+                  <motion.p
+                    variants={{
+                      hidden: { opacity: 0 },
+                      show: { opacity: 1, transition: { delay: 0.42, duration: 0.9, ease: EASE } },
+                    }}
+                    className="mt-5 max-w-[52ch] text-[clamp(.95rem,.88rem+.35vw,1.15rem)] leading-[1.7] text-ink-dim"
+                  >
+                    {scene.body}
+                  </motion.p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* the demonstration layer — a live vignette, not a screenshot */}
+            <div className="hidden min-h-[300px] items-center justify-center lg:flex">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={scene.demo}
+                  initial={{ opacity: 0, y: 24, filter: 'blur(14px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: -18, filter: 'blur(14px)' }}
+                  transition={{ duration: 0.9, ease: EASE_CINEMA, delay: 0.2 }}
+                  className="w-full max-w-[380px]"
+                >
+                  {scene.demo === 'gate' && <DemoGate />}
+                  {scene.demo === 'sheet' && <DemoSheet />}
+                  {scene.demo === 'ring' && <DemoRing />}
+                  {scene.demo === 'year' && <DemoYear />}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
         {/* ------------------------------------------------------ the control */}
-        <SwipeToStart onDone={start} starting={starting} />
+        <SwipeToStart onDone={start} starting={starting} reduced={reduced} />
       </div>
 
+      {/* --------------------------------------------------- the handoff */}
       <AnimatePresence>
         {starting && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            className="absolute inset-0 z-20 grid place-items-center bg-black"
+            transition={{ duration: reduced ? 0 : 0.7, ease: EASE }}
+            className="absolute inset-0 z-30 grid place-items-center bg-black"
           >
-            <div className="text-center">
+            <div className="px-6 text-center">
+              <motion.span
+                aria-hidden
+                className="mx-auto mb-8 block h-14 w-14 rounded-full"
+                style={{
+                  background: 'radial-gradient(circle, var(--ht-whitehot), rgba(255,180,84,.4) 46%, transparent 72%)',
+                }}
+                initial={{ scale: 0.4, opacity: 0 }}
+                animate={{ scale: [0.4, 1.25, 1], opacity: [0, 1, 0.85] }}
+                transition={{ duration: 1.5, ease: EASE_CINEMA }}
+              />
               <motion.h2
-                initial={{ scale: 0.9, opacity: 0, filter: 'blur(16px)' }}
-                animate={{ scale: 1, opacity: 1, filter: 'blur(0px)' }}
-                transition={{ duration: 0.8, ease: EASE }}
-                className="ht-title ht-heat-text text-[clamp(2.2rem,1.4rem+5vw,5rem)]"
+                initial={{ opacity: 0, y: 18, filter: 'blur(18px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: reduced ? 0 : 1, ease: EASE_CINEMA, delay: 0.1 }}
+                className="ht-display ht-heat-text text-[clamp(2rem,1.3rem+4.6vw,4.4rem)]"
               >
                 Welcome, @{handle}
               </motion.h2>
-              <p className="mt-3 text-[13.5px] text-ink-dim">
-                Your board is warm. Rename yourself any time from your profile.
-              </p>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: reduced ? 0 : 0.45, duration: 0.7 }}
+                className="mt-4 text-[13.5px] text-ink-dim"
+              >
+                No forms, no fences. Your board is already warm — rename yourself any time from your
+                profile.
+              </motion.p>
             </div>
           </motion.div>
         )}
@@ -261,17 +393,279 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   );
 }
 
-/* ------------------------------------------------------------------ slider */
+/* ============================================================== demos ==== */
 
-function SwipeToStart({ onDone, starting }: { onDone: () => void; starting: boolean }) {
+/* 1 · the gate: light pushes in through a keyhole, streaks build, then settle */
+function DemoGate() {
+  const [p, setP] = React.useState(0);
+  React.useEffect(() => {
+    let raf = 0;
+    const t0 = performance.now();
+    const loop = (now: number) => {
+      const v = ((now - t0) / 3200) % 1;
+      setP(v);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div className="ht-glass relative aspect-[4/5] overflow-hidden rounded-[28px]">
+      <div className="absolute inset-0 grid place-items-center">
+        <span
+          className="block rounded-full"
+          style={{
+            width: `${26 + p * 120}px`,
+            height: `${26 + p * 120}px`,
+            background: 'radial-gradient(circle, #FFF6E8, rgba(255,180,84,.45) 44%, transparent 72%)',
+            filter: 'blur(2px)',
+            opacity: 1 - p * 0.55,
+          }}
+        />
+      </div>
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <span
+          key={i}
+          className="absolute left-0 right-0 h-px"
+          style={{
+            top: `${12 + i * 14}%`,
+            background:
+              'linear-gradient(90deg, transparent, rgba(255,214,150,.7) 34%, rgba(255,246,232,.9) 50%, rgba(99,216,245,.5) 68%, transparent)',
+            opacity: Math.max(0, Math.sin((p + i * 0.12) * Math.PI * 2) * 0.8),
+            transform: `scaleX(${0.4 + p * 0.75})`,
+          }}
+        />
+      ))}
+      <div className="absolute inset-x-5 bottom-5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/45">
+          one board · two modalities
+        </p>
+        <div className="mt-2 flex gap-1.5">
+          {['spark', 'forge', 'spark', 'spark', 'forge', 'spark'].map((k, i) => (
+            <span
+              key={i}
+              className={cls(
+                'h-1 flex-1 rounded-full',
+                k === 'forge' ? 'bg-ember-400/80' : 'bg-white/20'
+              )}
+              style={{ opacity: 0.35 + (Math.sin(p * 6.28 + i) + 1) * 0.3 }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* 2 · the sheet: a reading surface lifts out of the dark and fills with ink */
+function DemoSheet() {
+  const lines = [96, 88, 92, 74, 0, 90, 84, 90, 62, 0, 78, 88, 46];
+  const [p, setP] = React.useState(0);
+  React.useEffect(() => {
+    let raf = 0;
+    const t0 = performance.now();
+    const loop = (now: number) => {
+      setP(Math.min(1, ((now - t0) / 4200) % 1.25));
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div className="ht-glass relative overflow-hidden rounded-[28px] p-5">
+      <div className="flex items-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-ember-400 shadow-[0_0_10px_#FFB454]" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/50">
+          reading in place
+        </span>
+        <span className="ml-auto ht-num text-[10px] text-white/40">68ch</span>
+      </div>
+      <div className="mt-4 space-y-2.5">
+        {lines.map((w, i) =>
+          w === 0 ? (
+            <div key={i} className="h-4" />
+          ) : (
+            <span
+              key={i}
+              className="block h-[7px] rounded-full"
+              style={{
+                width: `${w}%`,
+                background:
+                  i === 5
+                    ? 'linear-gradient(90deg, var(--ht-ember-400), var(--ht-ember-200))'
+                    : 'rgba(255,255,255,.13)',
+                opacity: Math.max(0.08, Math.min(1, (p - i * 0.06) * 2.4)),
+                transform: `translateY(${(1 - Math.min(1, Math.max(0, (p - i * 0.06) * 2.4))) * 6}px)`,
+              }}
+            />
+          )
+        )}
+      </div>
+      <div className="mt-5 flex items-center gap-3 border-t border-white/10 pt-4">
+        <span className="h-7 w-7 rounded-full bg-white/10" />
+        <span className="flex-1">
+          <span className="block h-2 w-24 rounded-full bg-white/20" />
+          <span className="mt-1.5 block h-1.5 w-16 rounded-full bg-white/10" />
+        </span>
+        <span className="rounded-full bg-ember-400/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-ember-200">
+          12 min
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* 3 · the ring: a hold-to-heat gesture, demonstrated, then released */
+function DemoRing() {
+  const [p, setP] = React.useState(0);
+  React.useEffect(() => {
+    let raf = 0;
+    const t0 = performance.now();
+    const loop = (now: number) => {
+      const v = ((now - t0) / 2600) % 1;
+      setP(v);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const R = 62;
+  const C = 2 * Math.PI * R;
+
+  return (
+    <div className="ht-glass relative overflow-hidden rounded-[28px] p-6">
+      <p className="ht-eyebrow">hold to heat · 2.45s to ignite</p>
+      <div className="mt-5 grid place-items-center">
+        <div className="relative grid h-[170px] w-[170px] place-items-center">
+          <svg viewBox="0 0 160 160" className="absolute inset-0 -rotate-90">
+            <circle cx="80" cy="80" r={R} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="3" />
+            <circle
+              cx="80"
+              cy="80"
+              r={R}
+              fill="none"
+              stroke="url(#ringGrad)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray={C}
+              strokeDashoffset={C * (1 - p)}
+            />
+            <defs>
+              <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#63D8F5" />
+                <stop offset="0.55" stopColor="#FFB454" />
+                <stop offset="1" stopColor="#FFF6E8" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span
+            className="grid h-[104px] w-[104px] place-items-center rounded-full text-[26px]"
+            style={{
+              background: `radial-gradient(circle, rgba(255,246,232,${0.1 + p * 0.55}), rgba(255,180,84,${
+                0.1 + p * 0.35
+              }) 52%, transparent 74%)`,
+              boxShadow: `0 0 ${10 + p * 46}px rgba(255,180,84,${0.2 + p * 0.6})`,
+            }}
+          >
+            <span aria-hidden style={{ filter: `saturate(${0.6 + p * 0.8})` }}>
+              ◉
+            </span>
+          </span>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+        {['warm', 'blaze', 'ignite'].map((k, i) => (
+          <span
+            key={k}
+            className={cls(
+              'rounded-full px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors',
+              p > (i + 1) / 4 ? 'bg-ember-400/20 text-ember-100' : 'bg-white/[.05] text-white/35'
+            )}
+          >
+            {k}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* 4 · the year: a heat grid igniting cell by cell, cooled cells in ice */
+function DemoYear() {
+  const cells = React.useMemo(
+    () =>
+      Array.from({ length: 7 * 26 }, (_, i) => {
+        const h = (Math.sin(i * 12.9898) * 43758.5453) % 1;
+        return Math.abs(h);
+      }),
+    []
+  );
+  const [step, setStep] = React.useState(0);
+  React.useEffect(() => {
+    const id = window.setInterval(() => setStep((s) => (s + 1) % 40), 90);
+    return () => window.clearInterval(id);
+  }, []);
+
+  return (
+    <div className="ht-glass relative overflow-hidden rounded-[28px] p-5">
+      <div className="flex items-baseline justify-between">
+        <p className="ht-eyebrow">thermal output · 26 weeks</p>
+        <span className="ht-num text-[11px] font-bold text-ember-300">streak 41</span>
+      </div>
+      <div className="mt-4 grid grid-cols-[repeat(26,1fr)] gap-[3px]">
+        {cells.map((v, i) => {
+          const hot = v > 0.72;
+          const warm = v > 0.42 && v <= 0.72;
+          const lit = i <= step * 4.5;
+          return (
+            <span
+              key={i}
+              className="aspect-square rounded-[3px] transition-all duration-500"
+              style={{
+                background: !lit
+                  ? 'rgba(255,255,255,.05)'
+                  : hot
+                    ? 'linear-gradient(140deg,#FFF6E8,#FFB454)'
+                    : warm
+                      ? 'rgba(255,180,84,.42)'
+                      : 'rgba(99,216,245,.2)',
+                boxShadow: lit && hot ? '0 0 8px rgba(255,180,84,.6)' : undefined,
+                opacity: lit ? 0.35 + v * 0.65 : 1,
+              }}
+            />
+          );
+        })}
+      </div>
+      <div className="mt-4 flex items-center justify-between text-[10px] text-white/40">
+        <span>empty days stay neutral</span>
+        <span>never a leaderboard</span>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================ the control */
+
+function SwipeToStart({
+  onDone,
+  starting,
+  reduced,
+}: {
+  onDone: () => void;
+  starting: boolean;
+  reduced: boolean;
+}) {
   const track = React.useRef<HTMLDivElement | null>(null);
   const [max, setMax] = React.useState(260);
   const [x, setX] = React.useState(0);
+  const [dragging, setDragging] = React.useState(false);
 
   React.useEffect(() => {
     const measure = () => {
       const w = track.current?.clientWidth ?? 0;
-      if (w) setMax(Math.max(120, w - 62));
+      if (w) setMax(Math.max(120, w - 66));
     };
     measure();
     window.addEventListener('resize', measure);
@@ -283,44 +677,80 @@ function SwipeToStart({ onDone, starting }: { onDone: () => void; starting: bool
     window.setTimeout(onDone, 180);
   }, [max, onDone]);
 
+  const progress = max > 0 ? Math.min(1, x / max) : 0;
+
   return (
-    <div className="pb-1">
+    <div className="pt-2">
       <div
         ref={track}
-        className="ht-swipe relative flex h-[62px] items-center rounded-full px-2"
+        className="ht-swipe relative flex h-[64px] items-center rounded-full px-2"
         role="button"
         tabIndex={0}
         aria-label="Swipe to start"
         onClick={done}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') done();
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            done();
+          }
         }}
       >
         <motion.span
           aria-hidden
           className="ht-swipe-fill absolute inset-y-0 left-0 rounded-full"
-          style={{ width: `${Math.max(58, x + 58)}px` }}
+          style={{ width: `${Math.max(62, x + 62)}px` }}
         />
+        {/* the track lights up as the knob travels — feedback before commitment */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-4 bottom-[7px] h-[2px] overflow-hidden rounded-full bg-white/10"
+        >
+          <span
+            className="block h-full rounded-full transition-[width] duration-150"
+            style={{
+              width: `${progress * 100}%`,
+              background: 'linear-gradient(90deg, var(--ht-ember-500), var(--ht-flare))',
+              boxShadow: '0 0 12px rgba(255,180,84,.8)',
+            }}
+          />
+        </span>
         <motion.div
           drag="x"
           dragConstraints={{ left: 0, right: max }}
           dragElastic={0.03}
           dragMomentum={false}
           animate={{ x }}
+          onDragStart={() => setDragging(true)}
           onDrag={(_, info) => setX(Math.max(0, Math.min(max, info.offset.x)))}
           onDragEnd={(_, info) => {
-            if (info.offset.x > max * 0.78) done();
+            setDragging(false);
+            if (info.offset.x > max * 0.76) done();
             else setX(0);
           }}
-          className="relative z-10 grid h-[46px] w-[46px] shrink-0 cursor-grab place-items-center rounded-full active:cursor-grabbing"
+          className="relative z-10 grid h-[48px] w-[48px] shrink-0 cursor-grab place-items-center rounded-full active:cursor-grabbing"
           style={{
             background: 'linear-gradient(135deg,var(--ht-ember),var(--ht-flare))',
-            boxShadow: '0 12px 34px -12px rgba(0,229,160,.75), 0 1px 0 rgba(255,255,255,.5) inset',
+            boxShadow: `0 12px 34px -12px rgba(255,180,84,.75), 0 1px 0 rgba(255,255,255,.5) inset${
+              dragging ? ', 0 0 0 6px rgba(255,180,84,.12)' : ''
+            }`,
+            transition: 'box-shadow .3s cubic-bezier(.22,1,.36,1)',
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#04140E" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <motion.svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#1A0E02"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+            animate={reduced ? undefined : { x: [0, 3, 0] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          >
             <path d="M5 12h13M13 6l6 6-6 6" />
-          </svg>
+          </motion.svg>
         </motion.div>
         <span
           className="pointer-events-none absolute inset-0 grid place-items-center text-[13.5px] font-semibold tracking-[0.01em] text-white/85"
@@ -329,9 +759,11 @@ function SwipeToStart({ onDone, starting }: { onDone: () => void; starting: bool
           {starting ? 'Starting…' : 'Swipe to start'}
         </span>
       </div>
-      <p className="mt-3 text-center text-[11.5px] text-ink-mute">
-        No sign-up form. Your handle is generated — change it whenever you like.
-      </p>
+      <div className="mt-3 flex items-center justify-center gap-3 text-[11.5px] text-ink-mute">
+        <span>No sign-up form.</span>
+        <span aria-hidden className="h-1 w-1 rounded-full bg-ink-faint" />
+        <span>Your handle is generated — change it whenever you like.</span>
+      </div>
     </div>
   );
 }

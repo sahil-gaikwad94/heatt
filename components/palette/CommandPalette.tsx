@@ -154,13 +154,13 @@ export function CommandPalette() {
 
   return (
     <div className="fixed inset-0 z-[150] flex items-start justify-center px-3 pt-[8vh]" role="dialog" aria-modal>
-      <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_20%,rgba(0,229,160,.07),transparent_60%)] backdrop-blur-md" style={{ background: 'rgba(4,4,6,.72)' }} onClick={() => app.setPalette(false)} />
+      <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_20%,rgba(255,180,84,.07),transparent_60%)] backdrop-blur-md" style={{ background: 'rgba(4,4,6,.72)' }} onClick={() => app.setPalette(false)} />
       <motion.div
         initial={{ opacity: 0, y: -14, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
         className="ht-glass relative w-full max-w-[620px] overflow-hidden rounded-[22px]"
-        style={{ boxShadow: '0 50px 130px -40px rgba(0,0,0,1), 0 0 0 1px rgba(0,229,160,.1)' }}
+        style={{ boxShadow: '0 50px 130px -40px rgba(0,0,0,1), 0 0 0 1px rgba(255,180,84,.1)' }}
       >
         <div className="flex items-center gap-2.5 border-b border-white/[.07] px-4 py-3">
           <span className="text-ember-400">⌘</span>
@@ -208,7 +208,7 @@ export function CommandPalette() {
                     }}
                     className={cls(
                       'flex w-full items-center gap-3 rounded-[12px] px-2.5 py-2 text-left transition-colors',
-                      idx === i ? 'bg-[linear-gradient(90deg,rgba(46,242,166,.16),rgba(124,255,208,.05))] text-ink' : 'text-ink-dim hover:bg-white/[.04]'
+                      idx === i ? 'bg-[linear-gradient(90deg,rgba(255,180,84,.16),rgba(255,203,120,.05))] text-ink' : 'text-ink-dim hover:bg-white/[.04]'
                     )}
                   >
                     <span className={cls('grid h-6 w-6 shrink-0 place-items-center rounded-[8px] border text-[12px]', idx === i ? 'border-ember-500/45 text-ember-300' : 'border-white/[.08] text-ink-mute')}>

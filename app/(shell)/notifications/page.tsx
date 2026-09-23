@@ -2,7 +2,7 @@
 /* ============================================================================
    /notifications — the heat log.
 
-   Structured like the rest of the board: an avatar-led row per event, a lime
+   Structured like the rest of the board: an avatar-led row per event, a hot
    highlight card when something genuinely good happened to you, quick actions
    inline, and a collapsed "Older" pile so the top of the page is always the
    part that is still warm.
@@ -20,12 +20,12 @@ import { dailyDigest } from '@/lib/feed';
 import type { Notification } from '@/lib/types';
 
 const TONE: Record<string, string> = {
-  ignite: 'linear-gradient(140deg,rgba(0,229,160,.22),transparent)',
-  heat: 'linear-gradient(140deg,rgba(0,201,140,.16),transparent)',
-  follow: 'linear-gradient(140deg,rgba(61,220,255,.14),transparent)',
+  ignite: 'linear-gradient(140deg,rgba(255,180,84,.22),transparent)',
+  heat: 'linear-gradient(140deg,rgba(245,154,43,.16),transparent)',
+  follow: 'linear-gradient(140deg,rgba(99,216,245,.14),transparent)',
   reply: 'linear-gradient(140deg,rgba(255,255,255,.05),transparent)',
-  milestone: 'linear-gradient(140deg,rgba(124,255,208,.18),transparent)',
-  digest: 'linear-gradient(140deg,rgba(90,169,255,.14),transparent)',
+  milestone: 'linear-gradient(140deg,rgba(239,203,139,.2),transparent)',
+  digest: 'linear-gradient(140deg,rgba(138,166,255,.14),transparent)',
 };
 
 const VERB: Record<string, string> = {
@@ -61,7 +61,7 @@ export default function NotificationsPage() {
   const list = s.notifications;
   const fresh = list.filter((n) => !n.read);
   const older = list.filter((n) => n.read);
-  /* the one that deserves a lime card: the most recent ignition or milestone */
+  /* the one that deserves the hot card: the most recent ignition or milestone */
   const highlight = fresh.find((n) => n.type === 'ignite' || n.type === 'milestone') ?? null;
 
   const dismiss = (id: string) =>
@@ -82,7 +82,7 @@ export default function NotificationsPage() {
       />
 
       {/* ------------------------------------------------------------- digest */}
-      <section className="mt-1 overflow-hidden rounded-[24px] border border-white/[.07] bg-white/[.02] p-5">
+      <section className="ht-panel mt-1 overflow-hidden !rounded-[24px] p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <span className="ht-label">today</span>
@@ -93,7 +93,7 @@ export default function NotificationsPage() {
           </div>
           <span
             className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/[.08] text-[17px] text-ink-dim"
-            style={{ background: 'radial-gradient(circle at 38% 30%, rgba(0,229,160,.22), rgba(255,255,255,.02))' }}
+            style={{ background: 'radial-gradient(circle at 38% 30%, rgba(255,180,84,.22), rgba(255,255,255,.02))' }}
           >
             ◷
           </span>
@@ -103,7 +103,7 @@ export default function NotificationsPage() {
             onClick={() => app.openPost(digest.hottest!.id)}
             className="mt-4 flex w-full items-center gap-3 rounded-[16px] border border-white/[.07] bg-black/30 p-3 text-left transition-colors hover:border-ember-500/40"
           >
-            <span className="ht-num shrink-0 rounded-full bg-[var(--ht-ember)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#04140E]">
+            <span className="ht-num shrink-0 rounded-full bg-[var(--ht-ember)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#1A0E02]">
               top pick
             </span>
             <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-ink">{digest.hottest.title}</span>
@@ -130,7 +130,7 @@ export default function NotificationsPage() {
         </AnimatePresence>
 
         {list.length === 0 && (
-          <div className="rounded-[24px] border border-white/[.07] bg-white/[.02] p-10 text-center">
+          <div className="ht-panel !rounded-[24px] p-10 text-center">
             <h3 className="ht-title text-[19px]">No heat on you yet</h3>
             <p className="mx-auto mt-2 max-w-[38ch] text-[13.5px] leading-relaxed text-ink-dim">
               Publish a spark or a forge — ignitions, replies and milestones land here.
@@ -214,7 +214,7 @@ function NotificationRow({
   const body = n.text.replace(`@${n.actor}`, '').trim();
 
   if (featured) {
-    /* the lime card — reserved for things that actually happened to you */
+    /* the hot card — reserved for things that actually happened to you */
     return (
       <motion.div
         layout
@@ -222,11 +222,14 @@ function NotificationRow({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98 }}
         transition={{ delay: Math.min(0.25, index * 0.05), duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        className="relative overflow-hidden rounded-[24px] p-4 text-[#04140E]"
-        style={{ background: 'var(--ht-ember)' }}
+        className="relative overflow-hidden rounded-[24px] p-4 text-[#1A0E02]"
+        style={{
+          background: 'linear-gradient(135deg, var(--ht-ember-300), var(--ht-ember) 55%, var(--ht-flare))',
+          boxShadow: '0 26px 60px -30px rgba(255,180,84,.75), 0 1px 0 rgba(255,255,255,.45) inset',
+        }}
       >
         <div className="flex items-start gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#04140E]/10">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#1A0E02]/10">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
               <path d="M12 3c1 2.6.2 3.9-1 5.2C9.7 9.6 8.2 10.8 8.2 13.4A4.4 4.4 0 0 0 16.4 18c.1-2.2-1.3-3.6-1.8-5.6 2 1.9 3.2 4 3.2 6.4A5.8 5.8 0 1 1 6.2 11C6.2 6.9 9.6 4.4 12 3Z" />
             </svg>
@@ -235,12 +238,12 @@ function NotificationRow({
             <p className="text-[15.5px] font-black leading-tight">
               {n.type === 'ignite' ? 'Ignition!' : 'Good news'}
             </p>
-            <p className="mt-1 text-[13px] leading-relaxed text-[#062E23]">{body}</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-[#3A2104]">{body}</p>
           </div>
           <button
             onClick={onOpen}
             aria-label="Open the post"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#04140E] text-[#F2FFFA] transition-transform hover:scale-[1.04]"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#1A0E02] text-[#FFF6E8] transition-transform hover:scale-[1.04]"
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M7 17 17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
@@ -250,13 +253,13 @@ function NotificationRow({
         <div className="mt-3.5 flex items-center gap-2">
           <button
             onClick={onOpen}
-            className="rounded-full bg-[#04140E]/10 px-3.5 py-1.5 text-[12.5px] font-bold transition-colors hover:bg-[#04140E]/20"
+            className="rounded-full bg-[#1A0E02]/10 px-3.5 py-1.5 text-[12.5px] font-bold transition-colors hover:bg-[#1A0E02]/20"
           >
             {n.level === 3 ? 'See the ignition' : 'See the forge'}
           </button>
           <button
             onClick={onDismiss}
-            className="rounded-full border border-[#04140E]/20 px-3.5 py-1.5 text-[12.5px] font-bold transition-colors hover:bg-[#04140E]/10"
+            className="rounded-full border border-[#1A0E02]/20 px-3.5 py-1.5 text-[12.5px] font-bold transition-colors hover:bg-[#1A0E02]/10"
           >
             Maybe later
           </button>
@@ -264,7 +267,7 @@ function NotificationRow({
           <button
             onClick={onDismiss}
             aria-label="Dismiss"
-            className="grid h-9 w-9 place-items-center rounded-full bg-[#04140E]/10 transition-colors hover:bg-[#04140E]/20"
+            className="grid h-9 w-9 place-items-center rounded-full bg-[#1A0E02]/10 transition-colors hover:bg-[#1A0E02]/20"
           >
             <TrashIcon />
           </button>
@@ -296,7 +299,7 @@ function NotificationRow({
         <button
           onClick={onOpen}
           aria-label="Open"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#04140E] transition-transform hover:scale-[1.04]"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#1A0E02] transition-transform hover:scale-[1.04]"
           style={{ background: 'var(--ht-ember)' }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1">
@@ -315,7 +318,7 @@ function NotificationRow({
           Maybe later
         </button>
         <span className="flex-1" />
-        {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-[var(--ht-ember)] shadow-[0_0_10px_rgba(0,229,160,.8)]" />}
+        {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-[var(--ht-ember)] shadow-[0_0_10px_rgba(255,180,84,.8)]" />}
         <button onClick={onDismiss} aria-label="Dismiss" className="grid h-8 w-8 place-items-center rounded-full border border-white/[.09] text-ink-mute transition-colors hover:text-magma">
           <TrashIcon />
         </button>

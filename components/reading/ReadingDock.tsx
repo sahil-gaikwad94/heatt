@@ -48,11 +48,13 @@ export function ReadingDock() {
         className="pointer-events-none fixed inset-x-0 bottom-[max(86px,calc(env(safe-area-inset-bottom)+86px))] z-40 flex justify-center px-4 md:bottom-6"
       >
         <div className="ht-glass pointer-events-auto flex w-[min(520px,94vw)] items-center gap-3 !rounded-full py-2 pl-2 pr-2.5">
-          <span className="relative grid h-[38px] w-[38px] shrink-0 place-items-center overflow-hidden rounded-full" style={{ background: 'linear-gradient(140deg,rgba(0,229,160,.35),rgba(0,0,0,.6))' }}>
+          <span className="relative grid h-[38px] w-[38px] shrink-0 place-items-center overflow-hidden rounded-full" style={{ background: 'linear-gradient(140deg,rgba(255,180,84,.35),rgba(0,0,0,.6))' }}>
             {post.cover ? (
               <img src={post.cover} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className="text-[13px]">📖</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M5 4.5h6a3 3 0 0 1 3 3V20a2.5 2.5 0 0 0-2.5-2.5H5ZM19 4.5h-1.5A2.5 2.5 0 0 0 15 7v13a2.5 2.5 0 0 1 2.5-2.5H19Z" />
+              </svg>
             )}
           </span>
 
@@ -71,8 +73,8 @@ export function ReadingDock() {
 
           <button
             onClick={() => app.openPost(String(post.id))}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[14px] font-bold text-[#04140E]"
-            style={{ background: 'var(--ht-ember)', boxShadow: '0 10px 26px -10px rgba(0,229,160,.8)' }}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[14px] font-bold text-[#1A0E02]"
+            style={{ background: 'var(--ht-ember)', boxShadow: '0 10px 26px -10px rgba(255,180,84,.8)' }}
             aria-label={`Resume ${title}`}
           >
             →

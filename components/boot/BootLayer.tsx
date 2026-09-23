@@ -107,7 +107,7 @@ export function BootLayer({ children }: { children: React.ReactNode }) {
         <div
           className="pointer-events-none fixed inset-0 z-0"
           aria-hidden
-          style={{ background: 'radial-gradient(120% 90% at 50% 112%, rgba(0,229,160,.045), transparent 62%), linear-gradient(180deg,#0a0a0a,#000000)' }}
+          style={{ background: 'radial-gradient(120% 90% at 50% 112%, rgba(255,180,84,.045), transparent 62%), linear-gradient(180deg,#0a0a0a,#000000)' }}
         />
       )}
 

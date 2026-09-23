@@ -216,7 +216,21 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
               </span>
             </Link>
             <span className="flex-1" />
-            <span className="ht-num text-[12.5px] text-ink-mute">{post.minutes ?? 6} min read</span>
+            {/* spec row — the facts of the piece, divided by hairlines, the same
+                rhythm a detail screen uses for "1200 sq ft · 3 beds · 2 bath" */}
+            <span className="hidden items-center gap-3 text-[11.5px] text-ink-mute sm:flex">
+              <span className="ht-num font-semibold">{post.minutes ?? 6} min</span>
+              <span aria-hidden className="h-2.5 w-px bg-white/[.1]" />
+              <span className="ht-num font-semibold">{compact(post.reactions ?? 0)} reactions</span>
+              <span aria-hidden className="h-2.5 w-px bg-white/[.1]" />
+              <span className="ht-num font-semibold">{compact(post.comments ?? 0)} replies</span>
+              {typeof heat.temp === 'number' && (
+                <>
+                  <span aria-hidden className="h-2.5 w-px bg-white/[.1]" />
+                  <span className="ht-num font-semibold text-ember-300">{Math.round(heat.temp)}°</span>
+                </>
+              )}
+            </span>
             <span className="hidden h-6 w-px bg-white/10 sm:block" />
             <div className="relative">
               <HeatButton
@@ -243,7 +257,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
                   href={`/explore?tag=${encodeURIComponent(tag)}`}
                   onClick={onClose}
                   className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-ember-200 transition-colors hover:border-ember-400"
-                  style={{ borderColor: 'rgba(0,229,160,.26)', background: 'rgba(0,229,160,.08)' }}
+                  style={{ borderColor: 'rgba(255,180,84,.26)', background: 'rgba(255,180,84,.08)' }}
                 >
                   #{tag}
                 </Link>
@@ -354,7 +368,7 @@ function Cover({ post, burning }: { post: Post; burning: boolean }) {
   return (
     <motion.div
       className="relative overflow-hidden rounded-[22px] border border-white/[.07]"
-      style={{ y, background: 'linear-gradient(140deg,#141414,#050505)', boxShadow: burning ? '0 40px 120px -30px rgba(0,229,160,.5)' : '0 40px 90px -50px rgba(0,0,0,1)' }}
+      style={{ y, background: 'linear-gradient(140deg,#141414,#050505)', boxShadow: burning ? '0 40px 120px -30px rgba(255,180,84,.5)' : '0 40px 90px -50px rgba(0,0,0,1)' }}
     >
       {src && ok ? (
         <motion.img
@@ -366,11 +380,22 @@ function Cover({ post, burning }: { post: Post; burning: boolean }) {
           style={{ scale, filter: `saturate(${burning ? 1.35 : 1.06}) brightness(${burning ? 1.1 : 1})`, transition: 'filter .6s' }}
         />
       ) : (
-        <div className="grid aspect-[16/8] w-full place-items-center" style={{ background: 'radial-gradient(80% 100% at 20% 110%, rgba(0,229,160,.22), transparent 62%), linear-gradient(140deg,#0f1a15,#050505)' }}>
+        <div className="grid aspect-[16/8] w-full place-items-center" style={{ background: 'radial-gradient(80% 100% at 20% 110%, rgba(255,180,84,.22), transparent 62%), linear-gradient(140deg,#1a1208,#050505)' }}>
           <span className="ht-title ht-heat-text text-[clamp(1.6rem,1rem+3vw,3rem)]">{post.authorName}</span>
         </div>
       )}
       <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.15) 20%,rgba(0,0,0,.86))' }} />
+      {/* over-image chrome, the detail-screen idiom: glass discs bottom-left */}
+      <div className="absolute bottom-4 left-4 flex items-center gap-2">
+        <span className="rounded-full border border-white/[.14] bg-black/50 px-3 py-1.5 text-[11px] font-semibold text-white/90 backdrop-blur-md">
+          {post.origin === 'wire' ? 'syndicated · attributed' : post.kind === 'forge' ? 'long-form' : 'spark'}
+        </span>
+        {(post.tags ?? []).slice(0, 2).map((t) => (
+          <span key={t} className="rounded-full border border-white/[.14] bg-black/50 px-3 py-1.5 text-[11px] font-semibold text-white/80 backdrop-blur-md">
+            #{t}
+          </span>
+        ))}
+      </div>
       <FireOverlay active={burning} />
     </motion.div>
   );
@@ -378,7 +403,7 @@ function Cover({ post, burning }: { post: Post; burning: boolean }) {
 
 function Attribution({ post }: { post: Post }) {
   return (
-    <div className="mt-5 flex flex-wrap items-center gap-3 rounded-[16px] border border-cryo-teal/20 bg-[rgba(61,220,255,.045)] p-3">
+    <div className="mt-5 flex flex-wrap items-center gap-3 rounded-[16px] border border-cryo-teal/20 bg-[rgba(99,216,245,.045)] p-3">
       <span className="ht-chip !border-cryo-teal/35 !text-cryo-teal">syndicated</span>
       <p className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-ink-dim">
         Published freely by <b className="text-ink">{post.authorName}</b>
@@ -463,10 +488,10 @@ function BlockView({ block, onClose }: { block: ArticleBlock; onClose: () => voi
     case 'callout': {
       const tone =
         block.kind === 'heat'
-          ? { b: 'rgba(0,229,160,.3)', bg: 'linear-gradient(100deg,rgba(46,242,166,.12),rgba(124,255,208,.05))', c: 'var(--ht-flare)' }
+          ? { b: 'rgba(255,180,84,.3)', bg: 'linear-gradient(100deg,rgba(255,180,84,.12),rgba(255,203,120,.05))', c: 'var(--ht-flare)' }
           : block.kind === 'warn'
-            ? { b: 'rgba(124,255,208,.26)', bg: 'linear-gradient(100deg,rgba(124,255,208,.08),transparent)', c: '#7CFFD0' }
-            : { b: 'rgba(61,220,255,.24)', bg: 'linear-gradient(100deg,rgba(61,220,255,.07),transparent)', c: 'var(--ht-cryo-teal)' };
+            ? { b: 'rgba(255,203,120,.26)', bg: 'linear-gradient(100deg,rgba(255,203,120,.08),transparent)', c: '#FFC978' }
+            : { b: 'rgba(99,216,245,.24)', bg: 'linear-gradient(100deg,rgba(99,216,245,.07),transparent)', c: 'var(--ht-cryo-teal)' };
       return (
         <aside className="my-[1.6em] rounded-[16px] border p-4" style={{ borderColor: tone.b, background: tone.bg }}>
           <div className="mb-1.5 flex items-center gap-2">
@@ -558,7 +583,7 @@ function ReadingBar({ pct, remaining, onJump }: { pct: number; remaining: number
             style={{
               width: `${Math.min(100, pct)}%`,
               background: 'linear-gradient(90deg,var(--ht-flame),var(--ht-ember))',
-              boxShadow: '0 0 12px rgba(0,229,160,.55)',
+              boxShadow: '0 0 12px rgba(255,180,84,.55)',
               transition: 'width .2s linear',
             }}
           />
@@ -688,7 +713,7 @@ function LoadingBody() {
 
 function OfflineBody({ post, meta, onRetry }: { post: Post; meta?: any; onRetry: () => void }) {
   return (
-    <div className="rounded-[18px] border border-ember-500/25 bg-[linear-gradient(140deg,rgba(0,229,160,.07),transparent_60%)] p-5">
+    <div className="rounded-[18px] border border-ember-500/25 bg-[linear-gradient(140deg,rgba(255,180,84,.07),transparent_60%)] p-5">
       <div className="mb-2 flex items-center gap-2">
         <span className="ht-chip !border-ember-500/40 !text-ember-200">body offline</span>
         <span className="text-[12px] text-ink-mute">the wire is unreachable from this network</span>

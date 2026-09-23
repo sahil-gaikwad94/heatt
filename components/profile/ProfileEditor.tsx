@@ -105,7 +105,7 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
             if (f) readFile(f, 'cover');
           }}
           className="relative h-[150px] overflow-hidden"
-          style={{ outline: dragOver === 'cover' ? '2px dashed rgba(0,229,160,.6)' : 'none', outlineOffset: -6 }}
+          style={{ outline: dragOver === 'cover' ? '2px dashed rgba(255,180,84,.6)' : 'none', outlineOffset: -6 }}
         >
           <img src={cover} alt="" className="h-full w-full object-cover" />
           <span className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.2),rgba(0,0,0,.9))' }} />
@@ -140,7 +140,7 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
                 if (f) readFile(f, 'avatar');
               }}
               className="relative shrink-0 rounded-full"
-              style={{ outline: dragOver === 'avatar' ? '2px dashed rgba(0,229,160,.7)' : 'none', outlineOffset: 4 }}
+              style={{ outline: dragOver === 'avatar' ? '2px dashed rgba(255,180,84,.7)' : 'none', outlineOffset: 4 }}
             >
               <img src={avatar ?? avatarDataUri(name || 'you', handle)} alt="" className="h-[76px] w-[76px] rounded-full border border-white/10 object-cover" />
               <label className="absolute inset-x-0 -bottom-1 mx-auto w-max cursor-pointer rounded-full border border-white/12 bg-[#0d0d0d] px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-dim hover:text-ember-300">
@@ -184,9 +184,9 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
                     onClick={() => setInterests((p) => (on ? p.filter((x) => x !== tg) : [...p, tg]))}
                     className="rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-all"
                     style={{
-                      borderColor: on ? 'rgba(0,201,140,.42)' : 'var(--ht-line)',
+                      borderColor: on ? 'rgba(245,154,43,.42)' : 'var(--ht-line)',
                       color: on ? 'var(--ht-whitehot)' : 'var(--ht-ink-mute)',
-                      background: on ? 'linear-gradient(120deg,rgba(46,242,166,.2),rgba(124,255,208,.07))' : 'transparent',
+                      background: on ? 'linear-gradient(120deg,rgba(255,180,84,.2),rgba(255,203,120,.07))' : 'transparent',
                     }}
                   >
                     #{tg}
