@@ -290,6 +290,32 @@ export function MiniGrid({ activity, days = 35 }: { activity: Record<string, any
 
 /* ---------------------------------------------------------------- mobile bar */
 
+export function ReferenceHeader() {
+  const app = useApp();
+  const path = usePathnameSafe();
+  return (
+    <header className="sticky top-0 z-40 mx-auto flex h-[72px] w-full max-w-[1080px] items-center justify-between px-4 sm:px-6">
+      <Link href="/feed" className="flex items-center gap-2.5" aria-label="heatt home">
+        <span className="grid h-9 w-9 place-items-center rounded-[13px] bg-[linear-gradient(140deg,var(--ht-cryo-teal),var(--ht-ember-300))] text-[22px] font-bold text-[#081014] shadow-[0_12px_30px_-16px_rgba(131,222,212,.9)]">h</span>
+        <span className="ht-display text-[23px] text-white">heatt</span>
+      </Link>
+      <div className="hidden items-center gap-2 md:flex">
+        {[['/feed', 'Home'], ['/explore', 'Explore'], ['/library', 'Saved']].map(([href, label]) => (
+          <Link key={href} href={href} className={cls('rounded-full px-4 py-2 text-[12px] font-semibold transition-colors', path.startsWith(href) ? 'bg-white/[.1] text-white' : 'text-ink-mute hover:text-white')}>
+            {label}
+          </Link>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <button onClick={() => app.setPalette(true)} className="grid h-10 w-10 place-items-center rounded-full border border-white/[.1] bg-white/[.035] text-ink-dim transition-colors hover:text-white" aria-label="Search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7" /><path d="m20 20-4.2-4.2" strokeLinecap="round" /></svg>
+        </button>
+        <button onClick={() => app.setComposer(true)} className="hidden h-10 rounded-full bg-white px-4 text-[12px] font-bold text-[#081014] transition-transform active:scale-95 sm:block">Write a note</button>
+      </div>
+    </header>
+  );
+}
+
 export function MobileTabs() {
   const app = useApp();
   const path = usePathnameSafe();
@@ -303,7 +329,7 @@ export function MobileTabs() {
   ];
   return (
     <>
-      <nav className="ht-dock fixed inset-x-0 bottom-0 z-50 mx-auto mb-[max(12px,env(safe-area-inset-bottom))] flex w-[min(93vw,430px)] items-center justify-between gap-0.5 px-2 py-1.5 md:hidden">
+      <nav className="ht-dock fixed inset-x-0 bottom-0 z-50 mx-auto mb-[max(12px,env(safe-area-inset-bottom))] flex w-[min(93vw,480px)] items-center justify-between gap-0.5 px-2 py-1.5">
         {items.map((it) => {
           const active = it.key === 'profile' ? path.startsWith('/u/') : path === it.href;
           return (
@@ -333,7 +359,7 @@ export function MobileTabs() {
       </nav>
       <button
         onClick={() => app.setComposer(true)}
-        className="fixed bottom-[96px] right-4 z-50 grid h-[54px] w-[54px] place-items-center rounded-full text-[#1A0E02] transition-transform active:scale-95 md:hidden"
+        className="fixed bottom-[96px] right-[max(16px,calc((100vw-1080px)/2))] z-50 grid h-[54px] w-[54px] place-items-center rounded-full text-[#081014] transition-transform active:scale-95"
         style={{
           background: 'linear-gradient(135deg,var(--ht-ember),var(--ht-flare))',
           boxShadow: '0 16px 40px -14px rgba(255,180,84,.85), 0 1px 0 rgba(255,255,255,.5) inset',

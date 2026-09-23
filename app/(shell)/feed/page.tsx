@@ -239,34 +239,22 @@ function FeaturedForge({ post, onOpen }: { post: Post; onOpen: (id: string) => v
   const summary = (post.kind === 'forge' ? post.dek : post.text) ?? '';
   return (
     <section className="mb-5">
-      <div className="ht-glass relative overflow-hidden !rounded-[26px]">
-        {post.cover && (
-          <>
-            <img src={post.cover} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" />
-            <span aria-hidden className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,.93))' }} />
-          </>
-        )}
-        <div className="relative p-5 sm:p-6">
-          <div className="flex items-center gap-2">
-            <span className="ht-chip !border-transparent !bg-[var(--ht-ember)] !text-[#1A0E02]">featured</span>
-            <span className="ht-chip !normal-case !tracking-normal">{post.kind === 'forge' ? `${post.minutes ?? 6} min read` : 'spark'}</span>
-            <span className="ml-auto text-[12px] text-ink-mute">{post.authorHandle ? `@${post.authorHandle}` : ''}</span>
+      <div className="relative min-h-[430px] overflow-hidden rounded-[30px] border border-white/[.12] bg-[#0c141b] shadow-[0_34px_90px_-44px_rgba(0,0,0,.9)]">
+        {post.cover ? <img src={post.cover} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 hover:scale-[1.035]" /> : <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 72% 18%, rgba(131,222,212,.4), transparent 30%), linear-gradient(140deg,#12222b,#080d12 70%)' }} />}
+        <span aria-hidden className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(4,8,12,.08) 0%,rgba(4,8,12,.22) 34%,rgba(4,8,12,.96) 100%)' }} />
+        <div className="relative flex min-h-[430px] flex-col justify-between p-5 sm:p-7">
+          <div className="flex items-center justify-between gap-3">
+            <span className="rounded-full border border-white/20 bg-black/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.18em] text-white/80 backdrop-blur-md">editor’s pick</span>
+            <span className="rounded-full border border-white/15 bg-black/20 px-3 py-1.5 text-[11px] text-white/75 backdrop-blur-md">{post.kind === 'forge' ? `${post.minutes ?? 6} min read` : 'short read'}</span>
           </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-[1.35fr_1fr] sm:items-end">
-            <h2 className="ht-title text-[clamp(1.5rem,1.2rem+1.4vw,2.25rem)] leading-[1.08] text-ink">{post.title ?? post.text}</h2>
-            <p className="text-[13.5px] leading-relaxed text-ink-dim">{summary.slice(0, 170)}</p>
-          </div>
-          <div className="mt-5 flex flex-wrap items-center gap-2.5">
-            <button onClick={() => onOpen(post.id)} className="ht-btn !rounded-full !bg-white/[.06] !px-4 !py-2.5 !text-[13.5px]">
-              Read more →
-            </button>
-            <button onClick={() => onOpen(post.id)} className="ht-btn ht-btn--heat !rounded-full !px-5 !py-2.5 !text-[13.5px]">
-              {post.kind === 'forge' ? 'Open the forge' : 'Open the spark'}
-            </button>
-            <span className="ml-auto hidden items-center gap-2 text-[12px] text-ink-mute sm:flex">
-              <Avatar name={post.authorName} handle={post.authorHandle} src={post.authorAvatar} size={24} />
-              @{post.authorHandle}
-            </span>
+          <div className="max-w-[680px]">
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-[.24em] text-[var(--ht-cryo-ice)]">@{post.authorHandle} · today’s story</p>
+            <h2 className="max-w-[15ch] font-serif text-[clamp(2.4rem,1.6rem+3vw,4.4rem)] leading-[.92] tracking-[-.05em] text-white">{post.title ?? post.text}</h2>
+            <p className="mt-4 max-w-[48ch] text-[13.5px] leading-relaxed text-white/70">{summary.slice(0, 170)}</p>
+            <div className="mt-5 flex items-center gap-2.5">
+              <button onClick={() => onOpen(post.id)} className="ht-btn ht-btn--heat !px-5 !py-3 !text-[13.5px]">Read the story <span aria-hidden>↗</span></button>
+              <button onClick={() => onOpen(post.id)} className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-md" aria-label="Open story">→</button>
+            </div>
           </div>
         </div>
       </div>

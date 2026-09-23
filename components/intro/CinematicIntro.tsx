@@ -4,12 +4,11 @@
 
    ~4.6s, three acts, no canvas and no rAF churn beyond one progress value:
 
-     VOID     a single amber point of light ignites in a black room and blooms
+     VOID     a single quiet point of light opens a dark room into a portal
      SPREAD   the camera pushes through the keyhole plate — two layers panning
               against each other behind a depth-of-field blur, arcs of light
               streaking past, exactly like a film's title cards
-     FORM     the wordmark resolves letter by letter, then the frame blows out
-              to amber and hands the room over
+     FORM     the wordmark resolves letter by letter and hands the room over
 
    Cinema conventions do the work: letterbox bars, a hairline timeline with act
    ticks, a lab-stamp, and a subtitle that arrives rather than appears. Skipping
@@ -26,13 +25,13 @@ type Act = 'VOID' | 'SPREAD' | 'FORM';
 const actAt = (t: number): Act => (t < 1.5 ? 'VOID' : t < 3.1 ? 'SPREAD' : 'FORM');
 
 const ACT_META: Record<Act, { n: string; line: string }> = {
-  VOID: { n: '01', line: 'a black room, and one point of heat' },
-  SPREAD: { n: '02', line: 'everything worth reading starts as a spark' },
-  FORM: { n: '03', line: 'and cools into something you can hold' },
+  VOID: { n: '01', line: 'chase your curiosity' },
+  SPREAD: { n: '02', line: 'follow the thread until it opens' },
+  FORM: { n: '03', line: 'keep what stays with you' },
 };
 
-const PLATE = '/art/sky-gateway.jpg';
-const SUB = '/art/ember-forge.jpg';
+const PLATE = '/art/ref-curiosity-portal.jpg';
+const SUB = '/art/ref-honey-journey.jpg';
 
 export function CinematicIntro({ onDone, done }: { onDone: () => void; done: boolean }) {
   const [t, setT] = React.useState(0);
@@ -216,11 +215,11 @@ export function CinematicIntro({ onDone, done }: { onDone: () => void; done: boo
                 className="mt-7 max-w-[46ch]"
               >
                 <p className="text-[clamp(1rem,.9rem+.45vw,1.25rem)] leading-relaxed text-ink-dim">
-                  Sparks and full-length forges in one feed, ranked by one honest physics model —
+                  Short thoughts and full stories in one calm room —
                   <span className="text-white"> every word read here, never somewhere else.</span>
                 </p>
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                  {['heat, not likes', 'hold to ignite', 'no redirects', 'read it all in-app'].map(
+                  {['follow curiosity', 'save the good parts', 'no redirects', 'read it all in-app'].map(
                     (chip, i) => (
                       <motion.span
                         key={chip}
@@ -355,7 +354,7 @@ function Wordmark() {
         transition={{ delay: 0.62, duration: 0.6 }}
         className="mt-3 text-[11px] font-bold uppercase tracking-[0.42em] text-ink-mute"
       >
-        where ideas burn
+        where curiosity gathers
       </motion.p>
     </div>
   );

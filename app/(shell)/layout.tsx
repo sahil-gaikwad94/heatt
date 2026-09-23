@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { AppGate } from '@/components/boot/AppGate';
-import { MobileTabs, NavRail, RightRail } from '@/components/shell/Shell';
+import { MobileTabs, ReferenceHeader } from '@/components/shell/Shell';
 import { ReadingDock } from '@/components/reading/ReadingDock';
 
 export const metadata: Metadata = {
@@ -10,10 +10,9 @@ export const metadata: Metadata = {
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppGate>
-      <div className="mx-auto flex w-full max-w-[1420px]">
-        <NavRail />
-        <main className="min-w-0 flex-1 px-4 pb-[110px] pt-0 sm:px-6 md:pb-10">{children}</main>
-        <RightRail />
+      <div className="reference-room">
+        <ReferenceHeader />
+        <main className="mx-auto min-w-0 w-full max-w-[1080px] px-4 pb-[120px] pt-0 sm:px-6 md:pb-[140px]">{children}</main>
       </div>
       <MobileTabs />
       <ReadingDock />

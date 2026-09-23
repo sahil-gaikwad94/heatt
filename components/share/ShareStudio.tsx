@@ -26,10 +26,10 @@ type Fmt = 'story' | 'square' | 'card';
 const DIMS: Record<Fmt, [number, number]> = { story: [1080, 1920], square: [1080, 1080], card: [1200, 675] };
 type Palette = 'ember' | 'cryo' | 'mono' | 'ash';
 const PAL: Record<Palette, { a: string; b: string; c: string; text: string; sub: string }> = {
-  ember: { a: '#EFCB8B', b: '#FFB454', c: '#FFC978', text: '#FFF6E8', sub: 'rgba(255,246,232,.72)' },
-  cryo: { a: '#5B4BFF', b: '#63D8F5', c: '#D9FFFB', text: '#F2FFFF', sub: 'rgba(230,255,252,.7)' },
-  mono: { a: '#3A3A40', b: '#9A9794', c: '#EDEDED', text: '#FFFFFF', sub: 'rgba(255,255,255,.62)' },
-  ash: { a: '#D97B12', b: '#F59A2B', c: '#FFE3B0', text: '#FFF6E8', sub: 'rgba(255,246,232,.68)' },
+  ember: { a: '#D6F3E8', b: '#8EDDD0', c: '#F0DFA5', text: '#FCFBF5', sub: 'rgba(238,247,242,.72)' },
+  cryo: { a: '#C9D6FF', b: '#8D91E8', c: '#BFF5EB', text: '#F5F6FF', sub: 'rgba(231,234,255,.7)' },
+  mono: { a: '#6E7A86', b: '#AEB8C3', c: '#F3F4F0', text: '#FFFFFF', sub: 'rgba(255,255,255,.62)' },
+  ash: { a: '#F2D9B0', b: '#CA9F78', c: '#F9EED4', text: '#FFF8ED', sub: 'rgba(255,246,232,.68)' },
 };
 
 export function ShareStudio() {
@@ -128,21 +128,21 @@ export function ShareStudio() {
     } catch {/* fonts may be mid-load; carry on */}
 
     /* ---------------------------------------------------------- background */
-    ctx.fillStyle = '#050505';
+    ctx.fillStyle = '#070B10';
     ctx.fillRect(0, 0, W, H);
 
-    // molten field: layered radial gradients seeded by the post id
+    // layered editorial field: soft mint/lilac light behind the reading object
     const seedNum = [...(id ?? '')].reduce((a, ch) => a + ch.charCodeAt(0), 0);
-    const blobs = 5;
+    const blobs = 4;
     for (let i = 0; i < blobs; i++) {
       const t = (seedNum * (i + 3)) % 100;
       const x = W * (0.08 + ((t * 7.3) % 84) / 100);
-      const y = fmt === 'card' ? H * (0.2 + ((t * 3.1) % 60) / 100) : H * (0.62 + ((t * 2.7) % 40) / 100);
+      const y = fmt === 'card' ? H * (0.2 + ((t * 3.1) % 60) / 100) : H * (0.52 + ((t * 2.7) % 40) / 100);
       const r = (fmt === 'card' ? 0.5 : 0.72) * Math.min(W, H) * (0.42 + ((t * 1.7) % 46) / 100);
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       const col = i % 3 === 0 ? p.a : i % 3 === 1 ? p.b : p.c;
-      g.addColorStop(0, hexA(col, 0.55));
-      g.addColorStop(0.45, hexA(col, 0.16));
+      g.addColorStop(0, hexA(col, 0.4));
+      g.addColorStop(0.45, hexA(col, 0.12));
       g.addColorStop(1, hexA(col, 0));
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
@@ -151,16 +151,16 @@ export function ShareStudio() {
     // heat haze at the base + top scrim for legibility
     const base = ctx.createLinearGradient(0, H * 0.55, 0, H);
     base.addColorStop(0, 'rgba(0,0,0,0)');
-    base.addColorStop(1, hexA(p.a, 0.42));
+    base.addColorStop(1, hexA(p.a, 0.28));
     ctx.fillStyle = base;
     ctx.fillRect(0, 0, W, H);
     const scrim = ctx.createLinearGradient(0, 0, 0, H * 0.6);
-    scrim.addColorStop(0, 'rgba(0,0,0,.86)');
-    scrim.addColorStop(1, 'rgba(0,0,0,0)');
+    scrim.addColorStop(0, 'rgba(3,8,12,.92)');
+    scrim.addColorStop(1, 'rgba(3,8,12,0)');
     ctx.fillStyle = scrim;
     ctx.fillRect(0, 0, W, H * 0.6);
 
-    // embers
+    // sparse light flecks, used as atmosphere rather than decoration
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < 90; i++) {
       const x = ((seedNum * (i + 11) * 37) % W) as number;
@@ -178,7 +178,7 @@ export function ShareStudio() {
 
     // fine grain
     for (let i = 0; i < 2600; i++) {
-      ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.05})`;
+      ctx.fillStyle = `rgba(222,247,240,${Math.random() * 0.035})`;
       ctx.fillRect(Math.random() * W, Math.random() * H, 1.4, 1.4);
     }
 
@@ -230,16 +230,42 @@ export function ShareStudio() {
         }
       }
 
-      const titleSize = fmt === 'story' ? 74 : fmt === 'square' ? 62 : 44;
-      ctx.font = `700 ${titleSize}px "Bricolage Grotesque Variable", "Inter Variable", sans-serif`;
+      if (!data.cover && fmt !== 'card') {
+        const artH = fmt === 'story' ? H * 0.24 : H * 0.28;
+        ctx.save();
+        roundRect(ctx, pad, y, innerW, artH, 34);
+        const art = ctx.createLinearGradient(pad, y, pad + innerW, y + artH);
+        art.addColorStop(0, hexA(p.b, 0.42));
+        art.addColorStop(0.52, hexA(p.a, 0.18));
+        art.addColorStop(1, 'rgba(10,18,24,.92)');
+        ctx.fillStyle = art;
+        ctx.fill();
+        ctx.clip();
+        const glow = ctx.createRadialGradient(pad + innerW * .72, y + artH * .18, 0, pad + innerW * .72, y + artH * .18, artH * .82);
+        glow.addColorStop(0, hexA(p.c, .6));
+        glow.addColorStop(1, hexA(p.c, 0));
+        ctx.fillStyle = glow;
+        ctx.fillRect(pad, y, innerW, artH);
+        ctx.font = `700 ${artH * .72}px "Newsreader Variable", Georgia, serif`;
+        ctx.fillStyle = hexA(p.text, .94);
+        ctx.fillText('h', pad + innerW * .1, y + artH * .72);
+        ctx.font = `800 ${fmt === 'story' ? 20 : 17}px "Inter Variable", sans-serif`;
+        ctx.fillStyle = hexA(p.text, .72);
+        ctx.fillText('A thought worth carrying', pad + innerW * .1, y + artH * .88);
+        ctx.restore();
+        y += artH + 34;
+      }
+
+      const titleSize = fmt === 'story' ? 92 : fmt === 'square' ? 72 : 48;
+      ctx.font = `700 ${titleSize}px "Newsreader Variable", Georgia, serif`;
       ctx.fillStyle = p.text;
       ctx.textBaseline = 'alphabetic';
       const lines = wrap(ctx, data.title, innerW, fmt === 'card' ? 5 : fmt === 'story' ? 6 : 4);
       lines.forEach((ln, i) => ctx.fillText(ln, pad, y + titleSize * 1.04 * i + titleSize * 0.82));
       y += lines.length * titleSize * 1.04 + 18;
 
-      const dekSize = fmt === 'card' ? 22 : 27;
-      ctx.font = `400 ${dekSize}px "Newsreader Variable", Georgia, serif`;
+      const dekSize = fmt === 'card' ? 21 : 27;
+      ctx.font = `500 ${dekSize}px "Inter Variable", sans-serif`;
       ctx.fillStyle = p.sub;
       const dekLines = wrap(ctx, data.dek, innerW, fmt === 'story' ? 4 : 3);
       dekLines.forEach((ln, i) => ctx.fillText(ln, pad, y + dekSize * 1.42 * i + dekSize));
@@ -275,8 +301,8 @@ export function ShareStudio() {
       }
     } else {
       /* frame three — signature: who wrote it, and where to read it */
-      const titleSize = fmt === 'story' ? 66 : fmt === 'square' ? 56 : 40;
-      ctx.font = `700 ${titleSize}px "Bricolage Grotesque Variable", "Inter Variable", sans-serif`;
+      const titleSize = fmt === 'story' ? 72 : fmt === 'square' ? 60 : 42;
+      ctx.font = `700 ${titleSize}px "Newsreader Variable", Georgia, serif`;
       ctx.fillStyle = p.text;
       const lines = wrap(ctx, data.title, innerW, 5);
       lines.forEach((ln, i) => ctx.fillText(ln, pad, y + titleSize * 1.04 * i + titleSize * 0.82));
@@ -490,7 +516,7 @@ export function ShareStudio() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.28 }}
-          className="fixed inset-0 z-[170] overflow-y-auto bg-black/92 backdrop-blur-2xl"
+          className="share-sheet fixed inset-0 z-[170] overflow-y-auto bg-[#05070a]/96 backdrop-blur-2xl"
           aria-label="Share as a story"
         >
           {/* the piece's own cover, as the room light */}
@@ -498,16 +524,23 @@ export function ShareStudio() {
             <img aria-hidden src={post.cover} alt="" className="pointer-events-none fixed inset-0 h-full w-full object-cover opacity-20 blur-3xl" />
           )}
 
-          <div className="relative mx-auto flex min-h-full w-full max-w-[1080px] flex-col gap-5 px-4 py-5 sm:px-8 lg:flex-row lg:items-start lg:justify-center lg:gap-10 lg:py-10">
+          <div className="relative mx-auto flex min-h-full w-full max-w-[1180px] flex-col gap-5 px-4 pb-8 pt-4 sm:px-8 lg:flex-row lg:items-start lg:justify-center lg:gap-12 lg:py-10">
+            <header className="absolute inset-x-4 top-4 z-10 flex items-center justify-between sm:inset-x-8 lg:inset-x-10">
+              <div className="flex items-center gap-3">
+                <span className="share-sheet__mark">h</span>
+                <span className="text-[12px] font-semibold tracking-[.18em] text-white/55 uppercase">share a story</span>
+              </div>
+              <button onClick={() => app.setShare(null)} className="share-sheet__close" aria-label="Close share studio">×</button>
+            </header>
             {/* ------------------------------------------------- the story */}
-            <div ref={stageRef} className="min-w-0 flex-1 lg:max-w-[460px]">
+            <div ref={stageRef} className="share-stage min-w-0 flex-1 pt-14 lg:max-w-[520px] lg:pt-16">
               <div className="mb-3 flex items-center gap-2">
                 {(SLIDES as readonly string[]).map((s, i) => (
                   <button
                     key={s}
                     onClick={() => { setSlide(i); setProgress(0); }}
                     aria-label={`Frame ${i + 1}: ${s}`}
-                    className="group h-[3px] flex-1 overflow-hidden rounded-full bg-white/15"
+                    className="group h-[4px] flex-1 overflow-hidden rounded-full bg-white/15"
                   >
                     <span
                       className="block h-full rounded-full"
@@ -540,8 +573,8 @@ export function ShareStudio() {
                 >
                   <canvas
                     ref={attachCanvas}
-                    className="rounded-[26px]"
-                    style={{ width: DIMS[fmt][0], height: DIMS[fmt][1], boxShadow: '0 60px 140px -50px rgba(255,180,84,.45), 0 0 0 1px rgba(255,255,255,.09)' }}
+                    className="share-poster rounded-[30px]"
+                    style={{ width: DIMS[fmt][0], height: DIMS[fmt][1], boxShadow: '0 70px 150px -54px rgba(131,222,212,.45), 0 0 0 1px rgba(255,255,255,.14)' }}
                   />
                   {/* tap zones, like every story you have ever used */}
                   <button onClick={prev} aria-label="Previous frame" className="absolute inset-y-0 left-0 w-1/3" />
@@ -564,13 +597,18 @@ export function ShareStudio() {
             </div>
 
             {/* ------------------------------------------------ the controls */}
-            <div className="w-full shrink-0 lg:mt-7 lg:w-[300px]">
-              <span className="ht-label">share as a story</span>
-              <h2 id="share-title" className="ht-title mt-1 text-[20px] text-white">
-                {isYear ? 'Your year, as a story' : 'Make the version people repost'}
-              </h2>
-              <p className="mt-2 text-[12.5px] leading-relaxed text-ink-dim">
-                Three frames, drawn at full resolution. What you see is the PNG you post.
+            <div className="share-tray w-full shrink-0 lg:mt-16 lg:w-[340px]">
+              <div className="mb-4 flex items-end justify-between gap-3">
+                <div>
+                  <span className="ht-kicker">shape the moment</span>
+                  <h2 id="share-title" className="ht-title mt-2 text-[28px] text-white">
+                    {isYear ? 'Your year, as a story' : 'Give it a life outside the feed'}
+                  </h2>
+                </div>
+                <span className="share-sheet__counter">{slide + 1}/{SLIDES.length}</span>
+              </div>
+              <p className="mb-5 max-w-[34ch] text-[13px] leading-relaxed text-ink-dim">
+                Start with the line, add your point of view, then export one beautiful card.
               </p>
 
               <div className="mt-4 flex flex-wrap gap-1.5">
@@ -627,11 +665,13 @@ export function ShareStudio() {
                 <Check label="Include cover image" value={showCover} onChange={setShowCover} />
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button onClick={download} className="ht-btn ht-btn--heat !py-2.5 !text-[13px]">Download PNG</button>
-                <button onClick={copy} className="ht-btn !py-2.5 !text-[13px]">Copy image</button>
-                <button onClick={nativeShare} className="ht-btn !py-2.5 !text-[13px]">Share sheet…</button>
-                <button onClick={copyLink} className="ht-btn !py-2.5 !text-[13px]">Copy link</button>
+              <div className="mt-5 grid gap-2">
+                <button onClick={nativeShare} className="ht-btn ht-btn--heat !h-12 !justify-between !px-5 !text-[14px]">Share story <span aria-hidden>↗</span></button>
+                <div className="grid grid-cols-3 gap-2">
+                  <button onClick={download} className="share-tool">Save PNG</button>
+                  <button onClick={copy} className="share-tool">Copy image</button>
+                  <button onClick={copyLink} className="share-tool">Copy link</button>
+                </div>
               </div>
 
               <AnimatePresence>
@@ -653,9 +693,7 @@ export function ShareStudio() {
                 Exported at {DIMS[fmt][0]}×{DIMS[fmt][1]} — sized for stories, feeds and link previews without re-cropping.
               </p>
 
-              <button onClick={() => app.setShare(null)} className="ht-btn mt-4 w-full !py-2.5 !text-[13px]">
-                Done
-              </button>
+              <button onClick={() => app.setShare(null)} className="mt-4 w-full text-center text-[12px] font-semibold text-ink-mute transition-colors hover:text-ink">Close share studio</button>
             </div>
           </div>
         </motion.div>

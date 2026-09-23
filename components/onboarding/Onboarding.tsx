@@ -51,18 +51,18 @@ type Scene = {
 const SCENES: Scene[] = [
   {
     id: 'curiosity',
-    img: '/art/sky-gateway.jpg',
-    sub: '/art/ember-forge.jpg',
+    img: '/art/ref-curiosity-portal.jpg',
+    sub: '/art/ref-curiosity-portal.jpg',
     demo: 'gate',
     accent: 'heat',
     kicker: 'two modalities, one feed',
     title: 'Chase your curiosity',
-    body: 'A 280-character spark and a 4,000-word forge live on the same board — ranked by the same physics, read in the same place.',
+    body: 'A short note and a full story live in the same room — discovered together, then read without leaving the app.',
   },
   {
     id: 'reader',
-    img: '/art/obsidian-atelier.jpg',
-    sub: '/art/quiet-kiln.jpg',
+    img: '/art/ref-dark-apps.jpg',
+    sub: '/art/ref-dark-apps.jpg',
     demo: 'sheet',
     accent: 'heat',
     kicker: 'long-form, all of it',
@@ -71,22 +71,22 @@ const SCENES: Scene[] = [
   },
   {
     id: 'heat',
-    img: '/art/ember-forge.jpg',
+    img: '/art/ref-honey-journey.jpg',
     demo: 'ring',
     accent: 'heat',
-    kicker: 'your heat is the algorithm',
-    title: 'Attention with a temperature',
-    body: 'Hold to heat. Hold longer to ignite. Every read warms the board for whoever arrives after you — and cooling is a promise, never a punishment.',
+    kicker: 'your attention shapes the room',
+    title: 'Leave a signal, not a score',
+    body: 'Press and hold when a thought stays with you. The gesture is expressive, brief, and never turns reading into a leaderboard.',
   },
   {
     id: 'year',
-    img: '/art/aurora-drift.jpg',
-    sub: '/art/signal-grid.jpg',
+    img: '/art/ref-profile.jpg',
+    sub: '/art/ref-home.jpg',
     demo: 'year',
     accent: 'cryo',
     kicker: 'a year, in one square',
-    title: 'Consistency you can see',
-    body: 'Your profile keeps a heat map of real thermal output. Empty days stay neutral — you are never ranked against another person.',
+    title: 'A rhythm you can see',
+    body: 'Your profile keeps a quiet record of what you read, saved, and made. Empty days stay empty — there is no performance scoreboard.',
   },
 ];
 
@@ -588,8 +588,8 @@ function DemoYear() {
   return (
     <div className="ht-glass relative overflow-hidden rounded-[28px] p-5">
       <div className="flex items-baseline justify-between">
-        <p className="ht-eyebrow">thermal output · 26 weeks</p>
-        <span className="ht-num text-[11px] font-bold text-ember-300">streak 41</span>
+        <p className="ht-eyebrow">your reading rhythm · 26 weeks</p>
+        <span className="ht-num text-[11px] font-bold text-ember-300">41 active days</span>
       </div>
       <div className="mt-4 grid grid-cols-[repeat(26,1fr)] gap-[3px]">
         {cells.map((v, i) => {
@@ -739,7 +739,7 @@ function SwipeToStart({
       <div className="mt-3 flex items-center justify-center gap-3 text-[11.5px] text-ink-mute">
         <span>No sign-up form.</span>
         <span aria-hidden className="h-1 w-1 rounded-full bg-ink-faint" />
-        <span>Your handle is generated — change it whenever you like.</span>
+        <span>Look around first. Make a profile only when you’re ready.</span>
       </div>
     </div>
   );

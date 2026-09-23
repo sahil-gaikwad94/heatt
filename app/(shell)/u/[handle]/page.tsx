@@ -135,7 +135,7 @@ export default function ProfilePage() {
 
       {/* ------------------------------------------------------------ cover */}
       <div className="relative -mx-4 -mt-[56px] sm:-mx-6">
-        <div className="relative h-[286px] overflow-hidden">
+        <div data-profile-cover className="profile-cover relative h-[286px] overflow-hidden">
           {coverArt && coverOk ? (
             <motion.img
               src={coverArt}
@@ -172,7 +172,7 @@ export default function ProfilePage() {
             animate={{ rotate: 360 }}
             transition={{ duration: 26, repeat: Infinity, ease: 'linear' }}
           />
-          <span className="ht-avatar-ring grid place-items-center">
+          <span className="profile-avatar ht-avatar-ring grid place-items-center">
             <img
               src={user.avatar ?? avatarDataUri(displayName, user.handle)}
               alt={displayName}
