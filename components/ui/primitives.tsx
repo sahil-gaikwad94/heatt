@@ -77,8 +77,8 @@ export function Avatar({
             width: Math.max(8, size / 4.5),
             height: Math.max(8, size / 4.5),
             borderRadius: 99,
-            background: '#3DDCFF',
-            boxShadow: '0 0 10px rgba(61,220,255,.9)',
+            background: '#63D8F5',
+            boxShadow: '0 0 10px rgba(99,216,245,.9)',
             border: '2px solid var(--ht-void)',
           }}
         />
@@ -233,11 +233,11 @@ export function HeatGauge({ value, size = 46, label }: { value: number; size?: n
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={`hsl(${hue} 100% ${46 + v * 0.24}%)`}
+          stroke={`hsl(${hue} 88% ${46 + v * 0.24}%)`}
           strokeWidth={3}
           strokeLinecap="round"
           strokeDasharray={`${(v / 100) * c} ${c}`}
-          style={{ transition: 'stroke-dasharray .8s cubic-bezier(.2,1,.3,1)', filter: `drop-shadow(0 0 6px hsl(${hue} 100% 55% / .7))` }}
+          style={{ transition: 'stroke-dasharray .8s cubic-bezier(.2,1,.3,1)', filter: `drop-shadow(0 0 6px hsl(${hue} 88% 55% / .7))` }}
         />
       </svg>
       <span
@@ -268,8 +268,8 @@ export function Toast({
           className="ht-glass pointer-events-auto flex items-center gap-2.5 rounded-full px-4 py-2.5 text-[13px] font-semibold"
           style={{
             animation: 'ht-toast .5s cubic-bezier(.2,1,.3,1)',
-            borderColor: t.tone === 'heat' ? 'rgba(0,201,140,.34)' : t.tone === 'cool' ? 'rgba(61,220,255,.35)' : 'var(--ht-line)',
-            boxShadow: t.tone === 'heat' ? '0 18px 50px -18px rgba(0,229,160,.6)' : '0 18px 50px -20px rgba(0,0,0,.9)',
+            borderColor: t.tone === 'heat' ? 'rgba(245,154,43,.34)' : t.tone === 'cool' ? 'rgba(99,216,245,.35)' : 'var(--ht-line)',
+            boxShadow: t.tone === 'heat' ? '0 18px 50px -18px rgba(255,180,84,.6)' : '0 18px 50px -20px rgba(0,0,0,.9)',
           }}
         >
           {t.icon}
@@ -317,7 +317,7 @@ export function Meter({ value, className }: { value: number; className?: string 
         style={{
           width: `${v * 100}%`,
           background: 'linear-gradient(90deg,var(--ht-magma),var(--ht-flame) 60%,var(--ht-whitehot))',
-          boxShadow: '0 0 12px rgba(0,229,160,.7)',
+          boxShadow: '0 0 12px rgba(255,180,84,.7)',
           transition: 'width .6s cubic-bezier(.2,1,.3,1)',
         }}
       />

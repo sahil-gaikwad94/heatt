@@ -193,12 +193,12 @@ export function cliffIndex(logits: number[]): number {
 }
 
 export function tempLabel(temp: number): { label: string; color: string; emojiless: string } {
-  if (temp >= 60) return { label: 'Incandescent', color: '#F2FFFA', emojiless: 'white hot' };
-  if (temp >= 38) return { label: 'Molten', color: '#7CFFD0', emojiless: 'molten' };
-  if (temp >= 22) return { label: 'Burning', color: '#00E5A0', emojiless: 'burning' };
-  if (temp >= 10) return { label: 'Warm', color: '#00C98C', emojiless: 'warm' };
-  if (temp >= 4) return { label: 'Smouldering', color: '#2EF2A6', emojiless: 'smouldering' };
-  return { label: 'Cold', color: '#3DDCFF', emojiless: 'cold' };
+  if (temp >= 60) return { label: 'Incandescent', color: '#FFF6E8', emojiless: 'white hot' };
+  if (temp >= 38) return { label: 'Molten', color: '#FFC978', emojiless: 'molten' };
+  if (temp >= 22) return { label: 'Burning', color: '#FFB454', emojiless: 'burning' };
+  if (temp >= 10) return { label: 'Warm', color: '#F59A2B', emojiless: 'warm' };
+  if (temp >= 4) return { label: 'Smouldering', color: '#EFCB8B', emojiless: 'smouldering' };
+  return { label: 'Cold', color: '#63D8F5', emojiless: 'cold' };
 }
 
 /** Kelvin-ish display value used across the UI */
@@ -210,10 +210,10 @@ export const LEVEL_META: Record<
   number,
   { name: string; hold: number; ring: string; copy: string; boost: number }
 > = {
-  0: { name: 'Cold', hold: 0, ring: '#3DDCFF', copy: 'Cooled down', boost: 0 },
-  1: { name: 'Ember', hold: 0, ring: '#00C98C', copy: 'Ember lit', boost: 1 },
-  2: { name: 'Blaze', hold: 1150, ring: '#00E5A0', copy: 'Blaze — heat doubled', boost: 2.6 },
-  3: { name: 'Inferno', hold: 2450, ring: '#7CFFD0', copy: 'IGNITED', boost: 6.5 },
+  0: { name: 'Cold', hold: 0, ring: '#63D8F5', copy: 'Cooled down', boost: 0 },
+  1: { name: 'Ember', hold: 0, ring: '#F59A2B', copy: 'Ember lit', boost: 1 },
+  2: { name: 'Blaze', hold: 1150, ring: '#FFB454', copy: 'Blaze — heat doubled', boost: 2.6 },
+  3: { name: 'Inferno', hold: 2450, ring: '#FFC978', copy: 'IGNITED', boost: 6.5 },
 };
 
 /** hold times in ms to reach level 2 / level 3 */

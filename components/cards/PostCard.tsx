@@ -80,7 +80,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
             <span
               aria-hidden
               className="absolute -inset-1 rounded-full"
-              style={{ boxShadow: `0 0 0 1px rgba(0,229,160,${0.22 * level}), 0 0 18px -5px rgba(0,201,140,${0.5 * level})` }}
+              style={{ boxShadow: `0 0 0 1px rgba(255,180,84,${0.22 * level}), 0 0 18px -5px rgba(245,154,43,${0.5 * level})` }}
             />
           )}
         </button>
@@ -103,7 +103,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
             <span
               className="ht-chip !border-transparent !py-[2px] !text-[9px]"
               style={{
-                background: post.kind === 'forge' ? 'linear-gradient(120deg,rgba(46,242,166,.18),rgba(124,255,208,.1))' : 'rgba(61,220,255,.1)',
+                background: post.kind === 'forge' ? 'linear-gradient(120deg,rgba(255,180,84,.18),rgba(255,203,120,.1))' : 'rgba(99,216,245,.1)',
                 color: post.kind === 'forge' ? 'var(--ht-flare)' : 'var(--ht-cryo-teal)',
               }}
             >
@@ -131,13 +131,39 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
               <span className="absolute bottom-4 left-4 rounded-full border border-white/[.14] bg-black/55 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-md">
                 {post.minutes ?? 6} min read
               </span>
-              <span
-                aria-hidden
-                className="pointer-events-none absolute bottom-4 right-4 grid h-11 w-11 place-items-center rounded-full text-[15px] font-bold transition-transform duration-500 group-hover:scale-[1.06]"
-                style={{ background: 'var(--ht-ember)', color: '#04140E', boxShadow: '0 12px 34px -12px rgba(0,229,160,.85)' }}
-              >
-                →
-              </span>
+              {/* the reference's over-image controls: the primary action in
+                  amber, secondary ones as glass discs, all floating over art */}
+              <div className="absolute bottom-4 right-4 flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    useStore.getState().toggleSave(post.id);
+                    app.toast(saved ? 'Removed from library' : 'Saved — offline ready', saved ? 'cool' : 'heat');
+                  }}
+                  aria-label={saved ? 'Remove from library' : 'Save to library'}
+                  className="ht-icon-btn !h-10 !w-10"
+                  style={saved ? { color: 'var(--ht-flare)', borderColor: 'rgba(255,180,84,.4)' } : undefined}
+                >
+                  <BookmarkIcon active={!!saved} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    app.setShare(post.id);
+                  }}
+                  aria-label="Make a share poster"
+                  className="ht-icon-btn !h-10 !w-10"
+                >
+                  <ShareIcon />
+                </button>
+                <span
+                  aria-hidden
+                  className="pointer-events-none grid h-11 w-11 place-items-center rounded-full text-[15px] font-bold transition-transform duration-500 group-hover:scale-[1.06]"
+                  style={{ background: 'var(--ht-ember)', color: '#1A0E02', boxShadow: '0 12px 34px -12px rgba(255,180,84,.85)' }}
+                >
+                  →
+                </span>
+              </div>
             </div>
           )}
 
@@ -146,7 +172,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
               <div className="flex flex-wrap items-center gap-1.5">
                 <span
                   className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-ember-200"
-                  style={{ background: 'rgba(0,229,160,.1)', border: '1px solid rgba(0,229,160,.26)' }}
+                  style={{ background: 'rgba(255,180,84,.1)', border: '1px solid rgba(255,180,84,.26)' }}
                 >
                   {post.origin === 'wire' ? 'syndicated' : 'long-form'}
                 </span>
@@ -161,7 +187,25 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
                 {post.title}
               </h2>
 
-              {post.dek && <p className="mt-2.5 text-[15px] leading-[1.68] text-ink-dim">{post.dek}</p>}
+              {/* spec strip: the facts of the piece, divided by hairlines —
+                  the same "1200 sq ft · 3 beds · 2 bath" rhythm, for prose */}
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11.5px] text-ink-mute">
+                <Spec>{post.minutes ?? 6} min</Spec>
+                <Spec>
+                  {post.origin === 'wire'
+                    ? `${compact(post.reactions ?? 0)} reactions`
+                    : `${compact(post.reactions ?? 0)} reactions`}
+                </Spec>
+                <Spec>{compact(post.comments ?? 0)} replies</Spec>
+                <Spec>{(post.tags ?? []).length} tags</Spec>
+                {typeof post.heat?.temp === 'number' && (
+                  <Spec>
+                    <span style={{ color: 'var(--ht-ember-300)' }}>{Math.round(post.heat.temp)}° heat</span>
+                  </Spec>
+                )}
+              </div>
+
+              {post.dek && <p className="mt-3 text-[15px] leading-[1.68] text-ink-dim">{post.dek}</p>}
 
               {excerpt && (
                 <div
@@ -210,7 +254,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
           {post.longRef && (
             <button
               onClick={() => app.openPost(post.longRef!)}
-              className="mt-3 flex w-full items-center gap-2.5 rounded-[14px] border border-ember-500/25 bg-[linear-gradient(90deg,rgba(0,229,160,.09),transparent)] px-3 py-2.5 text-left transition-all hover:border-ember-500/60"
+              className="mt-3 flex w-full items-center gap-2.5 rounded-[14px] border border-ember-500/25 bg-[linear-gradient(90deg,rgba(255,180,84,.09),transparent)] px-3 py-2.5 text-left transition-all hover:border-ember-500/60"
             >
               <span className="text-ember-400">
                 <ForgeIcon />
@@ -268,7 +312,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
 
         <span className="flex-1" />
         {level > 0 && (
-          <span className="rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.12em] text-ember-200" style={{ background: 'rgba(0,229,160,.1)' }}>
+          <span className="rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.12em] text-ember-200" style={{ background: 'rgba(255,180,84,.1)' }}>
             {level === 3 ? 'you ignited this' : level === 2 ? 'you blazed this' : 'you liked this'}
           </span>
         )}
@@ -284,6 +328,16 @@ function useLocal() {
   return useStore();
 }
 
+/* One cell of a spec row. Each is followed by a hairline except the last. */
+function Spec({ children, last }: { children: React.ReactNode; last?: boolean }) {
+  return (
+    <span className="flex items-center gap-3">
+      <span className="ht-num font-semibold">{children}</span>
+      {!last && <span aria-hidden className="h-2.5 w-px bg-white/[.09]" />}
+    </span>
+  );
+}
+
 function VerifiedBadge() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" aria-label="verified" style={{ flexShrink: 0 }}>
@@ -294,9 +348,9 @@ function VerifiedBadge() {
       <path d="M8.4 12.2l2.5 2.4 4.7-4.9" stroke="#160b04" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       <defs>
         <linearGradient id="vfg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#F2FFFA" />
-          <stop offset="0.6" stopColor="#00E5A0" />
-          <stop offset="1" stopColor="#2EF2A6" />
+          <stop offset="0" stopColor="#FFF6E8" />
+          <stop offset="0.6" stopColor="#FFB454" />
+          <stop offset="1" stopColor="#EFCB8B" />
         </linearGradient>
       </defs>
     </svg>
@@ -324,7 +378,7 @@ function CoverArt({ src, alt, burning, bleed }: { src: string; alt: string; burn
           }}
         />
       ) : (
-        <div className="flex aspect-[16/9] w-full items-end p-4" style={{ background: 'radial-gradient(90% 80% at 20% 110%, rgba(0,229,160,.16), transparent 65%), #0a0a0a' }}>
+        <div className="flex aspect-[16/9] w-full items-end p-4" style={{ background: 'radial-gradient(90% 80% at 20% 110%, rgba(255,180,84,.16), transparent 65%), #0a0a0a' }}>
           <span className="ht-title text-lg text-ink/70">{alt?.slice(0, 40)}</span>
         </div>
       )}
@@ -347,10 +401,10 @@ export function WaveBars({ values, burning, h = 16 }: { values: number[]; burnin
             height: `${Math.max(8, v * 100)}%`,
             minHeight: 3,
             transformOrigin: 'bottom',
-            background: v > 0.62 ? 'linear-gradient(180deg,var(--ht-whitehot),var(--ht-ember))' : 'linear-gradient(180deg,var(--ht-flame),rgba(0,229,160,.26))',
+            background: v > 0.62 ? 'linear-gradient(180deg,var(--ht-whitehot),var(--ht-ember))' : 'linear-gradient(180deg,var(--ht-flame),rgba(255,180,84,.26))',
             opacity: 0.5 + v * 0.5,
             animation: burning ? `ht-wave-burn 1.4s ease-in-out ${i * 0.03}s infinite` : undefined,
-            boxShadow: v > 0.7 ? '0 0 10px rgba(0,229,160,.55)' : undefined,
+            boxShadow: v > 0.7 ? '0 0 10px rgba(255,180,84,.55)' : undefined,
           }}
         />
       ))}
@@ -496,7 +550,7 @@ export function CardMenu({ post }: { post: Post }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.16 }}
-            className="absolute right-0 top-[calc(100%+6px)] z-40 w-[228px] overflow-hidden rounded-[14px] border border-white/10 bg-[#0f120f]/95 py-1 shadow-[0_28px_70px_-24px_rgba(0,0,0,.9)] backdrop-blur-2xl"
+            className="absolute right-0 top-[calc(100%+6px)] z-40 w-[228px] overflow-hidden rounded-[14px] border border-white/10 bg-[#121212]/95 py-1 shadow-[0_28px_70px_-24px_rgba(0,0,0,.9)] backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <button

@@ -8,17 +8,19 @@
    ==========================================================================*/
 
 export function Atmosphere({ variant = 'app' }: { variant?: 'app' | 'public' }) {
-  const lime = variant === 'public' ? 0.14 : 0.085;
-  const aurora = variant === 'public' ? 0.18 : 0.1;
+  /* two light sources: molten amber (warm) and ice cyan (cool). The public
+     variant runs hotter because there is no content to compete with. */
+  const warm = variant === 'public' ? 0.14 : 0.085;
+  const cool = variant === 'public' ? 0.18 : 0.1;
   return (
     <div className="ht-atmos" aria-hidden>
       <div
         className="ht-atmos-glow ht-atmos-glow-warm"
-        style={{ background: `radial-gradient(circle, rgba(0,229,160,${lime}), transparent 68%)` }}
+        style={{ background: `radial-gradient(circle, rgba(255,180,84,${warm}), transparent 68%)` }}
       />
       <div
         className="ht-atmos-glow ht-atmos-glow-cool"
-        style={{ background: `radial-gradient(circle, rgba(61,220,255,${aurora}), transparent 68%)` }}
+        style={{ background: `radial-gradient(circle, rgba(99,216,245,${cool}), transparent 68%)` }}
       />
       <div className="ht-atmos-grid" />
       <div className="ht-atmos-noise" />

@@ -1,8 +1,20 @@
 /* ============================================================================
-   heatt — "dark tech" design system
-   Near-black rooms + graphite panels, one chalk-lime heat signal, paper to
-   read long-form on, fluid typography via clamp(),
-   GPU-friendly motion (transform/opacity only), reduced-motion respected.
+   heatt — the obsidian design system
+   ----------------------------------------------------------------------------
+   A dark UI is not "black background, white text". It is a light model. Here
+   the model is:
+
+     · the room is #000000 with a #050505 floor        — infinite depth, OLED
+     · every surface is charcoal glass that rises     — #121212 → #1E1E1E
+     · edges are lit, not shaded                      — 1px inset top highlight
+     · exactly one accent means "happening"           — molten amber #FFB454
+     · one cold counterweight means "settled"         — ice cyan #63D8F5
+     · type is fluid (clamp), measure is capped       — never a 120-char line
+     · motion is transform/opacity only, 60fps-safe   — and fully skippable
+
+   Everything below is a primitive: a rule the product can reuse, not a
+   one-off style. Nothing animates for its own sake — a glow always reports
+   temperature, a lift always reports interactivity.
    ==========================================================================*/
 
 @tailwind base;
@@ -10,42 +22,63 @@
 @tailwind utilities;
 
 :root {
-  /* --- surfaces: OLED black rooms, charcoal glass for elevation --- */
+  /* --- surfaces: OLED rooms, charcoal glass for elevation --- */
   --ht-void: #000000;
   --ht-base: #050505;
   --ht-panel: #121212;
   --ht-elev: #1a1a1a;
   --ht-lift: #1e1e1e;
+  --ht-raise: #242424;
   --ht-line: rgba(255, 255, 255, 0.08);
   --ht-line-strong: rgba(255, 255, 255, 0.16);
+  --ht-line-hot: rgba(255, 180, 84, 0.34);
 
-  /* --- ink: pure white for primary, silver for secondary --- */
+  /* --- ink: pure white primary, #A0A0A0 silver secondary --- */
   --ht-ink: #ffffff;
   --ht-ink-dim: #a0a0a0;
   --ht-ink-mute: #6f6f6f;
+  --ht-ink-faint: #484848;
 
-  /* --- heat ramp: electric cyan (cold) → emerald (alive) → incandescent ice --- */
-  --ht-cryo-indigo: #7aa2ff;
-  --ht-cryo-violet: #b07cff;
-  --ht-cryo-teal: #3ddcff;
-  --ht-jade: #2ef2a6;
-  --ht-magma: #7cffd0;
-  --ht-ember: #00e5a0;
-  --ht-flame: #00c98c;
-  --ht-flare: #b8ffe3;
-  --ht-whitehot: #f2fffa;
+  /* --- the accent ramp: molten amber (cold → white hot) --- */
+  --ht-ember-50: #fff8ed;
+  --ht-ember-100: #ffefd4;
+  --ht-ember-200: #ffdfac;
+  --ht-ember-300: #ffcb7d;
+  --ht-ember-400: #ffb454;
+  --ht-ember-500: #f59a2b;
+  --ht-ember-600: #d97b12;
+  --ht-ember-700: #a85c0b;
+  --ht-ember-800: #6e3c08;
+  --ht-ember-900: #3a2104;
+
+  --ht-ember: #ffb454;
+  --ht-flame: #f59a2b;
+  --ht-magma: #ffc978;
+  --ht-flare: #ffe3b0;
+  --ht-whitehot: #fff6e8;
+  --ht-copper: #c9743a;
+  --ht-opal: #f6e7d2;
 
   --ht-heat: var(--ht-ember);
-  --ht-heat-soft: rgba(0, 229, 160, 0.13);
+  --ht-heat-soft: rgba(255, 180, 84, 0.13);
+  --ht-heat-line: rgba(255, 180, 84, 0.3);
+  --ht-heat-glow: rgba(255, 180, 84, 0.45);
 
-  /* --- the reading sheet: obsidian paper, light ink, never white --- */
+  /* --- the cold counterweight: settled, archived, cooled --- */
+  --ht-cryo-ice: #cfefff;
+  --ht-cryo-teal: #63d8f5;
+  --ht-cryo-indigo: #8aa6ff;
+  --ht-cryo-violet: #b98cff;
+  --ht-jade: #efcb8b;
+
+  /* --- the reading sheet: obsidian paper, never white --- */
   --ht-paper: #0b0b0b;
   --ht-paper-soft: #101010;
   --ht-paper-ink: #ffffff;
   --ht-paper-dim: #a0a0a0;
   --ht-paper-line: rgba(255, 255, 255, 0.08);
 
-  /* --- fluid type scale (clamp) --- */
+  /* --- fluid type scale --- */
   --fs-micro: clamp(0.68rem, 0.66rem + 0.12vw, 0.75rem);
   --fs-tiny: clamp(0.75rem, 0.72rem + 0.15vw, 0.83rem);
   --fs-sm: clamp(0.83rem, 0.8rem + 0.16vw, 0.92rem);
@@ -56,13 +89,33 @@
   --fs-3xl: clamp(2.3rem, 1.5rem + 3.6vw, 4.6rem);
   --fs-hero: clamp(2.9rem, 1.4rem + 7.4vw, 7.6rem);
 
+  /* --- geometry --- */
   --r-sm: 10px;
   --r-md: 14px;
   --r-lg: 20px;
   --r-xl: 26px;
+  --r-2xl: 32px;
+  --r-pill: 999px;
 
+  /* --- motion --- */
   --ease-ht: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-heat: cubic-bezier(0.16, 0.9, 0.2, 1);
+  --ease-exit: cubic-bezier(0.6, 0, 0.2, 1);
+  --t-fast: 180ms;
+  --t-base: 320ms;
+  --t-slow: 640ms;
+  --t-cinema: 1100ms;
+
+  /* --- z --- */
+  --z-nav: 50;
+  --z-dock: 55;
+  --z-sheet: 70;
+  --z-boot: 190;
+
+  /* --- glass recipes: one blur, three densities --- */
+  --glass-1: linear-gradient(180deg, rgba(26, 26, 26, 0.62), rgba(8, 8, 8, 0.72));
+  --glass-2: linear-gradient(180deg, rgba(24, 24, 24, 0.78), rgba(7, 7, 7, 0.88));
+  --glass-3: linear-gradient(180deg, rgba(20, 20, 20, 0.9), rgba(6, 6, 6, 0.95));
 }
 
 /* reading-time density: user controlled via data attr on <html> */
@@ -84,17 +137,18 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   scroll-behavior: smooth;
-  scrollbar-color: #262626 transparent;
+  scrollbar-color: #2a2a2a transparent;
   scrollbar-width: thin;
 }
 
 body {
   overscroll-behavior-y: none;
+  font-feature-settings: 'cv02' 1, 'cv03' 1, 'cv04' 1;
 }
 
 ::selection {
-  background: rgba(0, 229, 160, 0.3);
-  color: #04140e;
+  background: rgba(255, 180, 84, 0.28);
+  color: #1a0e02;
 }
 
 ::-webkit-scrollbar {
@@ -106,48 +160,76 @@ body {
 }
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(#2a2a2a, #171717);
-  border-radius: 99px;
+  border-radius: var(--r-pill);
   border: 2px solid var(--ht-void);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(var(--ht-ember), var(--ht-magma));
 }
 
-/* ---------------------------------------------------------------- primitives */
+/* One focus ring for the whole product. Amber, never default blue. */
+:where(a, button, [role='button'], input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--ht-ember);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ============================================================ components */
 
 @layer components {
+  /* ------------------------------------------------------------- surfaces */
+
+  /* Frosted charcoal. The blur is what sells elevation; the inset highlight
+     is what tells the eye where the edge is on a black field. */
   .ht-glass {
-    background: linear-gradient(180deg, rgba(22, 22, 22, 0.72), rgba(8, 8, 8, 0.85));
+    background: var(--glass-2);
     backdrop-filter: blur(18px) saturate(140%);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
     border: 1px solid var(--ht-line);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 30px 70px -40px rgba(0, 0, 0, 0.95);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.055) inset, 0 30px 70px -40px rgba(0, 0, 0, 0.95);
+  }
+
+  .ht-glass--thin {
+    background: var(--glass-1);
+    backdrop-filter: blur(14px) saturate(130%);
+    -webkit-backdrop-filter: blur(14px) saturate(130%);
+    border: 1px solid var(--ht-line);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.045) inset;
+  }
+
+  .ht-glass--heavy {
+    background: var(--glass-3);
+    backdrop-filter: blur(30px) saturate(150%);
+    -webkit-backdrop-filter: blur(30px) saturate(150%);
+    border: 1px solid var(--ht-line-strong);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.07) inset, 0 44px 100px -50px rgba(0, 0, 0, 1);
   }
 
   .ht-panel {
     background:
-      radial-gradient(120% 100% at 0% 0%, rgba(0, 229, 160, 0.04), transparent 60%),
+      radial-gradient(120% 100% at 0% 0%, rgba(255, 180, 84, 0.035), transparent 60%),
       linear-gradient(180deg, #141414, #0a0a0a);
     border: 1px solid var(--ht-line);
     border-radius: var(--r-lg);
   }
 
+  /* The workhorse content surface. Has a hairline of light along its top edge
+     and answers hover with a 2px lift — never a jump, never a colour flash. */
   .ht-card {
     position: relative;
-    background: linear-gradient(180deg, rgba(20, 20, 20, 0.78), rgba(6, 6, 6, 0.9));
+    background: var(--glass-2);
     backdrop-filter: blur(20px) saturate(140%);
     -webkit-backdrop-filter: blur(20px) saturate(140%);
     border: 1px solid var(--ht-line);
     border-radius: var(--r-lg);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 30px 70px -44px rgba(0, 0, 0, 1);
-    transition: border-color 0.45s var(--ease-ht), transform 0.45s var(--ease-ht),
-      box-shadow 0.45s var(--ease-ht), background 0.45s var(--ease-ht);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.055) inset, 0 30px 70px -44px rgba(0, 0, 0, 1);
+    transition: border-color var(--t-base) var(--ease-ht), transform var(--t-base) var(--ease-ht),
+      box-shadow var(--t-base) var(--ease-ht), background var(--t-base) var(--ease-ht);
     overflow: hidden;
     isolation: isolate;
   }
 
   .ht-card::after {
-    /* top light leak */
     content: '';
     position: absolute;
     inset: 0 0 auto 0;
@@ -159,21 +241,41 @@ body {
 
   @media (hover: hover) {
     .ht-card:hover {
-      border-color: rgba(0, 229, 160, 0.28);
+      border-color: var(--ht-line-hot);
       transform: translateY(-2px);
-      box-shadow: 0 24px 60px -42px rgba(0, 0, 0, 0.92), 0 0 0 1px rgba(0, 229, 160, 0.08);
+      box-shadow: 0 24px 60px -42px rgba(0, 0, 0, 0.92), 0 0 0 1px rgba(255, 180, 84, 0.08);
     }
   }
 
   .ht-card--heated {
-    border-color: rgba(0, 201, 140, 0.32);
-    background: linear-gradient(180deg, rgba(20, 20, 20, 0.92), rgba(10, 10, 10, 0.95));
+    border-color: rgba(245, 154, 43, 0.32);
+    background: linear-gradient(180deg, rgba(22, 22, 22, 0.92), rgba(10, 10, 10, 0.95));
   }
 
   .ht-card--ignited {
-    border-color: rgba(0, 229, 160, 0.72);
-    box-shadow: 0 0 0 1px rgba(0, 201, 140, 0.3), 0 28px 80px -36px rgba(0, 229, 160, 0.45);
+    border-color: rgba(255, 180, 84, 0.72);
+    box-shadow: 0 0 0 1px rgba(245, 154, 43, 0.3), 0 28px 80px -36px rgba(255, 180, 84, 0.45);
   }
+
+  /* A media tile: image first, text under it, radius matched to cards. */
+  .ht-tile {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--r-xl);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: linear-gradient(160deg, #151515, #060606);
+    isolation: isolate;
+  }
+  .ht-tile img {
+    transition: transform 900ms var(--ease-ht), filter 600ms var(--ease-ht);
+  }
+  @media (hover: hover) {
+    .ht-tile:hover img {
+      transform: scale(1.06);
+    }
+  }
+
+  /* -------------------------------------------------------------- controls */
 
   .ht-btn {
     position: relative;
@@ -182,26 +284,33 @@ body {
     justify-content: center;
     gap: 8px;
     padding: 10px 16px;
-    border-radius: 999px;
+    border-radius: var(--r-pill);
     font-size: var(--fs-sm);
     font-weight: 600;
     letter-spacing: 0.01em;
     border: 1px solid var(--ht-line-strong);
     background: linear-gradient(180deg, #1c1c1c, #121212);
     color: var(--ht-ink);
-    transition: transform 0.25s var(--ease-ht), border-color 0.25s, background 0.25s, color 0.25s;
+    transition: transform var(--t-fast) var(--ease-ht), border-color var(--t-fast),
+      background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast);
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    overflow: hidden;
   }
   .ht-btn:hover {
-    border-color: rgba(0, 229, 160, 0.45);
+    border-color: var(--ht-line-hot);
     transform: translateY(-1px);
   }
+  /* the press answer: a short amber bloom, no bounce */
   .ht-btn:active {
     transform: translateY(0) scale(0.985);
-    /* micro-interaction: the press answers with a short accent bloom */
-    box-shadow: 0 0 0 1px rgba(0, 229, 160, 0.35), 0 12px 32px -14px rgba(0, 229, 160, 0.55);
+    box-shadow: 0 0 0 1px rgba(255, 180, 84, 0.35), 0 12px 32px -14px rgba(255, 180, 84, 0.55);
   }
+  .ht-btn:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
   .ht-btn--ghost {
     background: transparent;
     border-color: transparent;
@@ -213,23 +322,58 @@ body {
     border-color: transparent;
   }
 
+  /* primary action: hot metal. Black-amber text on it, never white. */
   .ht-btn--heat {
     background: linear-gradient(135deg, var(--ht-ember), var(--ht-flare));
-    color: #04140e;
+    color: #1a0e02;
     border-color: transparent;
-    box-shadow: 0 10px 30px -16px rgba(0, 229, 160, 0.55), 0 1px 0 rgba(255, 255, 255, 0.4) inset;
+    box-shadow: 0 10px 30px -16px rgba(255, 180, 84, 0.55), 0 1px 0 rgba(255, 255, 255, 0.4) inset;
   }
   .ht-btn--heat:hover {
     filter: brightness(1.05);
-    box-shadow: 0 16px 40px -18px rgba(0, 229, 160, 0.7), 0 1px 0 rgba(255, 255, 255, 0.45) inset;
+    box-shadow: 0 16px 40px -18px rgba(255, 180, 84, 0.7), 0 1px 0 rgba(255, 255, 255, 0.45) inset;
   }
 
+  .ht-btn--glass {
+    background: var(--glass-2);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border-color: var(--ht-line);
+    color: var(--ht-ink);
+  }
+
+  /* circular icon button — the shape every piece of chrome in the app uses */
+  .ht-icon-btn {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--r-pill);
+    background: var(--glass-2);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--ht-line);
+    color: var(--ht-ink-dim);
+    transition: transform var(--t-fast) var(--ease-ht), color var(--t-fast), border-color var(--t-fast),
+      background var(--t-fast), box-shadow var(--t-fast);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ht-icon-btn:hover {
+    color: var(--ht-ink);
+    border-color: var(--ht-line-hot);
+    box-shadow: 0 0 0 1px rgba(255, 180, 84, 0.12), 0 10px 30px -18px rgba(255, 180, 84, 0.5);
+  }
+  .ht-icon-btn:active {
+    transform: scale(0.93);
+  }
+
+  /* --- chips: two kinds. Neutral = metadata. Accent = a live trait. --- */
   .ht-chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 5px 11px;
-    border-radius: 999px;
+    border-radius: var(--r-pill);
     font-size: var(--fs-micro);
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -237,15 +381,71 @@ body {
     border: 1px solid var(--ht-line);
     background: rgba(255, 255, 255, 0.035);
     color: var(--ht-ink-dim);
-    transition: all 0.3s var(--ease-ht);
+    transition: all var(--t-base) var(--ease-ht);
     white-space: nowrap;
   }
   .ht-chip:hover {
     color: var(--ht-ink);
-    border-color: rgba(0, 229, 160, 0.4);
-    background: rgba(0, 229, 160, 0.08);
+    border-color: var(--ht-line-hot);
+    background: rgba(255, 180, 84, 0.08);
+  }
+  .ht-chip--heat {
+    color: var(--ht-ember-100);
+    border-color: rgba(255, 180, 84, 0.28);
+    background: linear-gradient(180deg, rgba(255, 180, 84, 0.14), rgba(255, 180, 84, 0.06));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  }
+  .ht-chip--cryo {
+    color: var(--ht-cryo-ice);
+    border-color: rgba(99, 216, 245, 0.26);
+    background: rgba(99, 216, 245, 0.08);
   }
 
+  /* --- pill tabs: the horizontal filter rail. Active = amber fill. --- */
+  .ht-tabrail {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 18px), transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 18px), transparent 100%);
+    padding: 2px 14px 2px 8px;
+  }
+  .ht-tabrail::-webkit-scrollbar {
+    display: none;
+  }
+  .ht-tab {
+    position: relative;
+    flex: 0 0 auto;
+    padding: 7px 15px;
+    border-radius: var(--r-pill);
+    font-size: var(--fs-tiny);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--ht-ink-dim);
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.032);
+    transition: color var(--t-fast), background var(--t-fast), border-color var(--t-fast);
+    -webkit-tap-highlight-color: transparent;
+    white-space: nowrap;
+  }
+  .ht-tab:hover {
+    color: var(--ht-ink);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .ht-tab[aria-selected='true'],
+  .ht-tab--active {
+    color: #1a0e02;
+    background: linear-gradient(135deg, var(--ht-ember), var(--ht-ember-300));
+    border-color: transparent;
+    box-shadow: 0 8px 24px -14px rgba(255, 180, 84, 0.7);
+  }
+  .ht-tab[aria-selected='true']:hover {
+    color: #1a0e02;
+  }
+
+  /* --- inputs --- */
   .ht-input {
     width: 100%;
     background: rgba(255, 255, 255, 0.035);
@@ -254,18 +454,19 @@ body {
     padding: 13px 15px;
     color: var(--ht-ink);
     font-size: var(--fs-sm);
-    transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+    transition: border-color var(--t-base), background var(--t-base), box-shadow var(--t-base);
     outline: none;
   }
   .ht-input::placeholder {
     color: var(--ht-ink-mute);
   }
   .ht-input:focus {
-    border-color: rgba(0, 229, 160, 0.5);
-    background: rgba(0, 229, 160, 0.05);
-    box-shadow: 0 0 0 4px rgba(0, 229, 160, 0.1);
+    border-color: rgba(255, 180, 84, 0.5);
+    background: rgba(255, 180, 84, 0.05);
+    box-shadow: 0 0 0 4px rgba(255, 180, 84, 0.1);
   }
 
+  /* --- labels & rules --- */
   .ht-label {
     font-size: var(--fs-micro);
     font-weight: 700;
@@ -273,179 +474,312 @@ body {
     text-transform: uppercase;
     color: var(--ht-ink-mute);
   }
-
+  .ht-kicker {
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ht-ember-300);
+  }
   .ht-hairline {
     height: 1px;
-    background: linear-gradient(90deg, transparent, var(--ht-line-strong) 20%, var(--ht-line-strong) 80%, transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--ht-line-strong) 20%,
+      var(--ht-line-strong) 80%,
+      transparent
+    );
   }
+  /* a division that ends in a lit ember instead of fading out */
+  .ht-rule {
+    position: relative;
+    height: 1px;
+    background: linear-gradient(90deg, var(--ht-line-strong), transparent 70%);
+  }
+  .ht-rule::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: -1px;
+    width: 22px;
+    height: 3px;
+    border-radius: var(--r-pill);
+    background: linear-gradient(90deg, var(--ht-ember), transparent);
+    box-shadow: 0 0 12px rgba(255, 180, 84, 0.55);
+  }
+
+  /* --------------------------------------------------------------- type */
 
   .ht-title {
     font-family: 'Bricolage Grotesque Variable', 'Inter Variable', sans-serif;
     font-weight: 700;
     letter-spacing: -0.03em;
     line-height: 0.95;
+    text-wrap: balance;
+  }
+  .ht-display {
+    font-family: 'Bricolage Grotesque Variable', 'Inter Variable', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    line-height: 0.9;
+    text-wrap: balance;
+  }
+  .ht-eyebrow {
+    font-family: 'Inter Variable', sans-serif;
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ht-ink-mute);
   }
 
+  /* Molten gradient type: amber through bone. The only place a gradient is
+     allowed on text, because it is literally "temperature". */
   .ht-heat-text {
-    background: linear-gradient(96deg, var(--ht-whitehot), var(--ht-flare) 30%, var(--ht-ember) 64%, var(--ht-flame) 86%, #00a876);
+    background: linear-gradient(
+      96deg,
+      var(--ht-whitehot),
+      var(--ht-flare) 26%,
+      var(--ht-ember) 58%,
+      var(--ht-flame) 82%,
+      var(--ht-copper)
+    );
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-
   .ht-cryo-text {
-    background: linear-gradient(96deg, #d9fffb, var(--ht-cryo-teal) 35%, var(--ht-cryo-indigo) 80%);
+    background: linear-gradient(96deg, #f4feff, var(--ht-cryo-teal) 38%, var(--ht-cryo-indigo) 84%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-
+  .ht-metal-text {
+    background: linear-gradient(180deg, #ffffff 0%, #cfcfcf 42%, #8f8f8f 58%, #f2f2f2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
   .ht-num {
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum' 1;
   }
 
-  /* the onboarding control: a glass capsule with an accent fill that tracks
-     the knob. One gesture, no form. */
+  /* -------------------------------------------------- the swipe-to-start */
+  /* One gesture, no form. Glass capsule, amber fill tracking the knob. */
   .ht-swipe {
-    background: linear-gradient(180deg, rgba(22, 22, 22, 0.72), rgba(6, 6, 6, 0.82));
+    background: var(--glass-2);
     backdrop-filter: blur(22px) saturate(140%);
     -webkit-backdrop-filter: blur(22px) saturate(140%);
     border: 1px solid var(--ht-line-strong);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 40px 90px -50px rgba(0, 0, 0, 1);
     cursor: pointer;
     user-select: none;
+    overflow: hidden;
   }
   .ht-swipe:focus-visible {
     outline: 2px solid var(--ht-ember);
     outline-offset: 3px;
   }
   .ht-swipe-fill {
-    background: linear-gradient(90deg, rgba(0, 229, 160, 0.22), rgba(0, 229, 160, 0.06));
+    background: linear-gradient(90deg, rgba(255, 180, 84, 0.24), rgba(255, 180, 84, 0.05));
     transition: width 0.18s linear;
+  }
+  /* the travelling sheen that says "this way, keep going" */
+  .ht-swipe::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(75deg, transparent 42%, rgba(255, 246, 232, 0.11) 50%, transparent 58%);
+    animation: ht-swipe-sheen 3.6s var(--ease-ht) infinite;
+    mix-blend-mode: screen;
+  }
+  @keyframes ht-swipe-sheen {
+    0%, 55% {
+      transform: translateX(-65%);
+      opacity: 0;
+    }
+    62% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(65%);
+      opacity: 0;
+    }
+  }
+
+  /* ------------------------------------------------------ profile pieces */
+
+  /* Avatar ring: a slow conic sweep of amber → copper → ice, sitting inside
+     a black hairline so the portrait separates from photography behind it. */
+  .ht-avatar-ring {
+    position: relative;
+    border-radius: var(--r-pill);
+    padding: 3px;
+    background: conic-gradient(
+      from 210deg,
+      rgba(255, 180, 84, 0.9),
+      rgba(201, 116, 58, 0.55) 25%,
+      rgba(255, 255, 255, 0.14) 45%,
+      rgba(99, 216, 245, 0.42) 65%,
+      rgba(255, 180, 84, 0.9)
+    );
+    box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 1), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  }
+  .ht-avatar-ring::after {
+    content: '';
+    position: absolute;
+    inset: -14px;
+    border-radius: var(--r-pill);
+    background: radial-gradient(circle, rgba(255, 180, 84, 0.22), transparent 68%);
+    filter: blur(14px);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* A floating identity badge: brushed metal on black, not a cartoon sticker. */
+  .ht-badge {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    border-radius: var(--r-pill);
+    background:
+      radial-gradient(120% 120% at 30% 18%, rgba(255, 255, 255, 0.16), transparent 55%),
+      linear-gradient(180deg, #262626, #0d0d0d 78%);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 20px 44px -20px rgba(0, 0, 0, 1), 0 1px 0 rgba(255, 255, 255, 0.16) inset,
+      0 -1px 0 rgba(0, 0, 0, 0.6) inset;
+    will-change: transform;
+  }
+  .ht-badge--hot {
+    background:
+      radial-gradient(120% 120% at 30% 20%, rgba(255, 255, 255, 0.5), transparent 55%),
+      linear-gradient(180deg, var(--ht-ember-300), var(--ht-ember-600) 78%);
+    border-color: rgba(255, 246, 232, 0.4);
+    box-shadow: 0 20px 44px -18px rgba(255, 180, 84, 0.55), 0 1px 0 rgba(255, 255, 255, 0.55) inset;
+    color: #1a0e02;
+  }
+  .ht-badge--cold {
+    background:
+      radial-gradient(120% 120% at 30% 20%, rgba(255, 255, 255, 0.34), transparent 55%),
+      linear-gradient(180deg, #2b3a4a, #0c1218 78%);
+    border-color: rgba(99, 216, 245, 0.35);
+    color: var(--ht-cryo-ice);
+  }
+
+  /* Stat row: numbers are the hero, the word under them is a whisper. */
+  .ht-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 74px;
+    padding: 8px 12px;
+    border-radius: var(--r-md);
+    transition: background var(--t-base) var(--ease-ht);
+  }
+  .ht-stat:active {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .ht-stat-v {
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    color: var(--ht-ink);
+  }
+  .ht-stat-k {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ht-ink-mute);
+  }
+
+  /* Masonry board for user work: CSS columns, so a 5-line spark and a cover
+     sit in the same rhythm without a JS layout engine. */
+  .ht-masonry {
+    columns: 2;
+    column-gap: 12px;
+  }
+  @media (min-width: 640px) {
+    .ht-masonry {
+      columns: 3;
+      column-gap: 14px;
+    }
+  }
+  .ht-masonry > * {
+    break-inside: avoid;
+    margin-bottom: 12px;
+  }
+  @media (min-width: 640px) {
+    .ht-masonry > * {
+      margin-bottom: 14px;
+    }
+  }
+
+  /* ---------------------------------------------------------- navigation */
+  /* Floating translucent pill. Not a full-width bar glued to the edge: it
+     hovers, so the content behind it keeps moving and the app feels spatial. */
+  .ht-dock {
+    background: linear-gradient(180deg, rgba(30, 30, 30, 0.7), rgba(8, 8, 8, 0.82));
+    backdrop-filter: blur(26px) saturate(160%);
+    -webkit-backdrop-filter: blur(26px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 30px 70px -28px rgba(0, 0, 0, 1),
+      0 2px 12px rgba(0, 0, 0, 0.6);
+    border-radius: var(--r-pill);
+  }
+  .ht-dock-item {
+    position: relative;
+    display: grid;
+    place-items: center;
+    height: 44px;
+    width: 48px;
+    border-radius: var(--r-pill);
+    color: var(--ht-ink-mute);
+    transition: color var(--t-base) var(--ease-ht), transform var(--t-fast) var(--ease-ht);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ht-dock-item:hover {
+    color: var(--ht-ink-dim);
+  }
+  .ht-dock-item:active {
+    transform: scale(0.92);
+  }
+  .ht-dock-item[data-active='true'] {
+    color: #1a0e02;
+  }
+  /* the active pill slides between items via a shared layoutId */
+  .ht-dock-active {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-pill);
+    background: linear-gradient(140deg, var(--ht-ember), var(--ht-ember-300));
+    box-shadow: 0 10px 26px -12px rgba(255, 180, 84, 0.85), 0 1px 0 rgba(255, 255, 255, 0.4) inset;
+    z-index: -1;
+  }
+
+  /* ----------------------------------------------------------- skeleton */
+  .ht-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #151515, #0d0d0d);
+    border-radius: var(--r-md);
+  }
+  .ht-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.055), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2.2s linear infinite;
   }
 }
 
-/* ------------------------------------------------------------- atmosphere fx */
-
-.ht-grain::before {
-  content: '';
-  position: fixed;
-  inset: -50%;
-  pointer-events: none;
-  z-index: 60;
-  opacity: 0.022;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
-}
-
-/* ------------------------------------------------------- the reading sheet */
-/* Obsidian paper: a lifted sheet inside the black room. Long-form reading here
-   stays light-on-dark — the sheet is charcoal glass, never a white page. */
-.ht-paper {
-  background: linear-gradient(180deg, rgba(20, 20, 20, 0.9), rgba(8, 8, 8, 0.94));
-  backdrop-filter: blur(18px) saturate(135%);
-  -webkit-backdrop-filter: blur(18px) saturate(135%);
-  color: var(--ht-paper-ink);
-  border: 1px solid var(--ht-line);
-  border-radius: var(--r-xl);
-  box-shadow: 0 44px 110px -56px rgba(0, 0, 0, 1), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
-}
-
-.ht-prose--paper {
-  color: rgba(255, 255, 255, 0.9);
-}
-.ht-prose--paper a {
-  color: var(--ht-flare);
-  border-bottom-color: rgba(0, 229, 160, 0.4);
-}
-.ht-prose--paper a:hover {
-  color: #ffffff;
-  border-color: var(--ht-ember);
-}
-.ht-prose--paper strong {
-  color: #ffffff;
-}
-.ht-prose--paper em {
-  color: rgba(255, 255, 255, 0.85);
-}
-.ht-prose--paper h1,
-.ht-prose--paper h2,
-.ht-prose--paper h3,
-.ht-prose--paper h4 {
-  color: #ffffff;
-}
-.ht-prose--paper h4 {
-  color: var(--ht-flare);
-}
-.ht-prose--paper blockquote {
-  color: rgba(255, 255, 255, 0.82);
-  border-left-color: var(--ht-ember);
-  background: linear-gradient(90deg, rgba(0, 229, 160, 0.1), transparent 70%);
-}
-.ht-prose--paper hr {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
-}
-.ht-prose--paper code {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: var(--ht-flare);
-}
-.ht-prose--paper pre {
-  background: rgba(0, 0, 0, 0.55);
-  border-color: rgba(255, 255, 255, 0.09);
-  color: #e8e8e8;
-}
-.ht-prose--paper pre code {
-  background: none;
-  border: 0;
-  color: inherit;
-}
-.ht-prose--paper figcaption {
-  color: var(--ht-paper-dim);
-}
-.ht-prose--paper th {
-  color: var(--ht-flare);
-}
-.ht-prose--paper th,
-.ht-prose--paper td {
-  border-bottom-color: rgba(255, 255, 255, 0.09);
-}
-.ht-prose--paper img {
-  border-color: rgba(255, 255, 255, 0.09);
-  background: #121212;
-}
-.ht-prose--paper ul > li::before {
-  background: var(--ht-ember);
-  box-shadow: 0 0 10px rgba(0, 229, 160, 0.6);
-}
-.ht-prose--paper ol > li::marker {
-  color: var(--ht-ember);
-}
-
-@keyframes ht-grain-shift {
-  0% { transform: translate3d(0, 0, 0); }
-  20% { transform: translate3d(-6px, 4px, 0); }
-  40% { transform: translate3d(4px, -8px, 0); }
-  60% { transform: translate3d(-8px, -4px, 0); }
-  80% { transform: translate3d(6px, 6px, 0); }
-  100% { transform: translate3d(0, 0, 0); }
-}
-
-.ht-vignette::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  background: radial-gradient(120% 80% at 50% 0%, transparent 42%, rgba(0, 0, 0, 0.6) 100%),
-    radial-gradient(100% 70% at 50% 112%, rgba(0, 229, 160, 0.05), transparent 58%);
-}
-
-/* --------------------------------------------------------------- atmosphere */
-/* A calm, mostly-static environment: two soft glows over a deep graphite base.
-   Motion is a single, very slow drift (50s+) so the room feels alive without
-   ever competing with the content. */
+/* ============================================================== atmosphere */
+/* A calm environment: two soft glows over a deep graphite base, drifting on a
+   50s+ cycle. Motion is punctuation — it must never compete with the reading. */
 .ht-atmos {
   position: fixed;
   inset: 0;
@@ -458,7 +792,7 @@ body {
   position: absolute;
   border-radius: 50%;
   filter: blur(90px);
-  opacity: 0.5;
+  opacity: 0.42;
   will-change: transform;
   animation: atmos-drift 52s ease-in-out infinite;
 }
@@ -502,7 +836,30 @@ body {
   50% { transform: translate3d(2.5%, -2%, 0) scale(1.06); }
 }
 
-/* scan sweep used on hero / intro type */
+/* film grain: one fixed overlay, sub-3% opacity, never on top of a modal */
+.ht-grain::before {
+  content: '';
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* a vignette that pulls the eye to the centre of a full-bleed plate */
+.ht-vignette::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: radial-gradient(120% 80% at 50% 0%, transparent 42%, rgba(0, 0, 0, 0.6) 100%),
+    radial-gradient(100% 70% at 50% 112%, rgba(255, 180, 84, 0.05), transparent 58%);
+}
+
+/* the sweep used on hero type — a slow specular pass, not a loading bar */
 .ht-sweep {
   position: relative;
   overflow: hidden;
@@ -511,7 +868,7 @@ body {
   content: '';
   position: absolute;
   inset: -40% -10%;
-  background: linear-gradient(75deg, transparent 40%, rgba(242, 255, 250, 0.16) 50%, transparent 60%);
+  background: linear-gradient(75deg, transparent 40%, rgba(255, 246, 232, 0.14) 50%, transparent 60%);
   transform: translateX(-60%);
   animation: ht-sweep-move 7.5s var(--ease-ht) infinite;
   pointer-events: none;
@@ -522,7 +879,7 @@ body {
   100% { transform: translateX(70%); }
 }
 
-/* --------------------------------------------------------- heat interactions */
+/* ======================================================= heat interactions */
 
 .ht-heat-btn {
   position: relative;
@@ -530,7 +887,7 @@ body {
   align-items: center;
   gap: 7px;
   padding: 7px 12px 7px 10px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   border: 1px solid transparent;
   background: transparent;
   color: var(--ht-ink-mute);
@@ -538,31 +895,32 @@ body {
   font-weight: 700;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: color 0.3s, border-color 0.3s, background 0.3s, transform 0.18s var(--ease-heat);
+  transition: color var(--t-base), border-color var(--t-base), background var(--t-base),
+    transform 180ms var(--ease-heat);
   touch-action: none;
   user-select: none;
 }
 .ht-heat-btn:hover {
   color: var(--ht-flame);
-  background: rgba(0, 229, 160, 0.08);
-  border-color: rgba(0, 229, 160, 0.22);
+  background: rgba(255, 180, 84, 0.08);
+  border-color: rgba(255, 180, 84, 0.22);
 }
 .ht-heat-btn[data-level='1'] {
   color: var(--ht-flare);
-  background: rgba(184, 255, 227, 0.1);
-  border-color: rgba(184, 255, 227, 0.28);
+  background: rgba(255, 227, 176, 0.1);
+  border-color: rgba(255, 227, 176, 0.28);
 }
 .ht-heat-btn[data-level='2'] {
   color: var(--ht-flame);
-  background: rgba(0, 201, 140, 0.14);
-  border-color: rgba(0, 201, 140, 0.4);
-  box-shadow: 0 0 18px -4px rgba(0, 229, 160, 0.6);
+  background: rgba(245, 154, 43, 0.14);
+  border-color: rgba(245, 154, 43, 0.4);
+  box-shadow: 0 0 18px -4px rgba(255, 180, 84, 0.6);
 }
 .ht-heat-btn[data-level='3'] {
   color: var(--ht-whitehot);
   background: linear-gradient(135deg, var(--ht-magma), var(--ht-ember) 60%, var(--ht-flare));
   border-color: transparent;
-  box-shadow: 0 0 26px -2px rgba(0, 229, 160, 0.9);
+  box-shadow: 0 0 26px -2px rgba(255, 180, 84, 0.9);
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
 }
 .ht-heat-btn:active {
@@ -572,7 +930,7 @@ body {
 .ht-ring {
   position: absolute;
   inset: -3px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   pointer-events: none;
   background: conic-gradient(
     from -90deg,
@@ -593,7 +951,7 @@ body {
   height: 12px;
   margin: -6px 0 0 -6px;
   border-radius: 50%;
-  border: 2px solid rgba(200, 255, 236, 0.9);
+  border: 2px solid rgba(255, 240, 214, 0.9);
   pointer-events: none;
   animation: ht-shock 0.85s var(--ease-heat) forwards;
 }
@@ -611,11 +969,11 @@ body {
   height: 3px;
   border-radius: 50%;
   background: var(--ht-flare);
-  box-shadow: 0 0 8px 2px rgba(0, 201, 140, 0.8);
+  box-shadow: 0 0 8px 2px rgba(245, 154, 43, 0.8);
   pointer-events: none;
   animation: ember-float var(--d, 2.4s) var(--ease-heat) forwards;
 }
-/* Ignited-card aura flicker — kept low amplitude: fire should breathe, not strobe. */
+/* Ignited-card aura flicker — low amplitude: fire breathes, it does not strobe. */
 @keyframes flicker {
   0%, 100% { opacity: 1; }
   22% { opacity: 0.82; }
@@ -625,7 +983,6 @@ body {
   73% { opacity: 0.85; }
 }
 
-/* Tailwind theme animation, also used by .ht-ember when a card burns */
 @keyframes ember-rise {
   0% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
   70% { opacity: 0.7; }
@@ -653,7 +1010,7 @@ body {
   border-radius: inherit;
   pointer-events: none;
   z-index: 30;
-  background: radial-gradient(80% 60% at 50% 108%, rgba(0, 229, 160, 0.55), transparent 70%);
+  background: radial-gradient(80% 60% at 50% 108%, rgba(255, 180, 84, 0.55), transparent 70%);
   opacity: 0;
   transition: opacity 0.6s var(--ease-ht);
   mix-blend-mode: screen;
@@ -663,7 +1020,89 @@ body {
   animation: flicker 2.2s ease-in-out infinite;
 }
 
-/* ------------------------------------------------------------------- reader */
+/* ================================================================= reader */
+/* Obsidian paper: long-form lifts onto a charcoal sheet with generous
+   measure. Light-on-dark, never a white page. */
+.ht-paper {
+  background: linear-gradient(180deg, rgba(20, 20, 20, 0.9), rgba(8, 8, 8, 0.94));
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  color: var(--ht-paper-ink);
+  border: 1px solid var(--ht-line);
+  border-radius: var(--r-xl);
+  box-shadow: 0 44px 110px -56px rgba(0, 0, 0, 1), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+}
+
+.ht-prose--paper {
+  color: rgba(255, 255, 255, 0.9);
+}
+.ht-prose--paper a {
+  color: var(--ht-flare);
+  border-bottom-color: rgba(255, 180, 84, 0.4);
+}
+.ht-prose--paper a:hover {
+  color: #ffffff;
+  border-color: var(--ht-ember);
+}
+.ht-prose--paper strong {
+  color: #ffffff;
+}
+.ht-prose--paper em {
+  color: rgba(255, 255, 255, 0.85);
+}
+.ht-prose--paper h1,
+.ht-prose--paper h2,
+.ht-prose--paper h3,
+.ht-prose--paper h4 {
+  color: #ffffff;
+}
+.ht-prose--paper h4 {
+  color: var(--ht-flare);
+}
+.ht-prose--paper blockquote {
+  color: rgba(255, 255, 255, 0.82);
+  border-left-color: var(--ht-ember);
+  background: linear-gradient(90deg, rgba(255, 180, 84, 0.1), transparent 70%);
+}
+.ht-prose--paper hr {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+}
+.ht-prose--paper code {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--ht-flare);
+}
+.ht-prose--paper pre {
+  background: rgba(0, 0, 0, 0.55);
+  border-color: rgba(255, 255, 255, 0.09);
+  color: #e8e8e8;
+}
+.ht-prose--paper pre code {
+  background: none;
+  border: 0;
+  color: inherit;
+}
+.ht-prose--paper figcaption {
+  color: var(--ht-paper-dim);
+}
+.ht-prose--paper th {
+  color: var(--ht-flare);
+}
+.ht-prose--paper th,
+.ht-prose--paper td {
+  border-bottom-color: rgba(255, 255, 255, 0.09);
+}
+.ht-prose--paper img {
+  border-color: rgba(255, 255, 255, 0.09);
+  background: #121212;
+}
+.ht-prose--paper ul > li::before {
+  background: var(--ht-ember);
+  box-shadow: 0 0 10px rgba(255, 180, 84, 0.6);
+}
+.ht-prose--paper ol > li::marker {
+  color: var(--ht-ember);
+}
 
 .ht-prose {
   font-family: 'Newsreader Variable', ui-serif, Georgia, serif;
@@ -706,7 +1145,7 @@ body {
 .ht-prose a {
   color: var(--ht-flare);
   text-decoration: none;
-  border-bottom: 1px solid rgba(184, 255, 227, 0.35);
+  border-bottom: 1px solid rgba(255, 227, 176, 0.35);
   transition: border-color 0.25s, color 0.25s;
 }
 .ht-prose a:hover {
@@ -727,7 +1166,7 @@ body {
   border-left: 2px solid var(--ht-ember);
   color: rgba(255, 255, 255, 0.8);
   font-style: italic;
-  background: linear-gradient(90deg, rgba(0, 229, 160, 0.06), transparent 70%);
+  background: linear-gradient(90deg, rgba(255, 180, 84, 0.06), transparent 70%);
 }
 .ht-prose ul,
 .ht-prose ol {
@@ -753,7 +1192,7 @@ body {
   height: 6px;
   border-radius: 2px;
   background: linear-gradient(135deg, var(--ht-flare), var(--ht-magma));
-  box-shadow: 0 0 10px rgba(0, 229, 160, 0.65);
+  box-shadow: 0 0 10px rgba(255, 180, 84, 0.65);
 }
 .ht-prose ol {
   list-style: decimal;
@@ -844,47 +1283,48 @@ body {
   max-width: 100%;
 }
 
-/* highlight.js theme, tuned to the heatt heat ramp */
+/* highlight.js theme — "ember noir": warm keywords, ice strings, violet
+   meta. Warm/cool contrast is what keeps code scannable without a rainbow. */
 .hljs-comment,
 .hljs-quote {
-  color: #6f6f6f;
+  color: #6f6f75;
   font-style: italic;
 }
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-literal,
 .hljs-doctag {
-  color: #00e5a0;
+  color: #ffb454;
 }
 .hljs-string,
 .hljs-regexp,
 .hljs-addition {
-  color: #b8ffe3;
+  color: #9ed9ee;
 }
 .hljs-number,
 .hljs-symbol,
 .hljs-bullet {
-  color: #00c98c;
+  color: #ffd08a;
 }
 .hljs-title,
 .hljs-title.function_,
 .hljs-section {
-  color: #f2fffa;
+  color: #fff6e8;
 }
 .hljs-type,
 .hljs-class .hljs-title,
 .hljs-built_in {
-  color: #3ddcff;
+  color: #8aa6ff;
 }
 .hljs-attr,
 .hljs-attribute,
 .hljs-variable,
 .hljs-template-variable {
-  color: #8affd0;
+  color: #ffdfac;
 }
 .hljs-meta,
 .hljs-deletion {
-  color: #b07cff;
+  color: #b98cff;
 }
 .hljs-emphasis {
   font-style: italic;
@@ -893,7 +1333,7 @@ body {
   font-weight: 700;
 }
 
-/* ---------------------------------------------------------------- heat graph */
+/* ============================================================== heat graph */
 
 .ht-cell {
   rx: 2;
@@ -904,7 +1344,7 @@ body {
   filter: brightness(1.3);
 }
 
-/* ------------------------------------------------- reader blocks & heat spine */
+/* ============================================== reader blocks & heat spine */
 
 .ht-block {
   position: relative;
@@ -920,18 +1360,18 @@ body {
   bottom: 0.35em;
   width: 2px;
   border-radius: 2px;
-  background: linear-gradient(180deg, rgba(184, 255, 227, 0), rgba(0, 201, 140, 0.75));
+  background: linear-gradient(180deg, rgba(255, 227, 176, 0), rgba(245, 154, 43, 0.75));
   opacity: calc(var(--bh, 0) * 1.6);
 }
 .ht-block--hot {
-  background: linear-gradient(90deg, rgba(0, 229, 160, 0.075), transparent 55%);
-  box-shadow: inset 0 0 0 1px rgba(0, 201, 140, 0.09);
+  background: linear-gradient(90deg, rgba(255, 180, 84, 0.075), transparent 55%);
+  box-shadow: inset 0 0 0 1px rgba(245, 154, 43, 0.09);
 }
 .ht-block--target {
   animation: ht-block-hit 1.5s var(--ease-ht);
 }
 @keyframes ht-block-hit {
-  0% { background: rgba(0, 201, 140, 0.24); }
+  0% { background: rgba(245, 154, 43, 0.24); }
   100% { background: transparent; }
 }
 
@@ -954,7 +1394,7 @@ body {
   gap: 10px;
   padding: 8px 10px 8px 14px;
   border-bottom: 1px solid var(--ht-line);
-  background: radial-gradient(60% 200% at 0% 0%, rgba(0, 229, 160, 0.12), transparent 70%), #141414;
+  background: radial-gradient(60% 200% at 0% 0%, rgba(255, 180, 84, 0.12), transparent 70%), #141414;
   font-family: 'Inter Variable', sans-serif;
 }
 .ht-codelang {
@@ -976,15 +1416,15 @@ body {
   text-transform: uppercase;
   color: var(--ht-ink-dim);
   border: 1px solid var(--ht-line);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   padding: 3px 9px;
   cursor: pointer;
   transition: all 0.25s var(--ease-ht);
 }
 .ht-codebtn:hover {
   color: var(--ht-whitehot);
-  border-color: rgba(0, 229, 160, 0.5);
-  background: rgba(0, 229, 160, 0.1);
+  border-color: rgba(255, 180, 84, 0.5);
+  background: rgba(255, 180, 84, 0.1);
 }
 .ht-line {
   display: block;
@@ -1003,20 +1443,59 @@ body {
   word-break: break-word;
 }
 
-/* ------------------------------------------------------------------- utility */
+/* =========================================================== overlays */
+
+@keyframes ht-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ht-modal-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes ht-cover-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes ht-toast {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ht-heat-pop {
+  0% { transform: scale(0.86); opacity: 0; }
+  55% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes ht-read-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ht-fire-bloom {
+  0% { opacity: 0; transform: scale(0.7); }
+  40% { opacity: 0.9; }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+@keyframes ht-wave-burn {
+  0%, 100% { transform: scaleY(0.6); opacity: 0.7; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+/* =========================================================== utility */
 
 .ht-mask-fade {
   mask-image: linear-gradient(180deg, #000 60%, transparent 100%);
   -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent 100%);
 }
-
+.ht-mask-x {
+  mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 20px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 20px), transparent 100%);
+}
 .ht-no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .ht-no-scrollbar {
   scrollbar-width: none;
 }
-
 .ht-marquee {
   animation: ht-marquee 34s linear infinite;
 }
@@ -1025,7 +1504,6 @@ body {
     transform: translateX(-50%);
   }
 }
-
 .ht-blur-in {
   filter: blur(14px);
   opacity: 0;
@@ -1037,7 +1515,60 @@ body {
     opacity: 1;
   }
 }
+/* image reveal: plates fade out of a blur instead of popping in */
+.ht-plate {
+  opacity: 0;
+  transform: scale(1.06);
+  filter: blur(16px);
+  transition: opacity 1200ms var(--ease-ht), transform 1400ms var(--ease-ht), filter 1200ms var(--ease-ht);
+}
+.ht-plate[data-in='true'] {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+}
 
+/* ============================================================ slider */
+/* One definition for the heat range input — the landing cooling lab and the
+   onboarding depth dial both use it. Written as a primitive because the native
+   thumb cannot be styled with utilities. */
+.ht-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--ht-magma) var(--v, 50%), rgba(255, 255, 255, 0.09) var(--v, 50%));
+  outline: none;
+  cursor: pointer;
+}
+.ht-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, var(--ht-whitehot), var(--ht-flare) 45%, var(--ht-magma));
+  border: 2px solid #0a0a0a;
+  box-shadow: 0 0 0 1px rgba(245, 154, 43, 0.45), 0 0 18px rgba(255, 180, 84, 0.55);
+  transition: transform 0.15s var(--ease-ht);
+}
+.ht-range:active::-webkit-slider-thumb {
+  transform: scale(1.14);
+}
+.ht-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffb454;
+  border: 2px solid #0a0a0a;
+}
+.ht-range:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 227, 176, 0.5);
+}
+
+/* ========================================================= reduced motion */
+/* The whole system collapses to its final frame. Nothing is lost: every
+   animation here is decorative, and the app stays fully usable. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1046,6 +1577,14 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+  .ht-swipe::after {
+    display: none;
+  }
+  .ht-plate {
+    opacity: 1;
+    transform: none;
+    filter: none;
   }
   html[data-reduce-motion='true'] *,
   html[data-reduce-motion='true'] *::before,
@@ -1058,37 +1597,3 @@ body {
     display: none;
   }
 }
-
-/* ------------------------------------------------------------------ slider */
-/* One definition for the heat range input — the landing cooling lab and the
-   onboarding depth dial both use it. Written as a primitive because the native
-   thumb cannot be styled with utilities. */
-.ht-range {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 4px;
-  border-radius: 99px;
-  background: linear-gradient(90deg, var(--ht-magma) var(--v, 50%), rgba(255, 255, 255, 0.09) var(--v, 50%));
-  outline: none;
-  cursor: pointer;
-}
-.ht-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, var(--ht-whitehot), var(--ht-flare) 45%, var(--ht-magma));
-  border: 2px solid #0a0a0a;
-  box-shadow: 0 0 0 1px rgba(0, 201, 140, 0.45), 0 0 18px rgba(0, 229, 160, 0.55);
-  transition: transform 0.15s var(--ease-ht);
-}
-.ht-range:active::-webkit-slider-thumb { transform: scale(1.14); }
-.ht-range::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #00e5a0;
-  border: 2px solid #0a0a0a;
-}
-.ht-range:focus-visible { box-shadow: 0 0 0 2px rgba(184, 255, 227, 0.5); }

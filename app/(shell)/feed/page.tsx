@@ -111,10 +111,10 @@ export default function FeedPage() {
               setLastSeen(Date.now());
               topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
-            className="mx-auto mb-4 flex items-center gap-2 rounded-full border border-ember-500/40 bg-[#08160F]/90 px-4 py-1.5 text-[12.5px] font-bold text-ember-200 backdrop-blur-xl"
-            style={{ boxShadow: '0 14px 40px -14px rgba(0,229,160,.6)' }}
+            className="mx-auto mb-4 flex items-center gap-2 rounded-full border border-ember-500/40 bg-[#140D04]/92 px-4 py-1.5 text-[12.5px] font-bold text-ember-200 backdrop-blur-xl"
+            style={{ boxShadow: '0 14px 40px -14px rgba(255,180,84,.6)' }}
           >
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ember-400 shadow-[0_0_10px_#00E5A0]" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ember-400 shadow-[0_0_10px_#FFB454]" />
             {showNew} new ignition{showNew === 1 ? '' : 's'} on the board
           </motion.button>
         )}
@@ -126,7 +126,7 @@ export default function FeedPage() {
         <div className="space-y-4" ref={wrapRef}>
           <AnimatePresence mode="popLayout" initial={false}>
             {visible.map((p, i) => (
-              <div key={p.id} data-fi={i} className="relative" style={{ outline: focus === i ? '1.5px solid rgba(0,229,160,.5)' : 'none', outlineOffset: 3, borderRadius: 22, transition: 'outline-color .25s', boxShadow: focus === i ? '0 0 44px -14px rgba(0,229,160,.5)' : undefined }}>
+              <div key={p.id} data-fi={i} className="relative" style={{ outline: focus === i ? '1.5px solid rgba(255,180,84,.5)' : 'none', outlineOffset: 3, borderRadius: 22, transition: 'outline-color .25s', boxShadow: focus === i ? '0 0 44px -14px rgba(255,180,84,.5)' : undefined }}>
                 <PostCard post={p} index={i} />
               </div>
             ))}
@@ -248,7 +248,7 @@ function FeaturedForge({ post, onOpen }: { post: Post; onOpen: (id: string) => v
         )}
         <div className="relative p-5 sm:p-6">
           <div className="flex items-center gap-2">
-            <span className="ht-chip !border-transparent !bg-[var(--ht-ember)] !text-[#04140E]">featured</span>
+            <span className="ht-chip !border-transparent !bg-[var(--ht-ember)] !text-[#1A0E02]">featured</span>
             <span className="ht-chip !normal-case !tracking-normal">{post.kind === 'forge' ? `${post.minutes ?? 6} min read` : 'spark'}</span>
             <span className="ml-auto text-[12px] text-ink-mute">{post.authorHandle ? `@${post.authorHandle}` : ''}</span>
           </div>

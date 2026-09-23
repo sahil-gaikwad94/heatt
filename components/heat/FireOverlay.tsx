@@ -187,7 +187,7 @@ export function FireOverlay({ active, duration = 2400, variant = 'full', onDone,
           inset: 0,
           pointerEvents: 'none',
           zIndex: 39,
-          background: 'radial-gradient(90% 55% at 50% 112%, rgba(0,229,160,.22), transparent 68%)',
+          background: 'radial-gradient(90% 55% at 50% 112%, rgba(255,180,84,.22), transparent 68%)',
           mixBlendMode: 'screen',
           animation: 'ht-fire-bloom 2.4s cubic-bezier(.2,.9,.2,1) forwards',
         }}
