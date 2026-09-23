@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description:
       'Sparks and long-form forges in a single feed. Heat instead of likes. Read everything in-app.',
     type: 'website',
-    images: [{ url: '/art/hero-forge.jpg', width: 1200, height: 627, alt: 'heatt molten field' }],
+    images: [{ url: '/art/hero-forge.jpg', width: 1200, height: 627, alt: 'heatt — short sparks and full-length forges' }],
     siteName: 'heatt',
   },
   twitter: { card: 'summary_large_image', title: 'heatt — where ideas burn', description: 'Spark + forge, heat-ranked, read in-app.' },
@@ -35,7 +35,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0A0A0B',
+  themeColor: '#050505',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -105,10 +105,10 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
             if (f) readFile(f, 'cover');
           }}
           className="relative h-[150px] overflow-hidden"
-          style={{ outline: dragOver === 'cover' ? '2px dashed rgba(255,138,31,.7)' : 'none', outlineOffset: -6 }}
+          style={{ outline: dragOver === 'cover' ? '2px dashed rgba(0,229,160,.6)' : 'none', outlineOffset: -6 }}
         >
           <img src={cover} alt="" className="h-full w-full object-cover" />
-          <span className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(8,8,10,.2),rgba(8,8,10,.9))' }} />
+          <span className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.2),rgba(0,0,0,.9))' }} />
           <div className="absolute inset-x-4 bottom-3 flex flex-wrap items-center gap-2">
             {COVERS.slice(0, 5).map((c) => (
               <button key={c} onClick={() => setCover(c)} className={cls('h-9 w-14 overflow-hidden rounded-[8px] border transition-all', cover === c ? 'border-ember-400 shadow-heat' : 'border-white/15 hover:border-white/40')}>
@@ -140,10 +140,10 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
                 if (f) readFile(f, 'avatar');
               }}
               className="relative shrink-0 rounded-full"
-              style={{ outline: dragOver === 'avatar' ? '2px dashed rgba(255,138,31,.8)' : 'none', outlineOffset: 4 }}
+              style={{ outline: dragOver === 'avatar' ? '2px dashed rgba(0,229,160,.7)' : 'none', outlineOffset: 4 }}
             >
               <img src={avatar ?? avatarDataUri(name || 'you', handle)} alt="" className="h-[76px] w-[76px] rounded-full border border-white/10 object-cover" />
-              <label className="absolute inset-x-0 -bottom-1 mx-auto w-max cursor-pointer rounded-full border border-white/12 bg-[#101014] px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-dim hover:text-ember-300">
+              <label className="absolute inset-x-0 -bottom-1 mx-auto w-max cursor-pointer rounded-full border border-white/12 bg-[#0d0d0d] px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-dim hover:text-ember-300">
                 pfp
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && readFile(e.target.files[0], 'avatar')} />
               </label>
@@ -184,9 +184,9 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
                     onClick={() => setInterests((p) => (on ? p.filter((x) => x !== tg) : [...p, tg]))}
                     className="rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-all"
                     style={{
-                      borderColor: on ? 'rgba(255,138,31,.5)' : 'var(--ht-line)',
+                      borderColor: on ? 'rgba(0,201,140,.42)' : 'var(--ht-line)',
                       color: on ? 'var(--ht-whitehot)' : 'var(--ht-ink-mute)',
-                      background: on ? 'linear-gradient(120deg,rgba(255,45,18,.22),rgba(255,181,49,.08))' : 'transparent',
+                      background: on ? 'linear-gradient(120deg,rgba(46,242,166,.2),rgba(124,255,208,.07))' : 'transparent',
                     }}
                   >
                     #{tg}

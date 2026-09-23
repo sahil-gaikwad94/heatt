@@ -1,22 +1,22 @@
 'use client';
 /* ============================================================================
-   /feed — the hybrid board.
+   /feed — the board.
 
-   One list, two modalities, ranked by Heat Diffusion and *truncated at the
-   semantic cliff*: when the crowd stops engaging, the board ends. That "you
-   reached the cliff" card is a feature, not an empty state — the feed has a
-   shape, and the shape means something.
+   Greeting, the thing you were already reading, then one ranked list of sparks
+   and forges. No scoreboards, no decay curve, no simulated physics: a greeter,
+   a shelf, and the writing.
    ==========================================================================*/
 
 import * as React from 'react';
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApp } from '@/lib/app';
 import { PostCard } from '@/components/cards/PostCard';
 import { useStore } from '@/lib/store';
-import { FeedTabs, TopBar } from '@/components/shell/Shell';
-import { cliffIndex } from '@/lib/heat';
+import { FeedTabs, GreetingBar } from '@/components/shell/Shell';
 import { Avatar } from '@/components/ui/primitives';
 import { timeAgo } from '@/lib/util';
+import type { Post } from '@/lib/feed';
 
 export default function FeedPage() {
   const app = useApp();
@@ -26,11 +26,10 @@ export default function FeedPage() {
   const [focus, setFocus] = React.useState(-1);
   const wrapRef = React.useRef<HTMLDivElement | null>(null);
 
+  /* the board is the ranked list, full stop — no simulated decay curve, no
+     "you have reached the cliff" theatre. */
   const items = app.ranked;
-  const logits = items.map((p) => Math.log1p(Math.max(0, p.heat?.temp ?? 0)));
-  const cliff = app.tab === 'for-you' ? cliffIndex(logits) : items.length;
-  const visible = items.slice(0, Math.max(items.length === 0 ? 0 : 4, cliff));
-  const hidden = items.length - visible.length;
+  const visible = items;
 
   // live wire: quietly refresh, then offer the new items instead of shuffling
   React.useEffect(() => {
@@ -92,40 +91,14 @@ export default function FeedPage() {
   }, [focus, visible.length, app]);
 
   const newest = items[0];
+  const featured = React.useMemo(() => items.find((p) => p.kind === 'forge') ?? items[0], [items]);
 
   return (
-    <div ref={topRef} className="mx-auto w-full max-w-[680px]" data-feed>
-      <TopBar
-        title={app.tab === 'for-you' ? 'The Board' : app.tab.replace(/-/g, ' ')}
-        sub={app.live ? '· live wire' : '· bundled library'}
-        right={
-          <button onClick={() => app.go('/explore')} className="ht-btn ht-btn--ghost !px-2.5 md:hidden" aria-label="Search">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-4.2-4.2" strokeLinecap="round" />
-            </svg>
-          </button>
-        }
-      />
+    <div ref={topRef} className="mx-auto w-full max-w-[760px]" data-feed>
+      <GreetingBar />
+      <ContinueRail />
+      {featured && <FeaturedForge post={featured} onOpen={app.openPost} />}
       <FeedTabs />
-
-      {/* board meta strip */}
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[16px] border border-white/[.06] bg-white/[.017] px-3 py-2">
-        <span className="ht-label">ranked by</span>
-        <span className="ht-chip !border-ember-500/35 !bg-ember-500/10 !text-ember-200 !normal-case !tracking-normal">
-          heat diffusion · τ 9h · κ 0.22
-        </span>
-        <span className="ht-label">board length</span>
-        <span className="ht-num text-[12px] text-ink-dim">
-          {visible.length} shown{hidden > 0 ? ` · ${hidden} past the cliff` : ''}
-        </span>
-        <span className="flex-1" />
-        {newest && (
-          <span className="hidden items-center gap-1.5 text-[11.5px] text-ink-mute sm:flex">
-            last heat {timeAgo(newest.date)} ago
-          </span>
-        )}
-      </div>
 
       <AnimatePresence>
         {showNew > 0 && (
@@ -138,10 +111,10 @@ export default function FeedPage() {
               setLastSeen(Date.now());
               topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
-            className="mx-auto mb-4 flex items-center gap-2 rounded-full border border-ember-500/40 bg-[#150c07]/90 px-4 py-1.5 text-[12.5px] font-bold text-ember-200 backdrop-blur-xl"
-            style={{ boxShadow: '0 14px 40px -14px rgba(255,92,10,.8)' }}
+            className="mx-auto mb-4 flex items-center gap-2 rounded-full border border-ember-500/40 bg-[#08160F]/90 px-4 py-1.5 text-[12.5px] font-bold text-ember-200 backdrop-blur-xl"
+            style={{ boxShadow: '0 14px 40px -14px rgba(0,229,160,.6)' }}
           >
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ember-400 shadow-[0_0_10px_#FF8A1F]" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ember-400 shadow-[0_0_10px_#00E5A0]" />
             {showNew} new ignition{showNew === 1 ? '' : 's'} on the board
           </motion.button>
         )}
@@ -153,7 +126,7 @@ export default function FeedPage() {
         <div className="space-y-4" ref={wrapRef}>
           <AnimatePresence mode="popLayout" initial={false}>
             {visible.map((p, i) => (
-              <div key={p.id} data-fi={i} className="relative" style={{ outline: focus === i ? '1.5px solid rgba(255,138,31,.55)' : 'none', outlineOffset: 3, borderRadius: 22, transition: 'outline-color .25s', boxShadow: focus === i ? '0 0 40px -12px rgba(255,92,10,.55)' : undefined }}>
+              <div key={p.id} data-fi={i} className="relative" style={{ outline: focus === i ? '1.5px solid rgba(0,229,160,.5)' : 'none', outlineOffset: 3, borderRadius: 22, transition: 'outline-color .25s', boxShadow: focus === i ? '0 0 44px -14px rgba(0,229,160,.5)' : undefined }}>
                 <PostCard post={p} index={i} />
               </div>
             ))}
@@ -161,34 +134,16 @@ export default function FeedPage() {
 
           {visible.length === 0 && (
             <div className="ht-panel mt-8 p-8 text-center">
-              <h2 className="ht-title text-[22px]">Nothing is burning here yet</h2>
+              <h2 className="ht-title text-[22px]">Nothing here yet</h2>
               <p className="mx-auto mt-2 max-w-[42ch] text-[13.5px] leading-relaxed text-ink-dim">
                 {app.tab === 'following'
-                  ? 'Your follow list is not heating anything. Explore the board, or follow a few high thermal-mass voices.'
-                  : 'This filter is cold. The Heat Diffusion cliff removes dead content instead of padding it — try another mode.'}
+                  ? 'Your follow list has nothing new. Find a few voices worth following on Explore.'
+                  : 'This filter is empty. Try another one, or go find something to read.'}
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 <button onClick={() => { app.setTab('for-you'); app.setMode('heat'); }} className="ht-btn ht-btn--heat">Back to the board</button>
                 <button onClick={() => app.go('/explore')} className="ht-btn">Explore tags</button>
               </div>
-            </div>
-          )}
-
-          {hidden > 0 && (
-            <div className="ht-panel mt-6 flex items-center gap-4 p-5">
-              <div className="relative h-[42px] w-[42px] shrink-0">
-                <span className="absolute inset-0 rounded-full" style={{ background: 'conic-gradient(from 180deg, var(--ht-flare), transparent 60%)', opacity: 0.5 }} />
-                <span className="absolute inset-[10px] rounded-full bg-[#0c0c0f]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="ht-title text-[16px]">You reached the cliff</h2>
-                <p className="mt-1 text-[13px] leading-relaxed text-ink-mute">
-                  {hidden} item{hidden === 1 ? '' : 's'} fell off the engagement cliff — their heat is still high, but the velocity is gone. We demote them instead of padding your scroll.
-                </p>
-              </div>
-              <button onClick={() => app.go('/explore')} className="ht-btn ht-btn--ghost !text-[12px]">
-                Browse anyway
-              </button>
             </div>
           )}
 
@@ -217,6 +172,105 @@ export default function FeedPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/* The shelf: whatever you were part-way through, or whatever you saved for
+   later, as a horizontal scroller with real progress on each tile. */
+function ContinueRail() {
+  const app = useApp();
+  const s = useStore();
+  const inProgress = React.useMemo(() => {
+    const rows = Object.entries(s.reads)
+      .filter(([, r]) => r.pct >= 2 && r.pct < 97)
+      .sort((a, b) => (b[1].at ?? 0) - (a[1].at ?? 0))
+      .map(([id, r]) => ({ post: app.posts.find((p) => String(p.id) === String(id)), pct: r.pct }))
+      .filter((x): x is { post: Post; pct: number } => !!x.post)
+      .slice(0, 6);
+    if (rows.length) return { label: 'Pick up where you left off', rows };
+    const saved = Object.keys(s.saved)
+      .map((id) => ({ post: app.posts.find((p) => String(p.id) === String(id)), pct: 0 }))
+      .filter((x): x is { post: Post; pct: number } => !!x.post)
+      .slice(0, 6);
+    return { label: 'Saved for later', rows: saved };
+  }, [s.reads, s.saved, app.posts]);
+
+  if (inProgress.rows.length === 0) return null;
+
+  return (
+    <section className="mb-5">
+      <div className="mb-2.5 flex items-baseline justify-between px-1">
+        <h2 className="ht-title text-[16px] text-white">{inProgress.label}</h2>
+        <Link href="/library" className="text-[12px] font-semibold text-ember-300 hover:text-ember-200">
+          Library
+        </Link>
+      </div>
+      <div className="ht-no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6">
+        {inProgress.rows.map(({ post, pct }) => (
+          <button key={post.id} onClick={() => app.openPost(String(post.id))} className="group w-[146px] shrink-0 text-left">
+            <span className="relative block h-[104px] overflow-hidden rounded-[18px] border border-white/[.08]">
+              {post.cover ? (
+                <img src={post.cover} alt="" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.06]" />
+              ) : (
+                <span className="grid h-full w-full place-items-center text-[20px]" style={{ background: 'linear-gradient(150deg,#141414,#050505)' }}>
+                  ✦
+                </span>
+              )}
+              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-black/55">
+                <span className="block h-full" style={{ width: `${Math.max(4, pct)}%`, background: 'var(--ht-ember)' }} />
+              </span>
+            </span>
+            <span className="mt-2 line-clamp-2 block text-[12.5px] font-semibold leading-snug text-ink-dim transition-colors group-hover:text-white">
+              {post.title ?? post.text}
+            </span>
+            <span className="mt-0.5 block text-[11px] text-ink-faint">
+              {pct > 0 ? `${Math.round(pct)}% · ${Math.max(1, Math.round((post.minutes ?? 6) * (1 - pct / 100)))} min left` : `${post.minutes ?? 6} min read`}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* The featured card: one piece the board is actively burning, given room to
+   breathe. Two actions — read the summary or open it — mirroring the reference. */
+function FeaturedForge({ post, onOpen }: { post: Post; onOpen: (id: string) => void }) {
+  const summary = (post.kind === 'forge' ? post.dek : post.text) ?? '';
+  return (
+    <section className="mb-5">
+      <div className="ht-glass relative overflow-hidden !rounded-[26px]">
+        {post.cover && (
+          <>
+            <img src={post.cover} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" />
+            <span aria-hidden className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,.93))' }} />
+          </>
+        )}
+        <div className="relative p-5 sm:p-6">
+          <div className="flex items-center gap-2">
+            <span className="ht-chip !border-transparent !bg-[var(--ht-ember)] !text-[#04140E]">featured</span>
+            <span className="ht-chip !normal-case !tracking-normal">{post.kind === 'forge' ? `${post.minutes ?? 6} min read` : 'spark'}</span>
+            <span className="ml-auto text-[12px] text-ink-mute">{post.authorHandle ? `@${post.authorHandle}` : ''}</span>
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-[1.35fr_1fr] sm:items-end">
+            <h2 className="ht-title text-[clamp(1.5rem,1.2rem+1.4vw,2.25rem)] leading-[1.08] text-ink">{post.title ?? post.text}</h2>
+            <p className="text-[13.5px] leading-relaxed text-ink-dim">{summary.slice(0, 170)}</p>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-2.5">
+            <button onClick={() => onOpen(post.id)} className="ht-btn !rounded-full !bg-white/[.06] !px-4 !py-2.5 !text-[13.5px]">
+              Read more →
+            </button>
+            <button onClick={() => onOpen(post.id)} className="ht-btn ht-btn--heat !rounded-full !px-5 !py-2.5 !text-[13.5px]">
+              {post.kind === 'forge' ? 'Open the forge' : 'Open the spark'}
+            </button>
+            <span className="ml-auto hidden items-center gap-2 text-[12px] text-ink-mute sm:flex">
+              <Avatar name={post.authorName} handle={post.authorHandle} src={post.authorAvatar} size={24} />
+              @{post.authorHandle}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

@@ -35,20 +35,33 @@ if (!fs.existsSync(NEXT)) {
 // 1. Check JS bundle sizes
 console.log('▸ JS bundles');
 const chunksDir = path.join(NEXT, 'static/chunks');
+/* A production build has a BUILD_ID; a dev build does not. Dev output is unminified
+   (main-app.js alone is ~6MB) and is not a meaningful size signal, so measure only prod. */
+const isProdBuild = fs.existsSync(path.join(NEXT, 'BUILD_ID'));
 let totalJs = 0;
 let largestJs = { name: '', size: 0 };
-if (fs.existsSync(chunksDir)) {
-  const files = fs.readdirSync(chunksDir).filter(f => f.endsWith('.js') && !f.startsWith('main.js') && f !== 'react-refresh.js');
+if (!isProdBuild) {
+  warn('dev build detected (no BUILD_ID) — JS size checks need `npm run build` first');
+} else if (fs.existsSync(chunksDir)) {
+  const files = [];
+  const walkChunks = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) walkChunks(path.join(dir, e.name));
+      else if (e.name.endsWith('.js') && !e.name.startsWith('main.js') && !e.name.startsWith('main-app.js') && e.name !== 'react-refresh.js') {
+        files.push(path.join(dir, e.name));
+      }
+    }
+  };
+  walkChunks(chunksDir);
   for (const f of files) {
-    const size = fs.statSync(path.join(chunksDir, f)).size;
+    const size = fs.statSync(f).size;
     totalJs += size;
-    if (size > largestJs.size) largestJs = { name: f, size };
+    if (size > largestJs.size) largestJs = { name: path.relative(chunksDir, f), size };
   }
   console.log(`  total JS chunks: ${(totalJs/1024).toFixed(0)}kB (${files.length} files)`);
   console.log(`  largest chunk: ${largestJs.name} ${(largestJs.size/1024).toFixed(0)}kB`);
 
   // Production Next.js apps with framer-motion + 4 variable fonts are ~1-2MB
-  // Dev builds have a huge main.js, so we exclude it
   if (totalJs < 2 * 1024 * 1024) ok(`total JS ${(totalJs/1024).toFixed(0)}kB < 2MB (prod)`);
   else if (totalJs < 3 * 1024 * 1024) warn(`total JS ${(totalJs/1024).toFixed(0)}kB — consider code splitting`);
   else fail(`total JS ${(totalJs/1024).toFixed(0)}kB > 3MB — too large`);

@@ -51,7 +51,7 @@ export function PollBlock({ postId, poll }: { postId: string; poll: { question: 
               }}
               className="group relative overflow-hidden rounded-[11px] border px-3 py-2 text-left transition-all disabled:cursor-default"
               style={{
-                borderColor: chosen || i === leader ? 'rgba(255,138,31,.42)' : 'var(--ht-line)',
+                borderColor: chosen || i === leader ? 'rgba(0,201,140,.35)' : 'var(--ht-line)',
                 background: 'rgba(255,255,255,.02)',
               }}
             >
@@ -62,8 +62,8 @@ export function PollBlock({ postId, poll }: { postId: string; poll: { question: 
                   width: pick === null ? '0%' : `${pct}%`,
                   background:
                     i === leader
-                      ? 'linear-gradient(90deg,rgba(255,45,18,.35),rgba(255,181,49,.16))'
-                      : 'linear-gradient(90deg,rgba(255,138,31,.16),rgba(255,138,31,.05))',
+                      ? 'linear-gradient(90deg,rgba(46,242,166,.3),rgba(124,255,208,.14))'
+                      : 'linear-gradient(90deg,rgba(0,201,140,.14),rgba(0,201,140,.05))',
                   transition: 'width 1s cubic-bezier(.2,1,.3,1)',
                 }}
               />

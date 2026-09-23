@@ -138,8 +138,20 @@ function extractCompiledClasses(cssText) {
     console.error('no compiled CSS — run `npm run build` first (the audit diffs against production CSS)');
     process.exit(2);
   }
-  const cssName = fs.readdirSync(CSS_DIR).find((f) => f.endsWith('.css'));
-  const css = fs.readFileSync(path.join(CSS_DIR, cssName), 'utf8');
+  /* css may live at .next/static/css/<name>.css (prod) or .next/static/css/app/layout.css (dev) */
+  const cssFiles = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) walk(path.join(dir, e.name));
+      else if (e.name.endsWith('.css')) cssFiles.push(path.join(dir, e.name));
+    }
+  };
+  walk(CSS_DIR);
+  if (!cssFiles.length) {
+    console.error('no compiled CSS found — run `npm run build` first');
+    process.exit(2);
+  }
+  const css = cssFiles.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
   const globals = fs.readFileSync(path.join(ROOT, 'app/globals.css'), 'utf8');
   const twConfig = fs.readFileSync(path.join(ROOT, 'tailwind.config.ts'), 'utf8');
 

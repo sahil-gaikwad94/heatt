@@ -232,8 +232,8 @@ export function HeatButton({
 
       {preview >= 2 && (
         <span
-          className="pointer-events-none absolute left-1/2 -top-8 -translate-x-1/2 whitespace-nowrap rounded-full border border-ember-500/40 bg-[#150b06]/95 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-ember-200"
-          style={{ boxShadow: '0 8px 24px -8px rgba(255,92,10,.8)' }}
+          className="pointer-events-none absolute left-1/2 -top-8 -translate-x-1/2 whitespace-nowrap rounded-full border border-ember-500/40 bg-[#04140E]/95 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-ember-200"
+          style={{ boxShadow: '0 8px 24px -8px rgba(0,229,160,.7)' }}
         >
           {preview === 3 ? 'Igniting…' : 'Hold for ignition'}
         </span>
@@ -250,9 +250,9 @@ function FlameIcon({ level, preview, size }: { level: HeatLevel; preview: HeatLe
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden style={{ overflow: 'visible' }}>
       <defs>
         <linearGradient id={`htf-${id}`} x1="0" x2="0" y1="1" y2="0">
-          <stop offset="0" stopColor={l >= 2 ? '#FF2D12' : '#FF5C0A'} />
-          <stop offset="0.55" stopColor={l >= 3 ? '#FFF6DE' : '#FF8A1F'} />
-          <stop offset="1" stopColor={l >= 1 ? '#FFD27D' : '#8A5C50'} />
+          <stop offset="0" stopColor={l >= 2 ? '#2EF2A6' : '#00C98C'} />
+          <stop offset="0.55" stopColor={l >= 3 ? '#F2FFFA' : '#00E5A0'} />
+          <stop offset="1" stopColor={l >= 1 ? '#7CFFD0' : '#8A8A8A'} />
         </linearGradient>
       </defs>
       <path
@@ -265,12 +265,12 @@ function FlameIcon({ level, preview, size }: { level: HeatLevel; preview: HeatLe
         stroke={l >= 1 ? `url(#htf-${id})` : 'currentColor'}
         strokeWidth="1.6"
         strokeLinejoin="round"
-        style={l >= 3 ? { filter: `drop-shadow(0 0 7px rgba(255,138,31,.95))`, animation: 'ht-flicker 1.1s ease-in-out infinite' } : undefined}
+        style={l >= 3 ? { filter: `drop-shadow(0 0 7px rgba(0,229,160,.95))`, animation: 'ht-flicker 1.1s ease-in-out infinite' } : undefined}
       />
       {l >= 3 && (
         <path
           d="M12 12.6c.5 1.3.1 2-.6 2.8-.6.7-1 1.3-1 2.1a1.7 1.7 0 0 0 3.3.3c0-.9-.4-1.5-1.7-5.2Z"
-          fill="#FFF6DE"
+          fill="#F2FFFA"
           opacity=".95"
         />
       )}

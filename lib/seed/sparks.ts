@@ -25,7 +25,7 @@ export const SPARKS: Spark[] = [
     comments: 88,
     text: 'Spent the afternoon deleting glows instead of adding them. The interface got better every single time.\n\nDark UI is not about the darkness, it is about how few light sources you can get away with.',
     tags: ['design'],
-    media: [{ url: '/art/molten-ui.jpg', alt: 'Frosted panels over a molten gradient' }],
+    media: [{ url: '/art/molten-ui.jpg', alt: 'Frosted panels over a graphite gradient' }],
   },
   {
     id: 'sp-03',
@@ -178,6 +178,6 @@ export const SPARKS: Spark[] = [
     reposts: 290,
     text: 'We are not building a shorter Medium or a longer X. We are removing the wall between them: a 280-character spark and a 2,000-word forge live in the same feed, the same ranking maths, the same heat.\n\nIf you want the deep thing, you never get bounced to a stranger’s website to find it.',
     tags: ['vision'],
-    media: [{ url: '/art/hero-forge.jpg', alt: 'Molten forge glow' }],
+    media: [{ url: '/art/hero-forge.jpg', alt: 'A forge cover, lit from below' }],
   },
 ];

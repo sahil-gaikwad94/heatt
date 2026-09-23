@@ -11,11 +11,9 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/lib/app';
-import { waveformFor } from '@/lib/feed';
 import type { Post } from '@/lib/feed';
-import { kelvin, tempLabel } from '@/lib/heat';
-import { cls, compact, timeAgo } from '@/lib/util';
-import { Avatar, HeatGauge, Sparkline } from '@/components/ui/primitives';
+import { cls, compact, plain, timeAgo } from '@/lib/util';
+import { Avatar } from '@/components/ui/primitives';
 import { HeatButton } from '@/components/heat/HeatButton';
 import { FireOverlay, EmberTrail } from '@/components/heat/FireOverlay';
 import { useStore } from '@/lib/store';
@@ -28,45 +26,61 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
   const burning = !!app.igniting[post.id];
   const level = app.heatOf(post.id);
   const heat = post.heat!;
-  const t = tempLabel(heat.temp);
   const local = useLocal();
-  const wave = React.useMemo(() => waveformFor(post, local as any), [post, local]);
-  const [showTrace, setShowTrace] = React.useState(false);
+  /* a covered forge gets a full-bleed hero image with the writing beneath it */
+  const bleed = post.kind === 'forge' && !!post.cover;
   const saved = local.saved[post.id];
   const myReplies = React.useMemo(
     () => local.replies.filter((r) => r.postId === post.id).length,
     [local.replies, post.id]
   );
+  /* body excerpt for the paper card: real prose, not a truncated teaser */
+  const excerpt = React.useMemo(() => {
+    if (post.kind !== 'forge') return '';
+    const blocks = post.blocks;
+    if (blocks && blocks.length) {
+      const text = blocks
+        .filter((b) => b.t === 'p')
+        .map((b) => ('text' in b ? b.text : ''))
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (text) return text;
+    }
+    if (post.markdown) return plain(post.markdown);
+    return '';
+  }, [post]);
 
   return (
     <motion.article
       ref={cardRef}
       layout="position"
-      initial={{ opacity: 0, y: 18, filter: 'blur(6px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
-      transition={{ duration: 0.55, delay: Math.min(0.12, index * 0.035), ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4, delay: Math.min(0.08, index * 0.02), ease: [0.22, 1, 0.36, 1] }}
       className={cls(
         'ht-card group relative',
         level === 1 && 'ht-card--heated',
         level >= 2 && 'ht-card--heated',
         burning && 'ht-card--ignited ht-ignite-card'
       )}
-      style={{ padding: dense ? '16px 18px' : '18px 20px 12px' }}
+      style={{ padding: bleed ? '0 0 12px' : dense ? '16px 18px' : '18px 20px 12px' }}
     >
       <span className="ht-heat-aura" aria-hidden />
       <FireOverlay active={burning} variant={local.prefs.ignitionFx === 'off' ? 'subtle' : 'full'} />
-      {(level >= 2 || burning) && <EmberTrail active count={level === 3 || burning ? 16 : 8} />}
+      {/* embers only during an actual burn — a lit post is a state, not a fireworks show */}
+      {burning && <EmberTrail active count={10} />}
 
       {/* ---------------------------------------------------------- header */}
-      <header className="mb-2.5 flex items-start gap-3">
+      <header className={cls('mb-2.5 flex items-start gap-3', bleed && 'px-5 pt-[18px]')}>
         <button onClick={() => app.go(`/u/${post.authorHandle}`)} className="relative shrink-0" aria-label={`Open ${post.authorName}`}>
           <Avatar name={post.authorName} handle={post.authorHandle} src={post.authorAvatar} size={40} />
           {level > 0 && (
             <span
               aria-hidden
               className="absolute -inset-1 rounded-full"
-              style={{ boxShadow: `0 0 0 1px rgba(255,138,31,${0.25 * level}), 0 0 16px -4px rgba(255,92,10,${0.5 * level})` }}
+              style={{ boxShadow: `0 0 0 1px rgba(0,229,160,${0.22 * level}), 0 0 18px -5px rgba(0,201,140,${0.5 * level})` }}
             />
           )}
         </button>
@@ -89,7 +103,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
             <span
               className="ht-chip !border-transparent !py-[2px] !text-[9px]"
               style={{
-                background: post.kind === 'forge' ? 'linear-gradient(120deg,rgba(255,45,18,.16),rgba(255,181,49,.1))' : 'rgba(43,224,200,.1)',
+                background: post.kind === 'forge' ? 'linear-gradient(120deg,rgba(46,242,166,.18),rgba(124,255,208,.1))' : 'rgba(61,220,255,.1)',
                 color: post.kind === 'forge' ? 'var(--ht-flare)' : 'var(--ht-cryo-teal)',
               }}
             >
@@ -103,86 +117,73 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
         </div>
 
         <div className="flex items-center gap-1.5">
-          <TempBadge temp={heat.temp} color={t.color} label={t.label} onTrace={() => setShowTrace((v) => !v)} active={showTrace} />
           <CardMenu post={post} />
         </div>
       </header>
 
-      {/* ------------------------------------------------------ heat trace */}
-      <AnimatePresence>
-        {showTrace && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="mb-3 rounded-[14px] border border-white/[.07] bg-black/40 p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="ht-label">Why this is here — heat trace</span>
-                <span className="ht-num text-[11px] text-ink-mute">{kelvin(heat.temp)}</span>
-              </div>
-              <div className="grid gap-1.5">
-                {heat.trace.map((row) => (
-                  <div key={row.label} className="flex items-center gap-2">
-                    <span className="w-[112px] shrink-0 text-[11px] font-semibold text-ink-dim">{row.label}</span>
-                    <span className="relative h-[5px] flex-1 overflow-hidden rounded-full bg-white/[.06]">
-                      <span
-                        className="absolute inset-y-0 left-0 rounded-full"
-                        style={{
-                          width: `${Math.min(100, Math.abs(row.value) * 6)}%`,
-                          background: 'linear-gradient(90deg,var(--ht-magma),var(--ht-flare))',
-                        }}
-                      />
-                    </span>
-                    <span className="ht-num w-[46px] text-right text-[11px] text-ink-mute">{row.value.toFixed(1)}</span>
-                    <span className="hidden flex-1 text-[10px] text-ink-faint sm:block">{row.hint}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-ink-faint">
-                Newton cooling τ={heat.temp > 0 ? '9h' : '—'} · velocity {heat.velocity.toFixed(2)} · cliff-truncated board
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ------------------------------------------------------ forge body */}
       {post.kind === 'forge' ? (
+        /* ---------------- a full article card: image, then the writing below */
         <div className="relative">
-          {post.cover && <CoverArt src={post.cover} alt={post.title ?? ''} burning={burning} />}
-
-          <button onClick={() => app.openPost(post.id)} className="block w-full text-left">
-            <h2
-              className="ht-title mt-3 text-[clamp(1.2rem,1.05rem+0.7vw,1.6rem)] text-ink transition-colors group-hover:text-white"
-              style={{ lineHeight: 1.16 }}
-            >
-              {post.title}
-            </h2>
-            {post.dek && (
-              <p className="mt-2 line-clamp-3 text-[14.5px] leading-[1.62] text-ink-dim">{post.dek}</p>
-            )}
-          </button>
-
-          {post.tags.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {post.tags.slice(0, 4).map((tag) => (
-                <button key={tag} onClick={() => { app.setTab('tag'); app.go(`/explore?tag=${encodeURIComponent(tag)}`); }} className="ht-chip">
-                  #{tag}
-                </button>
-              ))}
+          {post.cover && (
+            <div className="relative">
+              <CoverArt src={post.cover} alt={post.title ?? ''} burning={burning} bleed={bleed} />
+              <span className="absolute bottom-4 left-4 rounded-full border border-white/[.14] bg-black/55 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-md">
+                {post.minutes ?? 6} min read
+              </span>
+              <span
+                aria-hidden
+                className="pointer-events-none absolute bottom-4 right-4 grid h-11 w-11 place-items-center rounded-full text-[15px] font-bold transition-transform duration-500 group-hover:scale-[1.06]"
+                style={{ background: 'var(--ht-ember)', color: '#04140E', boxShadow: '0 12px 34px -12px rgba(0,229,160,.85)' }}
+              >
+                →
+              </span>
             </div>
           )}
 
-          {/* crowd waveform preview */}
-          <div className="mt-3 flex items-center gap-3 rounded-[12px] border border-white/[.05] bg-black/25 px-3 py-2">
-            <span className="ht-label shrink-0 !text-[9px]">Crowd heat</span>
-            <WaveBars values={wave} burning={burning} />
-            <span className="ht-num shrink-0 text-[11px] text-ink-mute">
-              {post.minutes ?? 6} min · {(post.blocks?.length ?? Math.round((post.markdown ?? '').split(/\n\s*\n/).length)) || 0} blocks
-            </span>
-          </div>
+          <button onClick={() => app.openPost(post.id)} className={cls('block w-full text-left', !bleed && 'mt-3.5')}>
+            <div className={cls(bleed && 'px-5 pt-4')}>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span
+                  className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-ember-200"
+                  style={{ background: 'rgba(0,229,160,.1)', border: '1px solid rgba(0,229,160,.26)' }}
+                >
+                  {post.origin === 'wire' ? 'syndicated' : 'long-form'}
+                </span>
+                {post.tags.slice(0, 3).map((tag) => (
+                  <span key={tag} className="rounded-full border border-white/[.08] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-dim">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+
+              <h2 className="ht-title mt-3.5 text-[clamp(1.45rem,1.15rem+1vw,2.05rem)] leading-[1.1] text-white transition-colors">
+                {post.title}
+              </h2>
+
+              {post.dek && <p className="mt-2.5 text-[15px] leading-[1.68] text-ink-dim">{post.dek}</p>}
+
+              {excerpt && (
+                <div
+                  className="relative mt-3 max-h-[122px] overflow-hidden"
+                  style={{ maskImage: 'linear-gradient(180deg,#000 52%,transparent)', WebkitMaskImage: 'linear-gradient(180deg,#000 52%,transparent)' }}
+                >
+                  <p className="ht-prose ht-prose--paper text-[14.5px] leading-[1.72]">{excerpt}</p>
+                </div>
+              )}
+
+              <div className="mt-5 flex items-center gap-3 border-t border-white/[.07] pt-4">
+                <span className="text-[12.5px] font-semibold text-ember-300 transition-colors group-hover:text-ember-200">
+                  Read full article →
+                </span>
+                <span className="flex-1" />
+                <span className="ht-num text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">
+                  {post.origin === 'wire' ? 'attributed' : 'native'}
+                </span>
+              </div>
+            </div>
+          </button>
+
         </div>
       ) : (
         /* ---------------------------------------------------- spark body */
@@ -209,7 +210,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
           {post.longRef && (
             <button
               onClick={() => app.openPost(post.longRef!)}
-              className="mt-3 flex w-full items-center gap-2.5 rounded-[14px] border border-ember-500/25 bg-[linear-gradient(90deg,rgba(255,45,18,.1),transparent)] px-3 py-2.5 text-left transition-all hover:border-ember-500/60"
+              className="mt-3 flex w-full items-center gap-2.5 rounded-[14px] border border-ember-500/25 bg-[linear-gradient(90deg,rgba(0,229,160,.09),transparent)] px-3 py-2.5 text-left transition-all hover:border-ember-500/60"
             >
               <span className="text-ember-400">
                 <ForgeIcon />
@@ -224,7 +225,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
       )}
 
       {/* -------------------------------------------------------- actions */}
-      <footer className="relative z-40 mt-3 flex items-center gap-1 border-t border-white/[.05] pt-1.5">
+      <footer className={cls('relative z-40 mt-3 flex items-center gap-1 border-t border-white/[.05] pt-1.5', bleed && 'mx-5')}>
         <ActionButton
           label="reply"
           hint={`Reply to ${post.authorName} in the thread`}
@@ -250,7 +251,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
 
         <ActionButton
           label="share"
-          hint="Make a share poster"
+          hint="Share as a story"
           onClick={() => app.setShare(post.id)}
           icon={<ShareIcon />}
         />
@@ -266,12 +267,11 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
         />
 
         <span className="flex-1" />
-        {heat.trend?.length > 1 && (
-          <span className="hidden items-center gap-1.5 sm:flex" title="7-day temperature">
-            <Sparkline values={heat.trend} w={54} h={16} color={t.color} />
+        {level > 0 && (
+          <span className="rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.12em] text-ember-200" style={{ background: 'rgba(0,229,160,.1)' }}>
+            {level === 3 ? 'you ignited this' : level === 2 ? 'you blazed this' : 'you liked this'}
           </span>
         )}
-        <HeatGauge value={heat.heat} size={30} label={`${t.label} · ${heat.heat}/100`} />
       </footer>
     </motion.article>
   );
@@ -294,34 +294,22 @@ function VerifiedBadge() {
       <path d="M8.4 12.2l2.5 2.4 4.7-4.9" stroke="#160b04" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       <defs>
         <linearGradient id="vfg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FFD27D" />
-          <stop offset="0.6" stopColor="#FF8A1F" />
-          <stop offset="1" stopColor="#FF2D12" />
+          <stop offset="0" stopColor="#F2FFFA" />
+          <stop offset="0.6" stopColor="#00E5A0" />
+          <stop offset="1" stopColor="#2EF2A6" />
         </linearGradient>
       </defs>
     </svg>
   );
 }
 
-function TempBadge({ temp, color, label, onTrace, active }: { temp: number; color: string; label: string; onTrace: () => void; active?: boolean }) {
-  return (
-    <button
-      onClick={onTrace}
-      className={cls('ht-chip !gap-1.5 transition-all', active && '!border-ember-500/50')}
-      title="Toggle the heat trace — why this post ranks here"
-      style={{ color, borderColor: active ? 'rgba(255,138,31,.5)' : undefined }}
-    >
-      <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-      <span className="ht-num">{kelvin(temp)}</span>
-      <span className="hidden text-[9px] uppercase tracking-[0.12em] opacity-80 md:inline">{label}</span>
-    </button>
-  );
-}
-
-function CoverArt({ src, alt, burning }: { src: string; alt: string; burning?: boolean }) {
+function CoverArt({ src, alt, burning, bleed }: { src: string; alt: string; burning?: boolean; bleed?: boolean }) {
   const [ok, setOk] = React.useState(true);
   return (
-    <div className="relative overflow-hidden rounded-[16px] border border-white/[.06]" style={{ background: 'linear-gradient(140deg,#15151a,#0b0b0e)' }}>
+    <div
+      className={cls('relative overflow-hidden', bleed ? 'rounded-none border-b border-white/[.06]' : 'rounded-[16px] border border-white/[.06]')}
+      style={{ background: 'linear-gradient(140deg,#161616,#0a0a0a)' }}
+    >
       {ok ? (
         <img
           src={src}
@@ -329,18 +317,18 @@ function CoverArt({ src, alt, burning }: { src: string; alt: string; burning?: b
           loading="lazy"
           decoding="async"
           onError={() => setOk(false)}
-          className="block aspect-[16/8.2] w-full object-cover"
+          className="block aspect-[16/9] w-full object-cover"
           style={{
             filter: burning ? 'saturate(1.3) brightness(1.06)' : 'saturate(1.04)',
             transition: 'filter .6s, transform 1.2s var(--ease-ht)',
           }}
         />
       ) : (
-        <div className="flex aspect-[16/8.2] w-full items-end p-4" style={{ background: 'radial-gradient(90% 80% at 20% 110%, rgba(255,92,10,.35), transparent 65%), #0d0d11' }}>
+        <div className="flex aspect-[16/9] w-full items-end p-4" style={{ background: 'radial-gradient(90% 80% at 20% 110%, rgba(0,229,160,.16), transparent 65%), #0a0a0a' }}>
           <span className="ht-title text-lg text-ink/70">{alt?.slice(0, 40)}</span>
         </div>
       )}
-      <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(6,6,7,0) 35%, rgba(6,6,7,.72) 100%)' }} />
+      <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.7) 100%)' }} />
     </div>
   );
 }
@@ -359,10 +347,10 @@ export function WaveBars({ values, burning, h = 16 }: { values: number[]; burnin
             height: `${Math.max(8, v * 100)}%`,
             minHeight: 3,
             transformOrigin: 'bottom',
-            background: v > 0.62 ? 'linear-gradient(180deg,var(--ht-whitehot),var(--ht-ember))' : 'linear-gradient(180deg,var(--ht-flame),rgba(255,92,10,.28))',
+            background: v > 0.62 ? 'linear-gradient(180deg,var(--ht-whitehot),var(--ht-ember))' : 'linear-gradient(180deg,var(--ht-flame),rgba(0,229,160,.26))',
             opacity: 0.5 + v * 0.5,
             animation: burning ? `ht-wave-burn 1.4s ease-in-out ${i * 0.03}s infinite` : undefined,
-            boxShadow: v > 0.7 ? '0 0 10px rgba(255,138,31,.7)' : undefined,
+            boxShadow: v > 0.7 ? '0 0 10px rgba(0,229,160,.55)' : undefined,
           }}
         />
       ))}
@@ -508,7 +496,7 @@ export function CardMenu({ post }: { post: Post }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.16 }}
-            className="absolute right-0 top-[calc(100%+6px)] z-40 w-[228px] overflow-hidden rounded-[14px] border border-white/10 bg-[#0e0e11]/95 py-1 shadow-[0_28px_70px_-24px_rgba(0,0,0,.9)] backdrop-blur-2xl"
+            className="absolute right-0 top-[calc(100%+6px)] z-40 w-[228px] overflow-hidden rounded-[14px] border border-white/10 bg-[#0f120f]/95 py-1 shadow-[0_28px_70px_-24px_rgba(0,0,0,.9)] backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -532,7 +520,7 @@ export function CardMenu({ post }: { post: Post }) {
                   setOpen(false);
                 }}
               >
-                <span className="text-ink-faint">↗</span> Make a share poster
+                <span className="text-ink-faint">↗</span> Share as a story
               </button>
             )}
             <div className="my-1 h-px bg-white/[.07]" />

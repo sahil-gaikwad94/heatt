@@ -12,7 +12,7 @@ import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
-import { HeatField } from '@/components/gl/HeatField';
+import { Atmosphere } from '@/components/gl/Atmosphere';
 import { Toast } from '@/components/ui/primitives';
 
 const CinematicIntro = dynamic(() => import('@/components/intro/CinematicIntro').then((m) => m.CinematicIntro), { ssr: false });
@@ -97,17 +97,17 @@ export function BootLayer({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* ambient thermal field behind everything (paused while the intro owns it) */}
+      {/* ambient room tone behind everything (paused while the intro owns it) */}
       {ambient && phase === 'app' && (
         <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
-          <HeatField intensity={0.16} flow={0.55} vignette={0.4} interactive={false} scale={0.5} cool={0} />
+          <Atmosphere />
         </div>
       )}
       {!ambient && (
         <div
           className="pointer-events-none fixed inset-0 z-0"
           aria-hidden
-          style={{ background: 'radial-gradient(120% 90% at 50% 112%, rgba(255,92,10,.09), transparent 62%), linear-gradient(180deg,#07070a,#050506)' }}
+          style={{ background: 'radial-gradient(120% 90% at 50% 112%, rgba(0,229,160,.045), transparent 62%), linear-gradient(180deg,#0a0a0a,#000000)' }}
         />
       )}
 

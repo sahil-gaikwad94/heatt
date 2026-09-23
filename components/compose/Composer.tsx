@@ -19,7 +19,6 @@ import { Modal } from '@/components/ui/primitives';
 import { Markdown, parseMarkdown } from '@/lib/markdown';
 import { LinkPreview } from '@/components/cards/LinkPreview';
 import { cls, plain, uid } from '@/lib/util';
-import { computeHeat } from '@/lib/heat';
 
 const SPARK_MAX = 700;
 const FORGE_PROMPT = 480;
@@ -65,19 +64,6 @@ export function Composer() {
   const showPromote = kind === 'spark' && len > FORGE_PROMPT && !promoted;
 
   const found = React.useMemo(() => text.match(/https?:\/\/\S{6,}/)?.[0] ?? '', [text]);
-  const projected = React.useMemo(
-    () =>
-      computeHeat({
-        reactions: 0,
-        comments: 0,
-        date: new Date().toISOString(),
-        thermalMass: s.me?.thermalMass ?? 1,
-        mine: { level: 1, at: Date.now() },
-        seed: title + text,
-      }),
-    [title, text, s.me]
-  );
-
   const close = () => app.setComposer(false);
 
   const submit = () => {
@@ -149,7 +135,7 @@ export function Composer() {
               <button
                 key={k}
                 onClick={() => setKind(k)}
-                className={cls('rounded-full px-3 py-1 text-[12px] font-bold capitalize transition-all', kind === k ? 'text-[#170a03]' : 'text-ink-mute hover:text-ink')}
+                className={cls('rounded-full px-3 py-1 text-[12px] font-bold capitalize transition-all', kind === k ? 'text-[#04140E]' : 'text-ink-mute hover:text-ink')}
                 style={kind === k ? { background: 'linear-gradient(120deg,var(--ht-flare),var(--ht-ember))' } : undefined}
               >
                 {k}
@@ -189,7 +175,7 @@ export function Composer() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                className="mt-2 flex items-center gap-3 rounded-[14px] border border-ember-500/35 bg-[linear-gradient(100deg,rgba(255,45,18,.12),transparent)] p-3"
+                className="mt-2 flex items-center gap-3 rounded-[14px] border border-ember-500/35 bg-[linear-gradient(100deg,rgba(0,229,160,.09),transparent)] p-3"
               >
                 <span className="text-[13px] leading-snug text-ink-dim">
                   This outgrew a spark ({len} chars). Promote it into a <b className="text-ember-300">forge</b> so the ranker scores it by read-through instead of velocity?
@@ -269,7 +255,7 @@ export function Composer() {
 
           <div className="ht-card p-3.5">
             <div className="mb-2 flex items-center gap-2">
-              <span className="grid h-7 w-7 place-items-center rounded-full text-[11px] font-black" style={{ background: 'linear-gradient(140deg,#FFB531,#FF2D12)', color: '#170a03' }}>
+              <span className="grid h-7 w-7 place-items-center rounded-full text-[11px] font-black" style={{ background: 'linear-gradient(140deg,#7CFFD0,#2EF2A6)', color: '#04140E' }}>
                 {(s.me?.name ?? 'Y')[0]}
               </span>
               <span className="text-[13px] font-bold">{s.me?.name ?? 'You'}</span>
@@ -282,7 +268,7 @@ export function Composer() {
                 {cover ? (
                   <img src={cover} alt="" className="mt-2.5 aspect-[16/8] w-full rounded-[12px] object-cover" />
                 ) : (
-                  <div className="mt-2.5 grid aspect-[16/8] w-full place-items-center rounded-[12px] border border-white/[.06]" style={{ background: 'radial-gradient(80% 120% at 10% 110%,rgba(255,45,18,.28),transparent 62%),#0d0d11' }}>
+                  <div className="mt-2.5 grid aspect-[16/8] w-full place-items-center rounded-[12px] border border-white/[.06]" style={{ background: 'radial-gradient(80% 120% at 10% 110%,rgba(0,229,160,.16),transparent 62%),#0a0a0a' }}>
                     <span className="text-[11px] uppercase tracking-[0.2em] text-ink-faint">no cover</span>
                   </div>
                 )}
@@ -327,8 +313,9 @@ export function Composer() {
           </div>
 
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink-faint">
-            Launch temperature estimate: <b className="ht-num text-ember-300">{projected.temp.toFixed(1)}°</b> with your current thermal mass
-            ({(s.me?.thermalMass ?? 1).toFixed(2)}). New accounts start cold — heat earned here transfers to the board.
+            {kind === 'forge'
+              ? 'Forge publishes a complete piece — cover, body and all. Readers never leave heatt.'
+              : 'Sparks stay short. Keep writing past the line and heatt will offer to promote it into a full piece.'}
           </p>
 
           <button onClick={submit} disabled={busy || (!text.trim() && kind === 'spark') || (kind === 'forge' && !title.trim())} className="ht-btn ht-btn--heat mt-3 w-full !py-2.5 disabled:opacity-40">

@@ -51,11 +51,11 @@ export function buildDays(activity: ReturnType<typeof useStore.getState>['activi
 
 export function cellColor(v: number) {
   if (v <= 0) return 'rgba(255,255,255,.055)';
-  if (v < 0.22) return '#5d2109';
-  if (v < 0.45) return '#a83a06';
-  if (v < 0.7) return '#ff5c0a';
-  if (v < 0.9) return '#ff9d2e';
-  return '#fff6de';
+  if (v < 0.22) return '#0A5440';
+  if (v < 0.45) return '#00A876';
+  if (v < 0.7) return '#2ef2a6';
+  if (v < 0.9) return '#00c98c';
+  return '#f2fffa';
 }
 
 export function HeatmapCard({ handle, onOpen }: { handle: string; onOpen?: () => void }) {
@@ -175,7 +175,7 @@ export function HeatDashboard() {
   return (
     <div className="mx-auto w-full max-w-[900px]">
       <div className="ht-panel relative overflow-hidden p-5">
-        <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(80% 120% at 10% 0%, rgba(255,92,10,.1), transparent 60%)' }} />
+        <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(80% 120% at 10% 0%, rgba(0,229,160,.08), transparent 60%)' }} />
         <header className="relative mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <span className="ht-label">thermal ledger</span>
@@ -221,7 +221,7 @@ export function HeatDashboard() {
               initial={{ opacity: 0, y: 12, height: 0 }}
               animate={{ opacity: 1, y: 0, height: 'auto' }}
               exit={{ opacity: 0, y: -8, height: 0 }}
-              className="relative mt-4 overflow-hidden rounded-[16px] border border-ember-500/25 bg-[linear-gradient(110deg,rgba(255,45,18,.1),transparent_55%)] p-4"
+              className="relative mt-4 overflow-hidden rounded-[16px] border border-ember-500/25 bg-[linear-gradient(110deg,rgba(0,229,160,.07),transparent_55%)] p-4"
             >
               <div className="flex flex-wrap items-baseline gap-2">
                 <span className="ht-title text-[17px] ht-heat-text">{sel.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
@@ -259,7 +259,7 @@ export function HeatDashboard() {
           <div className="mt-3 flex h-[54px] items-end gap-1.5">
             {weekday.map((v, i) => (
               <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                <div className="w-full rounded-t-[3px]" style={{ height: `${Math.max(3, (v / wmax) * 100)}%`, background: `linear-gradient(180deg,${cellColor(v / wmax)},rgba(255,92,10,.15))`, transition: 'height .8s cubic-bezier(.2,1,.3,1)' }} />
+                <div className="w-full rounded-t-[3px]" style={{ height: `${Math.max(3, (v / wmax) * 100)}%`, background: `linear-gradient(180deg,${cellColor(v / wmax)},rgba(0,229,160,.14))`, transition: 'height .8s cubic-bezier(.2,1,.3,1)' }} />
                 <span className="text-[9px] uppercase text-ink-faint">{['s', 'm', 't', 'w', 't', 'f', 's'][i]}</span>
               </div>
             ))}

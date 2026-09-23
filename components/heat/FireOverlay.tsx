@@ -104,27 +104,27 @@ export function FireOverlay({ active, duration = 2400, variant = 'full', onDone,
         if (v > 0.02) {
           if (v < 0.28) {
             const k = v / 0.28;
-            r = 120 * k;
-            g = 18 * k;
-            b = 6 * k;
-            a = 255 * k * 0.75;
+            r = 22 * k;
+            g = 86 * k;
+            b = 34 * k;
+            a = 255 * k * 0.72;
           } else if (v < 0.62) {
             const k = (v - 0.28) / 0.34;
-            r = 120 + 135 * k;
-            g = 18 + 76 * k;
-            b = 6 + 4 * k;
+            r = 22 + 38 * k;
+            g = 86 + 84 * k;
+            b = 34 + 16 * k;
             a = 255 * (0.7 + 0.3 * k);
           } else if (v < 0.86) {
             const k = (v - 0.62) / 0.24;
-            r = 255;
-            g = 94 + 92 * k;
-            b = 10 + 46 * k;
+            r = 60 + 120 * k;
+            g = 170 + 80 * k;
+            b = 50 + 30 * k;
             a = 255;
           } else {
             const k = (v - 0.86) / 0.14;
-            r = 255;
-            g = 186 + 56 * k;
-            b = 56 + 160 * k;
+            r = 180 + 67 * k;
+            g = 250 + 5 * k;
+            b = 80 + 148 * k;
             a = 255;
           }
         }
@@ -174,9 +174,9 @@ export function FireOverlay({ active, duration = 2400, variant = 'full', onDone,
           height: '74%',
           pointerEvents: 'none',
           zIndex: 40,
-          filter: 'blur(6px) saturate(1.35)',
+          filter: 'blur(7px) saturate(1.2)',
           mixBlendMode: 'screen',
-          opacity: 0.95,
+          opacity: 0.8,
           imageRendering: 'auto',
         }}
       />
@@ -187,7 +187,7 @@ export function FireOverlay({ active, duration = 2400, variant = 'full', onDone,
           inset: 0,
           pointerEvents: 'none',
           zIndex: 39,
-          background: 'radial-gradient(90% 55% at 50% 112%, rgba(255,92,10,.5), transparent 68%)',
+          background: 'radial-gradient(90% 55% at 50% 112%, rgba(0,229,160,.22), transparent 68%)',
           mixBlendMode: 'screen',
           animation: 'ht-fire-bloom 2.4s cubic-bezier(.2,.9,.2,1) forwards',
         }}

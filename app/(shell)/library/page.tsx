@@ -1,7 +1,7 @@
 'use client';
 /* ============================================================================
-   /library — the reading desk. Saved forages, in-progress rows with resume
-   bars, finished receipts, and an offline-ready cache panel.
+   /library — the reading desk. Saved forges live here as paper cards with
+   resume progress, finished receipts, and an offline-ready cache panel.
    ==========================================================================*/
 
 import * as React from 'react';
@@ -9,8 +9,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
-import { TopBar } from '@/components/shell/Shell';
-import { Avatar, Meter, Sparkline } from '@/components/ui/primitives';
+import { Avatar } from '@/components/ui/primitives';
 import { bodyCacheSize, clearBodies } from '@/lib/syndicate';
 import { kelvin, tempLabel } from '@/lib/heat';
 import { cls, timeAgo } from '@/lib/util';
@@ -59,7 +58,28 @@ export default function LibraryPage() {
 
   return (
     <div className="mx-auto w-full max-w-[760px]">
-      <TopBar title="Library" sub={`${savedCount} saved · ${reading} in progress`} />
+      {/* page header — same anatomy as the feed's greeting bar */}
+      <header className="flex items-center gap-3 px-1 pb-4 pt-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[12.5px] text-ink-mute">saved · resumable · offline</p>
+          <h1 className="ht-title truncate text-[24px] leading-tight text-ink">
+            Your library <span aria-hidden>🔖</span>
+          </h1>
+        </div>
+        <span className="hidden items-center gap-1.5 rounded-full border border-white/[.09] px-3 py-1.5 text-[11.5px] text-ink-mute sm:flex">
+          <span className="ht-num font-bold text-ember-300">{cache}</span> cached
+          <button
+            onClick={() => {
+              clearBodies();
+              setCache(0);
+              app.toast('Offline text cache cleared', 'cool');
+            }}
+            className="ht-btn ht-btn--ghost !px-2 !py-0.5 !text-[11px]"
+          >
+            clear
+          </button>
+        </span>
+      </header>
 
       <div className="mt-1 grid gap-3 sm:grid-cols-3">
         <StatCard label="saved for later" value={String(savedCount)} foot="stored on this device" />
@@ -67,90 +87,35 @@ export default function LibraryPage() {
         <StatCard label="finished" value={String(done)} foot={`${minutes} min read · ${totalWords.toLocaleString()} words`} />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-1.5 border-b border-white/[.06] pb-3">
-        {(['all', 'saved', 'reading', 'done'] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={cls('ht-chip !normal-case !tracking-normal', filter === f && '!border-ember-500/50 !bg-ember-500/12 !text-ember-200')}>
-            {f === 'all' ? 'Everything' : f === 'reading' ? 'In progress' : f === 'done' ? 'Finished' : 'Saved'}
-          </button>
-        ))}
-        <span className="flex-1" />
-        <div className="flex items-center gap-2 text-[11.5px] text-ink-mute">
-          <span className="ht-num">{cache}</span> article{cache === 1 ? '' : 's'} cached for offline
-          <button
-            onClick={() => {
-              clearBodies();
-              setCache(0);
-              app.toast('Offline text cache cleared', 'cool');
-            }}
-            className="ht-btn ht-btn--ghost !py-1 !text-[11px]"
-          >
-            clear
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-4 space-y-2.5 pb-8">
-        {rows.map((r, i) => {
-          const t = tempLabel(r.temp);
+      {/* pill filter row — lime active pill, same as the board */}
+      <div className="mt-4 -mx-4 mb-4 flex items-center gap-2 overflow-x-auto px-4 ht-no-scrollbar sm:-mx-6 sm:px-6">
+        {(['all', 'saved', 'reading', 'done'] as const).map((f) => {
+          const active = filter === f;
           return (
-            <motion.div
-              key={r.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(0.2, i * 0.035), duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="ht-card flex items-center gap-3.5 p-3.5"
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cls(
+                'shrink-0 rounded-full border px-4 py-2 text-[13px] font-semibold transition-colors',
+                active ? 'border-transparent bg-[var(--ht-ember)] text-[#04140E]' : 'border-white/[.09] text-ink-dim hover:border-white/20 hover:text-ink'
+              )}
             >
-              <Avatar name={r.author} handle={r.handle} src={r.avatar} size={38} />
-              <div className="min-w-0 flex-1">
-                <button onClick={() => app.openPost(r.id)} className="block w-full text-left">
-                  <span className="line-clamp-2 text-[14.5px] font-semibold leading-snug text-ink hover:text-white">{r.title}</span>
-                </button>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11.5px] text-ink-mute">
-                  <span>@{r.handle}</span>
-                  <span>·</span>
-                  <span>{r.minutes} min</span>
-                  {r.saved && (
-                    <>
-                      <span>·</span>
-                      <span className="text-ember-300">saved {timeAgo(r.saved)}</span>
-                    </>
-                  )}
-                  {r.pct > 0 && (
-                    <>
-                      <span>·</span>
-                      <span className={r.pct >= 97 ? 'text-cryo-teal' : ''}>{r.pct >= 97 ? 'finished' : `${r.pct}% read`}</span>
-                    </>
-                  )}
-                </div>
-                {r.pct > 0 && r.pct < 97 && <Meter value={r.pct / 100} className="mt-2" />}
-              </div>
-              <span className="hidden shrink-0 text-right sm:block">
-                <span className="ht-num block text-[13px] font-bold" style={{ color: t.color }}>
-                  {kelvin(r.temp)}
-                </span>
-                <span className="block text-[10px] uppercase tracking-[0.1em] text-ink-faint">{t.label}</span>
-              </span>
-              <div className="flex shrink-0 flex-col gap-1.5">
-                <button onClick={() => app.openPost(r.id)} className="ht-btn !px-3 !py-1.5 !text-[11.5px]">
-                  {r.pct > 0 && r.pct < 97 ? 'Resume' : 'Open'}
-                </button>
-                <button
-                  onClick={() => {
-                    s.toggleSave(r.id);
-                    app.toast('Removed from library', 'cool');
-                  }}
-                  className="ht-btn ht-btn--ghost !px-3 !py-1 !text-[11px]"
-                >
-                  remove
-                </button>
-              </div>
-            </motion.div>
+              {f === 'all' ? 'Everything' : f === 'reading' ? 'In progress' : f === 'done' ? 'Finished' : 'Saved'}
+            </button>
           );
         })}
+        <span className="flex-1" />
+        <span className="ht-num hidden shrink-0 pr-1 text-[11.5px] text-ink-faint sm:block">{rows.length} item{rows.length === 1 ? '' : 's'}</span>
+      </div>
+
+      <div className="space-y-3 pb-8">
+        {rows.map((r, i) => (
+          <PaperRow key={r.id} row={r} index={i} onOpen={() => app.openPost(r.id)} onRemove={() => { s.toggleSave(r.id); app.toast('Removed from library', 'cool'); }} />
+        ))}
 
         {rows.length === 0 && (
           <div className="ht-panel p-10 text-center">
-            <h3 className="ht-title text-[20px]">Your desk is clear</h3>
+            <h2 className="ht-title text-[21px]">Your desk is clear</h2>
             <p className="mx-auto mt-2 max-w-[44ch] text-[13.5px] leading-relaxed text-ink-dim">
               Save a forge with the bookmark button and it lives here — cached on this device, resumable to the paragraph you left, and readable on a plane.
             </p>
@@ -161,6 +126,67 @@ export default function LibraryPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/* A saved piece as a charcoal glass tile: the work, the heat, and exactly how
+   far in you got. One treatment for both modalities — the library is a shelf. */
+function PaperRow({ row, index, onOpen, onRemove }: { row: Row; index: number; onOpen: () => void; onRemove: () => void }) {
+  const t = tempLabel(row.temp);
+  const done = row.pct >= 97;
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(0.18, index * 0.03), duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="ht-card group p-4"
+      data-lib-item
+    >
+      <div className="flex items-center gap-3.5">
+        <Avatar name={row.author} handle={row.handle} src={row.avatar} size={38} />
+        <div className="min-w-0 flex-1">
+          <button onClick={onOpen} className="block w-full text-left">
+            <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-white">{row.title}</span>
+          </button>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11.5px] text-ink-mute">
+            <span>@{row.handle}</span>
+            <span aria-hidden>·</span>
+            <span>{row.minutes} min</span>
+            {row.saved && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="text-ember-300">saved {timeAgo(row.saved)}</span>
+              </>
+            )}
+            {row.pct > 0 && (
+              <>
+                <span aria-hidden>·</span>
+                <span className={done ? 'text-cryo-teal' : 'text-ink-dim'}>{done ? 'finished' : `${row.pct}% read`}</span>
+              </>
+            )}
+          </div>
+          {row.pct > 0 && !done && (
+            <span className="mt-2.5 block h-[3px] w-full overflow-hidden rounded-full bg-white/[.07]">
+              <motion.span
+                className="block h-full rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${row.pct}%` }}
+                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.12 }}
+                style={{ background: 'linear-gradient(90deg,#2EF2A6,#00E5A0)' }}
+              />
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col gap-1.5">
+          <button onClick={onOpen} className="ht-btn !px-3 !py-1.5 !text-[11.5px]">
+            {row.pct > 0 && !done ? 'Resume' : 'Open'}
+          </button>
+          <button onClick={onRemove} className="ht-btn ht-btn--ghost !px-3 !py-1 !text-[11px]">
+            remove
+          </button>
+        </div>
+      </div>
+    </motion.article>
   );
 }
 

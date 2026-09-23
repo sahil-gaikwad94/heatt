@@ -30,8 +30,8 @@ export default function SettingsPage() {
         <Seg label="Density" value={s.prefs.density} options={['dense', 'normal', 'cozy']} onChange={(v) => s.setPrefs({ density: v as any })} />
         <Seg label="Measure" value={s.prefs.measure} options={['narrow', 'normal', 'wide']} onChange={(v) => s.setPrefs({ measure: v as any })} />
         <Toggle label="Serif reading face" value={s.prefs.serif} onChange={(v) => s.setPrefs({ serif: v })} hint="Newsreader for bodies, Inter for chrome." />
-        <Toggle label="Reduce motion" value={s.prefs.reduceMotion} onChange={(v) => s.setPrefs({ reduceMotion: v })} hint="Disables the WebGL field, embers and parallax. Accessibility default is respected either way." />
-        <Toggle label="Ambient heat field" value={s.prefs.ambient} onChange={(v) => s.setPrefs({ ambient: v })} hint="The GPU shader behind the shell. Off = pure CSS gradient, zero GPU." />
+        <Toggle label="Reduce motion" value={s.prefs.reduceMotion} onChange={(v) => s.setPrefs({ reduceMotion: v })} hint="Turns off parallax, embers and page transitions. Your system default is respected either way." />
+        <Toggle label="Ambient glow" value={s.prefs.ambient} onChange={(v) => s.setPrefs({ ambient: v })} hint="The soft light behind the app. Off = flat black, zero GPU." />
       </Section>
 
       <Section title="Ignition spectacle" note="What happens when you hold to level 3.">
@@ -39,7 +39,7 @@ export default function SettingsPage() {
         <Toggle label="Haptics" value={s.prefs.haptics} onChange={(v) => s.setPrefs({ haptics: v })} hint="Vibration at each heat threshold, where supported." />
       </Section>
 
-      <Section title="Weight table" note="The exact numbers your feed is ranked with.">
+      <Section title="How your feed is ranked" note="Ranking rewards recent reading and replies, and lets anything cool off rather than punishing it.">
         <div className="divide-y divide-white/[.06]">
           {WEIGHT_LEGEND.map((w) => (
             <div key={w.label} className="flex items-center justify-between py-2 text-[13px]">
@@ -47,14 +47,6 @@ export default function SettingsPage() {
               <span className="ht-num font-bold text-ember-300">×{w.value}</span>
             </div>
           ))}
-          <div className="flex items-center justify-between py-2 text-[13px]">
-            <span className="text-ink-dim">Cooling constant τ</span>
-            <span className="ht-num font-bold text-ink">{K.tau}h</span>
-          </div>
-          <div className="flex items-center justify-between py-2 text-[13px]">
-            <span className="text-ink-dim">Diffusion κ</span>
-            <span className="ht-num font-bold text-ink">{K.kappa}</span>
-          </div>
         </div>
       </Section>
 
@@ -62,7 +54,10 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between py-2 text-[13px]">
           <span className="text-ink-dim">
             Wire status
-            <span className="ml-2 rounded-full px-2 py-0.5 text-[10.5px] font-bold" style={{ background: app.live ? 'rgba(43,224,200,.14)' : 'rgba(255,138,31,.14)', color: app.live ? 'var(--ht-cryo-teal)' : 'var(--ht-flame)' }}>
+            <span
+              className="ml-2 rounded-full px-2 py-0.5 text-[10.5px] font-bold"
+              style={{ background: app.live ? 'rgba(61,220,255,.14)' : 'rgba(0,229,160,.1)', color: app.live ? 'var(--ht-cryo-teal)' : 'var(--ht-flare)' }}
+            >
               {app.live ? 'LIVE · Forem API' : 'SNAPSHOT'}
             </span>
           </span>
@@ -171,9 +166,9 @@ function Toggle({ label, value, onChange, hint }: { label: string; value: boolea
         onClick={() => onChange(!value)}
         className="relative h-[26px] w-[46px] shrink-0 rounded-full border transition-all"
         style={{
-          borderColor: value ? 'rgba(255,138,31,.5)' : 'var(--ht-line)',
-          background: value ? 'linear-gradient(90deg,rgba(255,45,18,.5),rgba(255,181,49,.35))' : 'rgba(255,255,255,.05)',
-          boxShadow: value ? '0 0 18px -4px rgba(255,92,10,.8)' : undefined,
+          borderColor: value ? 'rgba(0,229,160,.4)' : 'var(--ht-line)',
+          background: value ? 'linear-gradient(90deg,rgba(46,242,166,.42),rgba(124,255,208,.3))' : 'rgba(255,255,255,.05)',
+          boxShadow: value ? '0 0 18px -4px rgba(0,229,160,.65)' : undefined,
         }}
       >
         <span className="absolute top-1/2 h-[18px] w-[18px] -translate-y-1/2 rounded-full bg-white transition-all" style={{ left: value ? 24 : 4, boxShadow: '0 2px 8px rgba(0,0,0,.6)' }} />

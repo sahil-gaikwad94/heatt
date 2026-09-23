@@ -92,29 +92,21 @@ async function until(fn, ms = 4000, label = 'condition') {
 
   const skip = await until(() => U.byText('button', /Skip intro/i), 3000, 'skip button');
   await U.click(skip);
-  await wait(260);
-  await until(() => /Choose the name people will heat/.test(U.words()), 3000, 'onboarding identity step');
-  ok('skip hands over to onboarding', /Choose the name people will heat/.test(U.words()));
+  await wait(420);
 
-  /* identity step gates its CTA until you type something */
-  const nameInput = await until(() => U.q('.ht-input'), 4000, 'onboarding identity field');
-  ok('onboarding asks for an identity first', !!nameInput);
-  await U.type(nameInput, 'Ember Tester');
-  await wait(80);
+  /* onboarding is a cinematic, form-free sequence: scenes + one gesture */
+  await until(() => /Chase your curiosity/.test(U.words()), 4000, 'onboarding first scene');
+  ok('skip hands over to the onboarding sequence', /Chase your curiosity/.test(U.words()));
+  ok('onboarding asks for nothing', U.qa('.ht-input').length === 0, `${U.qa('.ht-input').length} inputs`);
 
-  /* walk every step with the real primary CTA, then let commit() burn 1.5s */
-  for (let i = 0; i < 8; i++) {
-    const next = btn(/Continue|Ignite feed/);
-    if (!next) break;
-    if (next.disabled) {
-      await wait(150);
-      continue;
-    }
-    await U.click(next);
-    await wait(480);
-  }
-  await until(() => S().onboarded === true, 4000, 'onboarding to hand over').catch(() => null);
+  const swipe = await until(() => U.q('.ht-swipe'), 4000, 'swipe-to-start control');
+  ok('the only control is swipe-to-start', /Swipe to start/.test(U.words()));
+  await U.click(swipe);
+  await wait(300);
+
+  await until(() => S().onboarded === true, 5000, 'onboarding to hand over').catch(() => null);
   ok('onboarding completes and persists', S().introSeen === true && S().onboarded === true, `introSeen=${S().introSeen} onboarded=${S().onboarded}`);
+  ok('onboarding generated a handle to edit later', /^[a-z]+-[a-z]+-\d+$/.test(S().me?.handle ?? ''), `handle=${S().me?.handle}`);
 
   /* --------------------------------------------------------- 1. the feed */
   step('feed');
@@ -195,7 +187,7 @@ async function until(fn, ms = 4000, label = 'condition') {
   await mountApp(page('app/(shell)/read/[id]/page.js'));
   const paras = U.qa('.ht-prose p');
   ok('forge renders natively with real prose', paras.length >= 6, `${paras.length} paragraphs`);
-  ok('long-form chrome: reading progress + heat spine', /reading|progress/i.test(U.words()) && !!U.q('.ht-prose'));
+  ok('long-form chrome: one floating reading bar', /reading/i.test(U.words()) && !!U.q('[role="progressbar"][aria-label="Reading progress"]'));
   ok('code blocks are highlighted', U.qa('pre code, .ht-code, [data-lang]').length >= 0);
   ok('cover image is drawn', !!U.q('img'));
   await U.key(doc.body, 's');
@@ -261,7 +253,7 @@ async function until(fn, ms = 4000, label = 'condition') {
     await until(() => S().mySparks.length > 0, 3000, 'composer to commit the spark').catch(() => null);
     ok('spark published into the store', S().mySparks.length === 1, String(S().mySparks[0]?.text || '').slice(0, 40));
     await mountApp(page('app/(shell)/feed/page.js'));
-    ok('own spark appears in the feed', /Ember Tester/.test(U.words()) && /Half of ranking/.test(U.words()),
+    ok('own spark appears in the feed', new RegExp(S().me?.name ?? '\u0000').test(U.words()) && /Half of ranking/.test(U.words()),
       `me=${S().me?.handle} cards=${U.qa('.ht-card').length} :: ${U.qa('.ht-card').map(c=>(c.textContent||'').slice(0,26)).join(' | ')}`);
     ok('publishing logs a post on the heat map day', Object.values(S().activity).some((a) => a.posts > 0), JSON.stringify(S().activity[new Date().toISOString().slice(0, 10)]));
   }
@@ -353,7 +345,7 @@ async function until(fn, ms = 4000, label = 'condition') {
   await mountApp(page('app/(shell)/u/[handle]/page.js'));
   const bodyText = doc.body.textContent || '';
   ok('profile shows identity: name, handle, bio, cover', /nyra/i.test(bodyText) && bodyText.length > 1200, `${bodyText.length} chars`);
-  ok('thermal mass is surfaced', /thermal mass|mass/i.test(bodyText));
+  ok('identity stats are surfaced: followers, following, streak', /followers/i.test(bodyText) && /following/i.test(bodyText) && /streak/i.test(bodyText));
   const follow = U.byText('button', /^Follow$/);
   ok('follow button toggles local graph', !!follow);
   if (follow) {
@@ -391,23 +383,15 @@ async function until(fn, ms = 4000, label = 'condition') {
   await wait(2700);
   ok('the 2.4s spectacle ends and the card cools back', U.qa('.ht-card--ignited').length === 0);
 
-  /* ------------------------------------------------- 15. reader heat spine */
-  step('paragraph heat');
+  /* -------------------------------- 15. reading progress (no receipt, no spine) */
+  step('reading progress');
   nav.__state.params = { id: 'orig-heat-diffusion' };
   await mountApp(page('app/(shell)/read/[id]/page.js'));
-  const paraBtn = U.q('.ht-block [aria-label^="Heat this paragraph"]');
-  ok('every paragraph has a heat affordance', !!paraBtn);
-  if (paraBtn) {
-    await U.click(paraBtn);
-    await wait(80);
-    const paraKeys = Object.keys(S().heat).filter((k) => /:p\d+$/.test(k));
-    ok('paragraph heat is stored under its own key', paraKeys.length >= 1, paraKeys[0]);
-    await U.click(paraBtn);
-    await U.click(paraBtn);
-    await wait(120);
-    ok('third click ignites the paragraph', paraKeys.length && S().heat[paraKeys[0]].level === 3, `level=${S().heat[paraKeys[0]]?.level}`);
-    ok('igniting a paragraph is acknowledged', /Paragraph ignited/.test(U.words()));
-  }
+  ok('paragraphs carry no heat counters', U.qa('.ht-block [aria-label^="Heat this paragraph"]').length === 0);
+  ok('the reading receipt is gone', !/reading receipt/i.test(U.words()));
+  ok('the heat spine is gone', !/heat spine/i.test(U.words()));
+  const bar = U.q('[role="progressbar"][aria-label="Reading progress"]');
+  ok('one small bar hovers over the page', !!bar, bar ? bar.getAttribute('aria-valuenow') ?? '' : 'missing');
   ok('reading progress is persisted', (S().reads['orig-heat-diffusion']?.pct ?? 0) >= 0);
 
   /* --------------------------------------- 16. composer poll → feed → vote */
@@ -445,9 +429,10 @@ async function until(fn, ms = 4000, label = 'condition') {
   /* -------------------------------------------------- 17. poster exports */
   step('share export');
   await mountApp(page('app/(shell)/feed/page.js'));
-  await U.click(U.q('[aria-label="Make a share poster"]'));
+  await U.click(U.q('[aria-label="Share as a story"]'));
   await wait(320);
-  ok('share studio opened from the card menu', /Story 9:16/.test(U.words()));
+  ok('stories opened from the card menu', /Story 9:16/.test(U.words()));
+  ok('a story has three frames', U.qa('[aria-label^="Frame "]').length === 3, `${U.qa('[aria-label^="Frame "]').length} segments`);
   const clip = global.clipboardStub;
   const beforeCopy = (clip.items || []).length;
   await U.click(U.byText('button', /Copy image/i));
@@ -501,8 +486,8 @@ async function until(fn, ms = 4000, label = 'condition') {
 
   /* -------------------------------------------------- 19. profile editing */
   step('profile editing');
-  nav.__state.path = '/u/embertester';
-  nav.__state.params = { handle: 'embertester' };
+  nav.__state.path = `/u/${S().me.handle}`;
+  nav.__state.params = { handle: S().me.handle };
   await mountApp(page('app/(shell)/u/[handle]/page.js'));
   const edit = U.byText('button', /Edit profile/i);
   ok('own profile offers an editor', !!edit);

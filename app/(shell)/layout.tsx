@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AppGate } from '@/components/boot/AppGate';
 import { MobileTabs, NavRail, RightRail } from '@/components/shell/Shell';
+import { ReadingDock } from '@/components/reading/ReadingDock';
 
 export const metadata: Metadata = {
   title: { default: 'heatt — where ideas burn', template: '%s · heatt' },
@@ -15,6 +16,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
         <RightRail />
       </div>
       <MobileTabs />
+      <ReadingDock />
     </AppGate>
   );
 }
