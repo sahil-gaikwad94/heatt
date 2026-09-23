@@ -30,7 +30,7 @@ import { useDrift } from '@/components/ui/motion';
 import { useStore } from '@/lib/store';
 import { cls } from '@/lib/util';
 
-const SCENE_MS = 6200;
+const SCENE_MS = 9800;
 
 const INTERESTS = ['design', 'engineering', 'reading'];
 
@@ -90,25 +90,9 @@ const SCENES: Scene[] = [
   },
 ];
 
-const NAMES: [string, string][] = [
-  ['quiet', 'kiln'],
-  ['slow', 'ember'],
-  ['north', 'forge'],
-  ['paper', 'signal'],
-  ['cold', 'furnace'],
-  ['deep', 'reader'],
-  ['night', 'smith'],
-  ['open', 'flame'],
-  ['still', 'anvil'],
-  ['early', 'draft'],
-];
-
-const COVER = '/art/obsidian-atelier.jpg';
-
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const [i, setI] = React.useState(0);
   const [starting, setStarting] = React.useState(false);
-  const [seed] = React.useState(() => Math.floor(Math.random() * 1e6));
   const drift = useDrift();
   const [reduced, setReduced] = React.useState(false);
 
@@ -126,24 +110,18 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     return () => window.clearInterval(id);
   }, [reduced, starting]);
 
-  const [a, b] = NAMES[seed % NAMES.length];
-  const handle = `${a}-${b}-${(seed % 89) + 10}`;
-  const name = `${a} ${b}`.replace(/\b\w/g, (c) => c.toUpperCase());
-
-  /* The only "account" step in the whole flow: nothing is asked, nobody waits.
-     An identity is minted locally and can be rewritten from the profile. */
+  /* The tour ends in the room. Identity stays deliberately uncreated until the
+     visitor chooses to write or edit a profile from inside the app. */
   const start = React.useCallback(() => {
     if (starting) return;
     setStarting(true);
-    const s = useStore.getState();
-    s.completeOnboarding({ handle, name, bio: 'New here. Reading first.', cover: COVER }, INTERESTS);
+    useStore.setState((st) => ({ onboarded: true, interests: INTERESTS, me: st.me }));
     useStore.setState((st) => ({
       prefs: { ...st.prefs, ignitionFx: 'subtle', ambient: true },
       interests: INTERESTS,
     }));
-    s.logActivity('reads');
     window.setTimeout(onDone, 1150);
-  }, [handle, name, onDone, starting]);
+  }, [onDone, starting]);
 
   /* keyboard: ↵ / space starts · ← → step. Skip is always available. */
   React.useEffect(() => {
@@ -374,7 +352,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 transition={{ duration: reduced ? 0 : 1, ease: EASE_CINEMA, delay: 0.1 }}
                 className="ht-display ht-heat-text text-[clamp(2rem,1.3rem+4.6vw,4.4rem)]"
               >
-                Welcome, @{handle}
+                Welcome to the room
               </motion.h2>
               <motion.p
                 initial={{ opacity: 0 }}
@@ -382,8 +360,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 transition={{ delay: reduced ? 0 : 0.45, duration: 0.7 }}
                 className="mt-4 text-[13.5px] text-ink-dim"
               >
-                No forms, no fences. Your board is already warm — rename yourself any time from your
-                profile.
+                No forms, no fences. Start with a story, save something beautiful, or simply look around.
               </motion.p>
             </div>
           </motion.div>

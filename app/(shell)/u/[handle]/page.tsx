@@ -229,12 +229,10 @@ export default function ProfilePage() {
         {/* ------------------------------------------------------- stat row --
             One row, numbers as the hero, labels as whispers. Nothing ranks
             this person against anyone else. */}
-        <div className="mx-auto mt-5 flex max-w-[520px] items-stretch justify-center gap-1 rounded-[20px] border border-white/[.07] bg-white/[.02] p-1.5 backdrop-blur-sm">
+        <div className="mx-auto mt-5 flex max-w-[420px] items-stretch justify-center gap-1 rounded-[20px] border border-white/[.07] bg-white/[.02] p-1.5 backdrop-blur-sm">
           <Stat k="Followers" v={followers} />
           <span aria-hidden className="my-2 w-px bg-white/[.07]" />
           <Stat k="Following" v={user.following} />
-          <span aria-hidden className="my-2 w-px bg-white/[.07]" />
-          <Stat k="Streak" v={streak.current} suffix={streak.current === 1 ? ' day' : ' days'} />
           <span aria-hidden className="my-2 w-px bg-white/[.07]" />
           <Stat k="Reads" v={reads} />
         </div>
@@ -285,7 +283,6 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* activity grid (yours only) */}
         {isMe && (
           <div className="mt-8 text-left">
             <HeatmapCard handle={handle} onOpen={() => app.go('/heatmap')} />
@@ -296,12 +293,12 @@ export default function ProfilePage() {
         <div className="mt-9 text-left">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="ht-eyebrow">{isMe ? 'your board' : 'their board'}</p>
+              <p className="ht-eyebrow">{isMe ? 'your studio' : 'their studio'}</p>
               <h2 className="ht-title mt-1.5 text-[22px] text-white">
                 {isMe ? 'Your writing' : `Writing by ${user.name.split(' ')[0]}`}
               </h2>
               <p className="mt-1.5 text-[12.5px] text-ink-mute">
-                {posts.length} {posts.length === 1 ? 'piece' : 'pieces'} · everything reads in place
+                {posts.length} {posts.length === 1 ? 'piece' : 'pieces'} · stories, notes, and ideas
               </p>
             </div>
             <div

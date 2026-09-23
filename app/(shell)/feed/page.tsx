@@ -2,8 +2,8 @@
 /* ============================================================================
    /feed — the board.
 
-   Greeting, the thing you were already reading, then one ranked list of sparks
-   and forges. No scoreboards, no decay curve, no simulated physics: a greeter,
+   Greeting, the thing you were already reading, then one ranked list of notes
+   and essays. No scoreboards, no decay curve, no simulated physics: a greeter,
    a shelf, and the writing.
    ==========================================================================*/
 
@@ -115,7 +115,7 @@ export default function FeedPage() {
             style={{ boxShadow: '0 14px 40px -14px rgba(255,180,84,.6)' }}
           >
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ember-400 shadow-[0_0_10px_#FFB454]" />
-            {showNew} new ignition{showNew === 1 ? '' : 's'} on the board
+            {showNew} new {showNew === 1 ? 'story' : 'stories'} to read
           </motion.button>
         )}
       </AnimatePresence>
@@ -166,7 +166,7 @@ export default function FeedPage() {
               {items.slice(0, 3).map((p) => (
                 <Avatar key={p.id} name={p.authorName} handle={p.authorHandle} src={p.authorAvatar} size={20} ring={2} />
               ))}
-              <span>and {Math.max(0, app.posts.length - 3)} more heating the board</span>
+              <span>and {Math.max(0, app.posts.length - 3)} more pieces in the room</span>
             </div>
           </footer>
         </div>

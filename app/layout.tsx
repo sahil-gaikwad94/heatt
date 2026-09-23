@@ -14,16 +14,16 @@ export const metadata: Metadata = {
     template: '%s · heatt',
   },
   description:
-    'heatt is a hybrid microblogging and long-form platform: sparks and forges in one feed, heat-driven ranking, and full articles you read without ever leaving.',
+    'heatt is a dark editorial space for short notes, full stories, thoughtful reading, and beautiful sharing.',
   openGraph: {
     title: 'heatt — where ideas burn',
     description:
-      'Sparks and long-form forges in a single feed. Heat instead of likes. Read everything in-app.',
+      'Short notes and full stories in one calm room. Read, save, and share without leaving the app.',
     type: 'website',
     images: [{ url: '/art/hero-forge.jpg', width: 1200, height: 627, alt: 'heatt — short sparks and full-length forges' }],
     siteName: 'heatt',
   },
-  twitter: { card: 'summary_large_image', title: 'heatt — where ideas burn', description: 'Spark + forge, heat-ranked, read in-app.' },
+  twitter: { card: 'summary_large_image', title: 'heatt — a room for ideas', description: 'Short notes and full stories in one calm room.' },
   icons: {
     icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
     apple: [{ url: '/icon.svg' }],

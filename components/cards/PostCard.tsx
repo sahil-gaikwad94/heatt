@@ -200,7 +200,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
                 <Spec>{(post.tags ?? []).length} tags</Spec>
                 {typeof post.heat?.temp === 'number' && (
                   <Spec>
-                    <span style={{ color: 'var(--ht-ember-300)' }}>{Math.round(post.heat.temp)}° heat</span>
+                    <span style={{ color: 'var(--ht-ember-300)' }}>{Math.round(post.heat.temp)}° signal</span>
                   </Spec>
                 )}
               </div>
@@ -260,8 +260,8 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
                 <ForgeIcon />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[12px] font-bold uppercase tracking-[0.14em] text-ember-300">Grew into a forge</span>
-                <span className="block truncate text-[13px] text-ink-dim">Read the long-form version inside heatt →</span>
+                <span className="block text-[12px] font-bold uppercase tracking-[0.14em] text-ember-300">Expanded into an essay</span>
+                <span className="block truncate text-[13px] text-ink-dim">Read the full version inside heatt →</span>
               </span>
             </button>
           )}
@@ -279,9 +279,9 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
         />
         <ActionButton
           label="repost"
-          hint="Repost to your sparks"
+          hint="Share to your notes"
           count={post.reposts ?? 0}
-          onClick={() => app.toast('Reposted to your sparks', 'heat')}
+          onClick={() => app.toast('Shared to your notes', 'heat')}
           icon={<RepostIcon />}
         />
         <div className="relative">
@@ -313,7 +313,7 @@ export function PostCard({ post, index = 0, dense }: { post: Post; index?: numbe
         <span className="flex-1" />
         {level > 0 && (
           <span className="rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.12em] text-ember-200" style={{ background: 'rgba(255,180,84,.1)' }}>
-            {level === 3 ? 'you ignited this' : level === 2 ? 'you blazed this' : 'you liked this'}
+            {level === 3 ? 'you highlighted this' : level === 2 ? 'you marked this' : 'you liked this'}
           </span>
         )}
       </footer>
@@ -564,7 +564,7 @@ export function CardMenu({ post }: { post: Post }) {
                 setOpen(false);
               }}
             >
-              <span className="text-ink-faint">⧉</span> Copy link to this {post.kind === 'forge' ? 'forge' : 'spark'}
+              <span className="text-ink-faint">⧉</span> Copy link to this {post.kind === 'forge' ? 'essay' : 'note'}
             </button>
             {post.kind === 'forge' && (
               <button

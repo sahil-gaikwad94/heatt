@@ -49,6 +49,7 @@ export function LinkPreview({ url, seed }: { url: string; seed?: SeedLink }) {
   }, [url]);
 
   const host = data?.hostname ?? url.replace(/^https?:\/\//, '').split('/')[0];
+  const stateLabel = state === 'loading' ? 'checking source' : state === 'ok' ? 'preview · open original' : 'external source';
 
   return (
     <a
@@ -99,7 +100,10 @@ export function LinkPreview({ url, seed }: { url: string; seed?: SeedLink }) {
           <span className="mt-[3px] grid h-4 w-4 place-items-center rounded-[4px] border border-white/10 text-[8px] font-black text-ink-mute">{host[0]?.toUpperCase()}</span>
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[11px] uppercase tracking-[0.14em] text-ink-mute">{data?.site ?? host}</div>
+          <div className="flex items-center gap-2 truncate text-[11px] uppercase tracking-[0.14em] text-ink-mute">
+            <span className="truncate">{data?.site ?? host}</span>
+            <span className="shrink-0 rounded-full border border-white/[.08] px-1.5 py-0.5 text-[8px] tracking-[0.12em] text-ink-faint">{stateLabel}</span>
+          </div>
           <div className="mt-0.5 line-clamp-2 text-[14px] font-semibold leading-snug text-ink">
             {data?.title ?? (state === 'loading' ? 'Loading preview…' : host)}
           </div>

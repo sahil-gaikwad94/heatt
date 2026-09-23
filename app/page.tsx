@@ -85,8 +85,8 @@ function ScrollRail() {
 }
 
 const NAV_LINKS = [
-  { href: '#modalities', label: 'Sparks × forges' },
-  { href: '#heat', label: 'Heating' },
+  { href: '#modalities', label: 'Short × long' },
+  { href: '#heat', label: 'The interaction' },
   { href: '#reader', label: 'The reader' },
   { href: '#profile', label: 'Profile' },
   { href: '#system', label: 'The system' },
@@ -172,8 +172,8 @@ export default function Landing() {
             <h1 className="ht-display text-[clamp(2.9rem,1.35rem+6.6vw,6.6rem)] text-white">
               {[
                 { l: 'Ideas are', heat: false },
-                { l: 'measured in', heat: false },
-                { l: 'heat.', heat: true },
+                { l: 'meant to be', heat: false },
+                { l: 'shared.', heat: true },
               ].map((line, i) => (
                 <span key={line.l} className="block overflow-hidden pb-[0.06em]">
                   <motion.span
@@ -194,8 +194,8 @@ export default function Landing() {
               transition={{ delay: 0.5, duration: 0.9, ease: EASE }}
               className="mt-7 max-w-[54ch] text-[clamp(1rem,.94rem+.4vw,1.2rem)] leading-[1.65] text-ink-dim"
             >
-              heatt removes the wall between a 280-character observation and a 2,000-word deep-dive.
-              One board, one rank — and every piece reads{' '}
+              heatt removes the wall between a quick observation and a deep-dive.
+              One calm, beautiful room — and every piece reads{' '}
               <em className="not-italic text-ink underline decoration-ember-500/50 decoration-2 underline-offset-4">
                 inside the app
               </em>
@@ -218,7 +218,7 @@ export default function Landing() {
 
             <Reveal delay={0.7} className="mt-11 grid max-w-[540px] grid-cols-3 gap-5 border-t border-white/[.07] pt-6">
               {[
-                { k: 'Write short or long', v: 'sparks · forges' },
+                { k: 'Write short or long', v: 'notes · stories' },
                 { k: 'Read it here', v: 'no redirects' },
                 { k: 'Share it as a story', v: 'frames · poster · link' },
               ].map((x) => (
@@ -243,8 +243,8 @@ export default function Landing() {
               A spark and an essay deserve the same room.
             </h2>
             <p className="mt-4 max-w-[58ch] text-[15.5px] leading-[1.72] text-ink-dim">
-              Most platforms force a choice: velocity or depth. heatt renders both on the same board,
-              ranked together — so a two-line observation and a long argument can sit side by side
+              Most platforms force a choice: velocity or depth. heatt gives both a home in the same room,
+              so a two-line observation and a long argument can sit side by side
               without either being demoted for its shape.
             </p>
           </Reveal>
@@ -255,7 +255,7 @@ export default function Landing() {
                 tag: 'spark',
                 accent: 'var(--ht-cryo-teal)',
                 title: 'Short-form, but honest',
-                body: 'Up to a few hundred characters, with links, polls, quotes and images. Ranked by the same clock as everything else, so a fast thought can out-heat a slow essay when it earns it.',
+                body: 'Up to a few hundred characters, with links, polls, quotes and images. Designed to be quick to write and satisfying to return to.',
                 points: ['link previews', 'polls', 'quote sparks', 'reposts'],
               },
               {
@@ -289,7 +289,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ---------------------------------------------------- heat interaction */}
+      {/* ---------------------------------------------------- interaction */}
       <section id="heat" className="relative z-10 py-20">
         <div className="mx-auto grid max-w-[1240px] items-center gap-14 px-5 lg:grid-cols-[.94fr_1.06fr]">
           <HeatDemo />
@@ -299,9 +299,8 @@ export default function Landing() {
               A like is free. That is the problem.
             </h2>
             <p className="mt-4 max-w-[54ch] text-[15.5px] leading-[1.72] text-ink-dim">
-              On heatt, approval costs attention. Tap once for an ember. Hold, and the ring fills —
-              blaze at 1.15s, and at 2.45s the post catches fire for two seconds, then visibly cools.
-              Fire that loops is a screensaver; fire that ends is an event.
+              On heatt, reactions feel intentional. Tap once to acknowledge a thought; hold to send a
+              stronger signal. The gesture is tactile, brief, and never turns the room into a scoreboard.
             </p>
             <ul className="mt-7 space-y-3">
               {[

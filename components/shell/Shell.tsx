@@ -20,14 +20,13 @@ import { Avatar, Sparkline } from '@/components/ui/primitives';
 import { WaveBars } from '@/components/cards/PostCard';
 import { waveformFor } from '@/lib/feed';
 
-export type NavKey = 'feed' | 'explore' | 'notifications' | 'library' | 'heatmap' | 'profile' | 'settings';
+export type NavKey = 'feed' | 'explore' | 'notifications' | 'library' | 'profile' | 'settings';
 
 const NAV: { key: NavKey; href: string; label: string; hint: string; icon: (a: { color: string }) => React.ReactNode }[] = [
   { key: 'feed', href: '/feed', label: 'Feed', hint: 'g f', icon: (p) => <Icon d="M4 5h16M4 12h16M4 19h10" {...p} /> },
   { key: 'explore', href: '/explore', label: 'Explore', hint: 'g e', icon: (p) => <Icon d="M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16ZM20 20l-4.2-4.2" {...p} /> },
-  { key: 'notifications', href: '/notifications', label: 'Notifications', hint: 'heat events', icon: (p) => <Icon d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7M10.3 20a2 2 0 0 0 3.4 0" {...p} /> },
+  { key: 'notifications', href: '/notifications', label: 'Updates', hint: 'activity', icon: (p) => <Icon d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7M10.3 20a2 2 0 0 0 3.4 0" {...p} /> },
   { key: 'library', href: '/library', label: 'Library', hint: 'g l', icon: (p) => <Icon d="M5 4h6a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H5ZM19 4h-1.5A2.5 2.5 0 0 0 15 6.5V20a2.5 2.5 0 0 1 2.5-2.5H19Z" {...p} /> },
-  { key: 'heatmap', href: '/heatmap', label: 'Heat map', hint: 'g h', icon: (p) => <Icon d="M4 4h4v4H4zM10 4h4v4h-4zM16 4h4v4h-4zM4 10h4v4H4zM10 10h4v4h-4zM16 10h4v4h-4zM4 16h4v4H4zM10 16h4v4h-4z" {...p} /> },
   { key: 'profile', href: '/u/you', label: 'Profile', hint: 'g p', icon: (p) => <Icon d="M12 12a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4ZM4.2 20.4a7.8 7.8 0 0 1 15.6 0" {...p} /> },
   { key: 'settings', href: '/settings', label: 'Settings', hint: 'prefs', icon: (p) => <Icon d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Zm8-3.2a8 8 0 0 0-.15-1.5l2-1.5-2-3.4-2.3 1a8 8 0 0 0-2.6-1.5L14.5 2h-4l-.45 2.6a8 8 0 0 0-2.6 1.5l-2.3-1-2 3.4 2 1.5a8 8 0 0 0 0 3l-2 1.5 2 3.4 2.3-1a8 8 0 0 0 2.6 1.5l.45 2.6h4l.45-2.6a8 8 0 0 0 2.6-1.5l2.3 1 2-3.4-2-1.5c.1-.5.15-1 .15-1.5Z" {...p} /> },
 ];
@@ -79,12 +78,12 @@ export function NavRail() {
       <div className="mt-auto hidden min-w-0 xl:block">
         <div className="rounded-[16px] border border-white/[.06] bg-white/[.02] p-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="ht-label !text-[9px]">your library</span>
+            <span className="ht-label !text-[9px]">your reading room</span>
             <span className="ht-num text-[11px] font-bold text-ember-300">{savedCount}</span>
           </div>
           <div className="flex items-center gap-2 text-[11.5px] text-ink-mute">
             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: app.live ? '#63D8F5' : '#6F6F6F', boxShadow: app.live ? '0 0 10px #63D8F5' : undefined }} />
-            {app.live ? 'wire: live' : 'wire: snapshot'}
+            {app.live ? 'freshly synced' : 'curated snapshot'}
           </div>
         </div>
         <Link href={me ? `/u/${me.handle}` : '/settings'} className="mt-2 flex items-center gap-2.5 rounded-[16px] p-2 transition-colors hover:bg-white/[.04]">
@@ -153,7 +152,7 @@ function NavItem({ item, active, badge }: { item: (typeof NAV)[number]; active: 
 export function RightRail() {
   const app = useApp();
   const s = useStore();
-  const board = React.useMemo(() => [...app.posts].sort((a, b) => (b.heat?.temp ?? 0) - (a.heat?.temp ?? 0)).slice(0, 6), [app.posts]);
+  const board = React.useMemo(() => [...app.posts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 6), [app.posts]);
   const suggested = React.useMemo(() => {
     const known = new Set([...app.follows, app.me?.handle]);
     return app.posts
@@ -167,7 +166,7 @@ export function RightRail() {
     <aside className="ht-no-scrollbar sticky top-0 hidden h-[100dvh] w-[330px] shrink-0 overflow-y-auto overscroll-contain border-l border-white/[.05] px-5 py-5 backdrop-blur-sm xl:block">
       <section className="ht-panel p-4">
         <header className="mb-3 flex items-center justify-between">
-          <h2 className="ht-title text-[15px] text-ink">Trending now</h2>
+          <h2 className="ht-title text-[15px] text-ink">Worth your time</h2>
           <button onClick={() => app.setMode('top')} className="ht-chip !text-[9px]">
             see all
           </button>
@@ -184,7 +183,7 @@ export function RightRail() {
                   <span className="mt-1 flex items-center gap-2 text-[11px] text-ink-mute">
                     <span>@{p.authorHandle}</span>
                     <span aria-hidden>·</span>
-                    <span>{compact(app.countOf(p))} likes</span>
+                    <span>{p.kind === 'forge' ? `${p.minutes ?? 6} min read` : 'short read'}</span>
                   </span>
                 </span>
               </button>
@@ -195,7 +194,7 @@ export function RightRail() {
 
       <section className="ht-panel mt-4 p-4">
         <header className="mb-3 flex items-center justify-between">
-          <h2 className="ht-title text-[15px]">Your streak</h2>
+          <h2 className="ht-title text-[15px]">Your reading rhythm</h2>
           <span className="text-[11px] text-ink-mute">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
         </header>
         <div className="flex items-end gap-3">
@@ -203,13 +202,13 @@ export function RightRail() {
           <span className="pb-1 text-[12px] text-ink-mute">
             days in a row
             <br />
-            <span className="text-ink-faint">best {app.streak.longest}</span>
+            <span className="text-ink-faint">keep the thread going</span>
           </span>
           <span className="flex-1" />
           <MiniGrid activity={s.activity} />
         </div>
-        <Link href="/heatmap" className="ht-btn mt-3 w-full !py-2 !text-[12.5px]">
-          Open activity →
+        <Link href="/library" className="ht-btn mt-3 w-full !py-2 !text-[12.5px]">
+          Open your library →
         </Link>
       </section>
 
@@ -298,7 +297,7 @@ export function MobileTabs() {
   const items: { key: NavKey; href: string; label: string; icon: string }[] = [
     { key: 'feed', href: '/feed', label: 'Feed', icon: 'M4 11 12 4l8 7M6 10v9h12v-9' },
     { key: 'explore', href: '/explore', label: 'Explore', icon: 'M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16ZM20 20l-4.2-4.2' },
-    { key: 'notifications', href: '/notifications', label: 'Heat', icon: 'M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7M10.3 20a2 2 0 0 0 3.4 0' },
+    { key: 'notifications', href: '/notifications', label: 'Updates', icon: 'M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7M10.3 20a2 2 0 0 0 3.4 0' },
     { key: 'library', href: '/library', label: 'Saved', icon: 'M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-3.8L5.5 20.5v-16a1 1 0 0 1 1-1Z' },
     { key: 'profile', href: `/u/${me?.handle ?? 'you'}`, label: 'You', icon: 'M12 12a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4ZM4.2 20.4a7.8 7.8 0 0 1 15.6 0' },
   ];

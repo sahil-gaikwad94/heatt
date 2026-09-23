@@ -60,30 +60,72 @@ export function cellColor(v: number) {
 
 export function HeatmapCard({ handle, onOpen }: { handle: string; onOpen?: () => void }) {
   const activity = useStore((s) => s.activity);
+  const saved = useStore((s) => s.saved);
+  const reads = useStore((s) => s.reads);
+  const app = useApp();
   const [expanded, setExpanded] = React.useState(false);
   const days = React.useMemo(() => buildDays(activity, expanded ? 53 : 6), [activity, expanded]);
   const flat = days.flat();
   const total = flat.reduce((a, d) => a + d.reads + d.heats + d.ignites + d.posts, 0);
   const streak = streakOf(activity);
+  const timeline = React.useMemo(() => {
+    const events = [
+      ...Object.entries(saved).map(([id, at]) => ({ id: `saved-${id}`, type: 'Saved', label: app.posts.find((p) => p.id === id)?.title ?? 'A piece for later', at })),
+      ...Object.entries(reads).map(([id, row]) => ({ id: `read-${id}`, type: row.finished ? 'Finished' : 'Reading', label: app.posts.find((p) => p.id === id)?.title ?? 'A piece from your room', at: row.at })),
+      ...app.posts.filter((p) => p.authorHandle === handle).map((p) => ({ id: `post-${p.id}`, type: 'Published', label: p.title ?? p.text ?? 'A new note', at: new Date(p.date).getTime() })),
+    ];
+    return events.filter((x) => Number.isFinite(x.at)).sort((a, b) => b.at - a.at).slice(0, 5);
+  }, [saved, reads, app.posts, handle]);
+  const finished = Object.values(reads).filter((r) => r.finished).length;
+  const authored = app.posts.filter((p) => p.authorHandle === handle).length;
 
   return (
     <motion.div layout className="ht-panel overflow-hidden">
       <div className="flex items-center gap-3 p-4">
         <motion.div layout className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 className="ht-title text-[15px]">Heat map</h2>
+            <h2 className="ht-title text-[15px]">Your rhythm</h2>
             <span className="ht-num text-[11.5px] text-ink-mute">
-              {total} actions · <span className="text-ember-300">{streak.current}d</span> lit
+              {total} moments · <span className="text-ember-300">{streak.current}d</span> active
             </span>
           </div>
           <div className="mt-3 overflow-hidden rounded-[10px]">
             <Grid days={days} small onCell={() => setExpanded(true)} />
           </div>
           <p className="mt-2 text-[11.5px] text-ink-faint">
-            {expanded ? 'Tap a day for its narrative' : 'Click the grid to expand the full year'}
+            {expanded ? 'Your year at a glance' : 'Tap to open your full reading year'}
           </p>
         </motion.div>
       </div>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="grid gap-3 border-t border-white/[.06] px-4 py-4 sm:grid-cols-[1.05fr_.95fr]"
+          >
+            <div>
+              <p className="ht-label !text-[9px]">recent timeline</p>
+              <div className="mt-2 space-y-2">
+                {timeline.length ? timeline.map((event) => (
+                  <div key={event.id} className="flex items-center gap-2.5 text-[11.5px]">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ember-300 shadow-[0_0_8px_rgba(255,180,84,.7)]" />
+                    <span className="min-w-0 flex-1 truncate text-ink-dim">{event.label}</span>
+                    <span className="shrink-0 text-[10px] text-ink-faint">{event.type} · {new Date(event.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  </div>
+                )) : <p className="text-[11.5px] text-ink-faint">Your saved pieces and finished reads will appear here.</p>}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Insight label="finished reads" value={finished} />
+              <Insight label="pieces published" value={authored} />
+              <Insight label="active days" value={Object.keys(activity).length} />
+              <Insight label="saved for later" value={Object.keys(saved).length} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="flex items-center justify-between border-t border-white/[.06] px-4 py-2.5">
         <div className="flex items-center gap-1.5 text-[10.5px] text-ink-mute">
           <span>Less</span>
@@ -104,6 +146,15 @@ export function HeatmapCard({ handle, onOpen }: { handle: string; onOpen?: () =>
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function Insight({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-[12px] border border-white/[.06] bg-white/[.025] p-2.5">
+      <span className="ht-num block text-[18px] font-semibold text-white">{value}</span>
+      <span className="mt-0.5 block text-[10px] leading-tight text-ink-faint">{label}</span>
+    </div>
   );
 }
 

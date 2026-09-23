@@ -73,7 +73,6 @@ export function BootLayer({ children }: { children: React.ReactNode }) {
           if (ev.key === 'f') app.go('/feed');
           if (ev.key === 'e') app.go('/explore');
           if (ev.key === 'l') app.go('/library');
-          if (ev.key === 'h') app.go('/heatmap');
           if (ev.key === 'p' && app.me) app.go(`/u/${app.me.handle}`);
         };
         window.addEventListener('keydown', next, { once: true });
