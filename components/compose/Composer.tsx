@@ -125,7 +125,7 @@ export function Composer() {
       <div className="flex items-center justify-between border-b border-white/[.07] px-4 py-3">
         <div className="flex items-center gap-2">
           <h2 id="compose-title" className="ht-title text-[17px]">
-            {kind === 'forge' ? 'Forge a long read' : 'Strike a spark'}
+            {kind === 'forge' ? 'Write an essay' : 'Share a note'}
           </h2>
           <span className="ht-chip !normal-case !tracking-normal">@{s.me?.handle ?? 'you'}</span>
         </div>
@@ -161,7 +161,7 @@ export function Composer() {
             value={text}
             maxLength={kind === 'spark' ? SPARK_MAX : undefined}
             onChange={(e) => setText(e.target.value)}
-            placeholder={kind === 'spark' ? 'What is burning? One observation, no preamble.' : 'Markdown welcome: ## headings, `code`, > quotes, ![]() images, tables.'}
+            placeholder={kind === 'spark' ? 'What stayed with you? One observation, no preamble.' : 'Markdown welcome: ## headings, `code`, > quotes, ![]() images, tables.'}
             className={cls(
               'w-full resize-none bg-transparent outline-none placeholder:text-ink-faint focus:!shadow-none',
               kind === 'spark' ? 'text-[16px] leading-[1.6]' : 'ht-prose !text-[15px] font-mono !leading-[1.7]'
@@ -178,11 +178,11 @@ export function Composer() {
                 className="mt-2 flex items-center gap-3 rounded-[14px] border border-ember-500/35 bg-[linear-gradient(100deg,rgba(255,180,84,.09),transparent)] p-3"
               >
                 <span className="text-[13px] leading-snug text-ink-dim">
-                  This outgrew a spark ({len} chars). Promote it into a <b className="text-ember-300">forge</b> so the ranker scores it by read-through instead of velocity?
+                  This outgrew a note ({len} chars). Turn it into an <b className="text-ember-300">essay</b> so readers can follow the full thought?
                 </span>
                 <span className="flex-1" />
                 <button onClick={() => setPromoted(true)} className="ht-btn ht-btn--ghost !py-1 !text-[11.5px]">
-                  keep as spark
+                  keep as note
                 </button>
                 <button
                   onClick={() => {
@@ -278,7 +278,7 @@ export function Composer() {
               </>
             ) : (
               <>
-                <p className="whitespace-pre-wrap text-[14.5px] leading-[1.55] text-ink">{text || 'Your spark preview.'}</p>
+                <p className="whitespace-pre-wrap text-[14.5px] leading-[1.55] text-ink">{text || 'Your note preview.'}</p>
                 {found && <LinkPreview url={found} seed={{ url: found, title: found, site: found.replace(/^https?:\/\//, '').split('/')[0] }} />}
                 {poll && poll.question && (
                   <div className="mt-2.5 rounded-[12px] border border-white/[.08] p-2.5 text-[12.5px] text-ink-dim">
@@ -298,7 +298,7 @@ export function Composer() {
           <div className="mt-3">
             <div className="mb-1 flex justify-between">
               <span className="ht-label !text-[9px]">modality gauge</span>
-              <span className="text-[10px] text-ink-faint">{kind === 'spark' ? 'spark ← → forge' : 'forge'}</span>
+              <span className="text-[10px] text-ink-faint">{kind === 'spark' ? 'note ← → essay' : 'essay'}</span>
             </div>
             <span className="relative block h-[5px] overflow-hidden rounded-full bg-white/[.07]">
               <span
@@ -314,12 +314,12 @@ export function Composer() {
 
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink-faint">
             {kind === 'forge'
-              ? 'Forge publishes a complete piece — cover, body and all. Readers never leave heatt.'
-              : 'Sparks stay short. Keep writing past the line and heatt will offer to promote it into a full piece.'}
+              ? 'An essay publishes as a complete piece — cover, body and all. Readers never leave heatt.'
+              : 'Notes stay short. Keep writing past the line and heatt will offer to expand it into a full piece.'}
           </p>
 
           <button onClick={submit} disabled={busy || (!text.trim() && kind === 'spark') || (kind === 'forge' && !title.trim())} className="ht-btn ht-btn--heat mt-3 w-full !py-2.5 disabled:opacity-40">
-            {busy ? 'Heating the board…' : kind === 'forge' ? 'Publish forge + announce' : 'Publish spark'}
+            {busy ? 'Publishing…' : kind === 'forge' ? 'Publish essay + note' : 'Publish note'}
           </button>
           <p className="mt-2 text-center text-[10.5px] text-ink-faint">stored locally · nothing is uploaded · ⌘↵ to publish</p>
         </div>

@@ -157,7 +157,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
                 {post.origin === 'wire' ? 'syndicated forge' : post.origin === 'user' ? 'your forge' : 'heatt original'}
               </span>
               <span className="text-ink-faint">·</span>
-              <span className="ht-num text-[11.5px] text-ink-mute">{pct < 97 ? `${remaining} min left` : 'read'}</span>
+              <span className="ht-num text-[11.5px] text-ink-mute">{Math.round(pct)}% through</span>
             </div>
           </div>
           <button onClick={() => setPanel(panel === 'type' ? null : 'type')} className={cls('ht-btn ht-btn--ghost !px-2.5', panel === 'type' && '!text-ember-300')} aria-label="Reading controls">
@@ -186,6 +186,13 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
       <AnimatePresence>
         {panel === 'type' && <TypePanel onClose={() => setPanel(null)} />}
       </AnimatePresence>
+
+      <div className="pointer-events-none fixed right-4 top-1/2 z-40 hidden -translate-y-1/2 md:block" aria-label={`Reading progress ${Math.round(pct)} percent`}>
+        <div className="ht-glass flex h-32 w-2 flex-col justify-end overflow-hidden !rounded-full p-[2px]">
+          <motion.span className="block w-full rounded-full" style={{ height: `${Math.max(3, pct)}%`, background: 'linear-gradient(180deg,var(--ht-whitehot),var(--ht-ember))' }} />
+        </div>
+        <span className="mt-2 block text-center text-[9px] font-bold text-ink-mute">{Math.round(pct)}%</span>
+      </div>
 
       {/* ------------------------------- article */}
       <article
@@ -216,20 +223,10 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
               </span>
             </Link>
             <span className="flex-1" />
-            {/* spec row — the facts of the piece, divided by hairlines, the same
-                rhythm a detail screen uses for "1200 sq ft · 3 beds · 2 bath" */}
             <span className="hidden items-center gap-3 text-[11.5px] text-ink-mute sm:flex">
-              <span className="ht-num font-semibold">{post.minutes ?? 6} min</span>
+              <span className="ht-num font-semibold">{post.minutes ?? 6} min read</span>
               <span aria-hidden className="h-2.5 w-px bg-white/[.1]" />
-              <span className="ht-num font-semibold">{compact(post.reactions ?? 0)} reactions</span>
-              <span aria-hidden className="h-2.5 w-px bg-white/[.1]" />
-              <span className="ht-num font-semibold">{compact(post.comments ?? 0)} replies</span>
-              {typeof heat.temp === 'number' && (
-                <>
-                  <span aria-hidden className="h-2.5 w-px bg-white/[.1]" />
-                  <span className="ht-num font-semibold text-ember-300">{Math.round(heat.temp)}°</span>
-                </>
-              )}
+              <span className="ht-num font-semibold">{post.tags.length} themes</span>
             </span>
             <span className="hidden h-6 w-px bg-white/10 sm:block" />
             <div className="relative">
@@ -347,7 +344,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
       </article>
 
       {/* the only reading chrome: one small bar hovering over the page */}
-      <ReadingBar pct={pct} remaining={remaining} onJump={() => jumpTo(0)} />
+      <ReadingBar pct={pct} onJump={() => jumpTo(0)} />
 
       <style>{`
         @keyframes ht-read-in{from{opacity:0;transform:translateY(10px) scale(.995);filter:blur(8px)}to{opacity:1;transform:none;filter:blur(0)}}
@@ -558,7 +555,7 @@ function Inline({ tokens }: { tokens: string }) {
 
 /* One small bar hovers over the page and says how far in you are. Nothing else
    reports anything back while you read. */
-function ReadingBar({ pct, remaining, onJump }: { pct: number; remaining: number; onJump: () => void }) {
+function ReadingBar({ pct, onJump }: { pct: number; onJump: () => void }) {
   const done = pct >= 97;
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[max(16px,env(safe-area-inset-bottom))] z-40 flex justify-center px-4">
@@ -588,9 +585,7 @@ function ReadingBar({ pct, remaining, onJump }: { pct: number; remaining: number
             }}
           />
         </span>
-        <span className="ht-num shrink-0 text-[11.5px] font-semibold text-ink-dim">
-          {done ? 'read' : `reading · ${remaining} min left`}
-        </span>
+        <span className="ht-num shrink-0 text-[11.5px] font-semibold text-ink-dim">{Math.round(pct)}%</span>
       </div>
     </div>
   );

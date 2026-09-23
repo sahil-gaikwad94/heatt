@@ -59,6 +59,8 @@ export function ShareStudio() {
   }, []);
   const [busy, setBusy] = React.useState(false);
   const [done, setDone] = React.useState<string | null>(null);
+  const [reaction, setReaction] = React.useState<'Resonated' | 'Challenged' | 'Useful' | 'Revisit'>('Resonated');
+  const [shareNote, setShareNote] = React.useState('');
 
   // The palette can follow the piece's own standing (how much it has been
   // liked and shared) instead of being picked by hand.
@@ -76,7 +78,7 @@ export function ShareStudio() {
     if (!open || !canvasReady) return;
     void draw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, canvasReady, fmt, effectivePal, showCover, slide, id]);
+  }, [open, canvasReady, fmt, effectivePal, showCover, slide, id, reaction, shareNote]);
 
   /* story playback: one frame every 7s, paused while the user is deciding */
   React.useEffect(() => {
@@ -84,6 +86,8 @@ export function ShareStudio() {
     setSlide(0);
     setProgress(0);
     setPaused(false);
+    setReaction('Resonated');
+    setShareNote('');
   }, [open, id]);
 
   React.useEffect(() => {
@@ -257,6 +261,18 @@ export function ShareStudio() {
       ctx.font = `700 ${fmt === 'card' ? 20 : 25}px "Inter Variable", sans-serif`;
       ctx.fillStyle = p.sub;
       ctx.fillText(data.author, pad + 34, y);
+      if ('reaction' in data && (data.reaction || data.note)) {
+        y += fmt === 'card' ? 38 : 54;
+        ctx.font = `800 ${fmt === 'card' ? 18 : 23}px "Inter Variable", sans-serif`;
+        ctx.fillStyle = hexA(p.c, 0.95);
+        ctx.fillText(`◦ ${data.reaction}`, pad + 34, y);
+        if (data.note) {
+          y += fmt === 'card' ? 28 : 36;
+          ctx.font = `400 ${fmt === 'card' ? 18 : 24}px "Newsreader Variable", Georgia, serif`;
+          ctx.fillStyle = p.sub;
+          wrap(ctx, `“${data.note}”`, innerW - 34, fmt === 'story' ? 5 : 3).forEach((ln, i) => ctx.fillText(ln, pad + 34, y + i * (fmt === 'card' ? 26 : 34)));
+        }
+      }
     } else {
       /* frame three — signature: who wrote it, and where to read it */
       const titleSize = fmt === 'story' ? 66 : fmt === 'square' ? 56 : 40;
@@ -370,6 +386,8 @@ export function ShareStudio() {
       avatar: p.authorAvatar ?? avatarDataUri(p.authorName, p.authorHandle),
       cover: p.cover,
       cta: 'Read it in heatt →',
+      reaction,
+      note: shareNote,
     };
   }
 
@@ -566,6 +584,27 @@ export function ShareStudio() {
                   </button>
                 ))}
               </div>
+
+              {!isYear && !isProfile && (
+                <div className="mt-4 rounded-[16px] border border-white/[.07] bg-white/[.025] p-3">
+                  <span className="ht-label !text-[9px]">add your context</span>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {(['Resonated', 'Challenged', 'Useful', 'Revisit'] as const).map((x) => (
+                      <button key={x} onClick={() => setReaction(x)} className={cls('ht-chip !normal-case !tracking-normal', reaction === x && '!border-ember-500/50 !bg-ember-500/12 !text-ember-200')}>
+                        {x}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={shareNote}
+                    onChange={(e) => setShareNote(e.target.value.slice(0, 160))}
+                    placeholder="Why is this worth someone’s time? (optional)"
+                    rows={2}
+                    className="mt-2.5 w-full resize-none rounded-[12px] border border-white/[.08] bg-black/25 px-3 py-2 text-[12px] leading-relaxed text-ink outline-none placeholder:text-ink-faint focus:border-ember-500/50"
+                  />
+                  <div className="mt-1 text-right text-[10px] text-ink-faint">{shareNote.length}/160</div>
+                </div>
+              )}
 
               <div className="mt-4 grid grid-cols-4 gap-1.5">
                 {(Object.keys(PAL) as Palette[]).map((k) => (

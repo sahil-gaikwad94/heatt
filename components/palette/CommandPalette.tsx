@@ -49,15 +49,13 @@ export function CommandPalette() {
       { id: 'n-feed', group: 'Go to', label: 'The Board (feed)', hint: 'g f', icon: '▤', run: () => app.go('/feed') },
       { id: 'n-explore', group: 'Go to', label: 'Explore & search', hint: 'g e', icon: '◎', run: () => app.go('/explore') },
       { id: 'n-lib', group: 'Go to', label: 'Library — saved & in progress', hint: 'g l', icon: '❑', run: () => app.go('/library') },
-      { id: 'n-heat', group: 'Go to', label: 'Heat dashboard — your year', hint: 'g h', icon: '▦', run: () => app.go('/heatmap') },
-      { id: 'n-notif', group: 'Go to', label: 'Heat log (notifications)', icon: '▲', run: () => app.go('/notifications') },
+      { id: 'n-notif', group: 'Go to', label: 'Updates & replies', icon: '▲', run: () => app.go('/notifications') },
       { id: 'n-me', group: 'Go to', label: `Profile — @${s.me?.handle ?? 'you'}`, hint: 'g p', icon: '☺', run: () => app.go(`/u/${s.me?.handle ?? 'you'}`) },
       { id: 'n-set', group: 'Go to', label: 'Settings', icon: '⚙', run: () => app.go('/settings') },
     ];
     const act: Cmd[] = [
       { id: 'a-spark', group: 'Create', label: 'Strike a spark', hint: 'short-form', icon: '✦', run: () => app.setComposer(true, { kind: 'spark' }) },
       { id: 'a-forge', group: 'Create', label: 'Forge a long read', hint: 'markdown, live preview', icon: '⚒', run: () => app.setComposer(true, { kind: 'forge' }) },
-      { id: 'a-year', group: 'Create', label: 'Share my heat map as a poster', icon: '▦', run: () => app.setShare('year') },
       {
         id: 'a-motion',
         group: 'Toggle',
