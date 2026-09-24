@@ -15,7 +15,11 @@ import { NextResponse } from 'next/server';
 export const revalidate = 600;
 export const dynamic = 'force-dynamic'; // keep ISR semantics via revalidate, no full static
 
-const SWR = 's-maxage=600, stale-while-revalidate=86400';
+/* Cache policy is part of the contract: a good answer may sit at the edge for
+   10 minutes, a thin one for two, and a failed one must not be cached at all —
+   otherwise one bad minute upstream becomes a day of empty boards. */
+const SWR_FULL = 's-maxage=600, stale-while-revalidate=86400';
+const SWR_PARTIAL = 's-maxage=120, stale-while-revalidate=600';
 
 type ForemArticle = {
   id: number;
@@ -96,14 +100,41 @@ export async function GET() {
       }
     }
   }
+  const boardsAnswered = results.filter((r) => r.status === 'fulfilled').length;
   const anyOk = merged.length > 0;
+  const partial = anyOk && boardsAnswered < BOARDS.length;
+
+  /* Nothing came back: tell the truth, say when to try again, and keep the
+     CDN out of it. The client falls back to its bundled snapshot at once. */
+  if (!anyOk) {
+    return NextResponse.json(
+      { ok: false, at: Date.now(), source: 'unreachable', items: [] },
+      {
+        status: 503,
+        headers: {
+          'cache-control': 'no-store, max-age=0',
+          'retry-after': '60',
+          'x-heatt-origin': 'offline',
+        },
+      }
+    );
+  }
+
   return NextResponse.json(
     {
-      ok: anyOk,
+      ok: true,
       at: Date.now(),
-      source: anyOk ? 'forem' : 'unreachable',
+      source: 'forem',
+      partial,
+      boards: boardsAnswered,
       items: merged,
     },
-    { headers: { 'cache-control': SWR, 'x-heatt-origin': anyOk ? 'forem' : 'offline' } }
+    {
+      headers: {
+        'cache-control': partial ? SWR_PARTIAL : SWR_FULL,
+        'x-heatt-origin': 'forem',
+        'x-heatt-partial': partial ? '1' : '0',
+      },
+    }
   );
 }

@@ -8,7 +8,12 @@ import { BootLayer } from '@/components/boot/BootLayer';
 import { ShellProviders } from '@/components/boot/ShellProviders';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://heatt.app'),
+  /* Share previews resolve against this. On a preview deployment the Vercel
+     hostname is the truth; locally, the environment can say so. */
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://heatt.app')
+  ),
   title: {
     default: 'heatt — a room, not a feed',
     template: '%s · heatt',
@@ -40,14 +45,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="ember" data-density="normal" data-measure="normal" data-serif="true" data-reduce-motion="false">
+    <html lang="en" data-theme="nocturne" data-density="normal" data-measure="normal" data-serif="true" data-reduce-motion="false">
       <head>
         <link rel="preconnect" href="https://dev.to" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://media2.dev.to" crossOrigin="anonymous" />
       </head>
       <body className="ht-grain antialiased">
         <ShellProviders>
-          <div className="relative min-h-[100dvh] bg-[var(--ht-void)]">
+          <div className="relative min-h-[100dvh] bg-[var(--void)]">
             <BootLayer>{children}</BootLayer>
           </div>
         </ShellProviders>

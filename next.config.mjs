@@ -5,12 +5,13 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Stale-while-revalidate: feed + article payloads are edge-cacheable without
-        // putting DB latency in the critical rendering path (spec §9.2).
+        /* Cache policy is set per route, not here: a blanket rule cannot tell a
+           good payload from a failed one, and a cached 503 would outlive the
+           outage it described. This only hardens every API response. */
         source: '/api/:path*',
         headers: [
-          { key: 'Cache-Control', value: 's-maxage=600, stale-while-revalidate=86400' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],
       },
       {

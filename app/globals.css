@@ -218,6 +218,13 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* the main region is a focus target, not a control — the ring belongs on
+   things you can actually operate */
+main:focus,
+main:focus-visible {
+  outline: none;
+}
+
 ::selection {
   background: rgba(107, 162, 255, 0.26);
   color: #fff;

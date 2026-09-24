@@ -4,7 +4,9 @@ import { LogoMark } from '@/components/shell/Shell';
 
 export const metadata: Metadata = {
   title: 'Nothing here',
-  description: 'That page is not in the room.',
+  description:
+    'That address does not match anything in heatt. The board of stories and notes is still where you left it — this page just was never part of the room.',
+  robots: { index: false, follow: false },
 };
 
 /**

@@ -9,7 +9,6 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
@@ -20,22 +19,18 @@ import { matches, trendingTags, topAuthors } from '@/lib/feed';
 import { cls, compact } from '@/lib/util';
 import { Stagger, item } from '@/components/ui/motion';
 
-/* useSearchParams needs a Suspense boundary so the page can still prerender */
+/* Nothing here needs useSearchParams: the query is read from the address on
+   mount, so the page prerenders with its heading, its topics and its writers
+   instead of shipping an empty shell that waits for JavaScript. */
 export default function ExplorePage() {
-  return (
-    <React.Suspense fallback={null}>
-      <Explore />
-    </React.Suspense>
-  );
+  return <Explore />;
 }
 
 function Explore() {
   const app = useApp();
   const s = useStore();
   const path = usePathnameSafe();
-  const params = useSearchParams();
-  const initialQ = params?.get('q') ?? app.query ?? '';
-  const [q, setQ] = React.useState(initialQ);
+  const [q, setQ] = React.useState(() => app.query ?? '');
   const [tag, setTag] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -59,13 +54,17 @@ function Explore() {
 
   /* a link can carry a query (?q=design) — a trait chip, a trending topic */
   React.useEffect(() => {
-    const url = params?.get('q');
-    if (url) {
-      setQ(url);
-      setTag(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params, path]);
+    const read = () => {
+      const url = new URLSearchParams(window.location.search).get('q');
+      if (url) {
+        setQ(url);
+        setTag(null);
+      }
+    };
+    read();
+    window.addEventListener('popstate', read);
+    return () => window.removeEventListener('popstate', read);
+  }, [path]);
 
   const tags = React.useMemo(() => trendingTags(app.posts, Date.now(), 16), [app.posts]);
   const authors = React.useMemo(() => topAuthors(app.posts, 8), [app.posts]);

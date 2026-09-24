@@ -18,8 +18,10 @@
     "audit:integrity": "node tests/integrity-audit.cjs",
     "audit:a11y": "node tests/a11y-audit.cjs",
     "audit:bundle": "node tests/bundle-audit.cjs",
-    "test": "bash scripts/model-test.sh && bash scripts/smoke-test.sh && node tests/style-audit.cjs && node tests/integrity-audit.cjs && node tests/a11y-audit.cjs && node tests/bundle-audit.cjs",
-    "audit": "npm run test:styles && npm run test:integrity && npm run test:a11y && npm run test:bundle"
+    "test:routes": "node tests/route-audit.cjs",
+    "audit:routes": "node tests/route-audit.cjs",
+    "test": "bash scripts/model-test.sh && bash scripts/smoke-test.sh && node tests/route-audit.cjs && node tests/style-audit.cjs && node tests/integrity-audit.cjs && node tests/a11y-audit.cjs && node tests/bundle-audit.cjs",
+    "audit": "npm run test:styles && npm run test:integrity && npm run test:a11y && npm run test:bundle && npm run test:routes"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",

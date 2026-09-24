@@ -24,7 +24,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         title: original.title,
         description: original.dek,
         url: `/read/${original.id}`,
-        images: original.cover ? [{ url: original.cover, width: 1200, height: 675, alt: original.title }] : undefined,
+        images: [
+          original.cover
+            ? { url: original.cover, width: 1200, height: 675, alt: original.title }
+            : { url: '/art/nocturne-ui.jpg', width: 1200, height: 627, alt: original.title },
+        ],
       },
       twitter: { card: 'summary_large_image', title: original.title, description: original.dek },
     };
@@ -40,7 +44,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         title: syndicated.title,
         description: syndicated.excerpt,
         url: `/read/dev-${syndicated.id}`,
-        images: syndicated.cover ? [{ url: syndicated.cover, alt: syndicated.title }] : undefined,
+        images: [
+          syndicated.cover
+            ? { url: syndicated.cover, width: 1200, height: 675, alt: syndicated.title }
+            : { url: '/art/nocturne-ui.jpg', width: 1200, height: 627, alt: syndicated.title },
+        ],
       },
       twitter: { card: 'summary_large_image', title: syndicated.title, description: syndicated.excerpt },
     };

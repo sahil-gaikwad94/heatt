@@ -747,6 +747,15 @@ async function until(fn, ms = 4000, label = 'condition') {
   await until(() => scrolledTo !== null, 2500, 'the board to put itself back').catch(() => null);
   ok('coming back lands where you were reading', scrolledTo === 2400, String(scrolledTo));
 
+  step('the cursor follows the page');
+  nav.__state.path = '/feed';
+  await mountApp(page('app/(shell)/feed/page.js'));
+  await wait(320);
+  const mainEl = doc.getElementById('main');
+  ok('the main region can take focus', !!mainEl && mainEl.getAttribute('tabindex') === '-1');
+  ok('a route change moves focus into the page', doc.activeElement === mainEl, doc.activeElement ? doc.activeElement.tagName : 'none');
+  ok('and it is announced politely', /page$/.test(U.q('[role="status"]')?.textContent || ''), (U.q('[role="status"]')?.textContent || '').slice(0, 40));
+
   /* ------------------------------------------------- 16. hydration + errors */
   step('hygiene');
   await unmount();

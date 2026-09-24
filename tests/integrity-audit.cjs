@@ -234,8 +234,22 @@ else warn(`${todos} TODO/FIXME markers (not failing)`);
 console.log('\n▸ next.config + headers');
 try {
   const cfg = fs.readFileSync(path.join(ROOT, 'next.config.mjs'), 'utf8');
-  if (cfg.includes('s-maxage') && cfg.includes('stale-while-revalidate')) ok('API routes have edge cache headers');
-  else fail('next.config missing cache headers for /api');
+  /* Cache policy lives in the route handlers, where a failure can be told
+     apart from a payload: a blanket config rule would cache a 503 too. */
+  if (!/source: '\/api\/:path\*'[\s\S]{0,200}?Cache-Control/.test(cfg))
+    ok('the config does not blanket-cache /api responses');
+  else fail('a blanket Cache-Control rule on /api would cache failures');
+
+  const apiDir = path.join(ROOT, 'app', 'api');
+  const apiRoutes = fs.existsSync(apiDir)
+    ? fs.readdirSync(apiDir).filter((d) => fs.existsSync(path.join(apiDir, d, 'route.ts')))
+    : [];
+  const withPolicy = apiRoutes.filter((d) =>
+    /cache-control/i.test(fs.readFileSync(path.join(apiDir, d, 'route.ts'), 'utf8'))
+  );
+  if (apiRoutes.length && withPolicy.length === apiRoutes.length)
+    ok(`every API route sets its own cache policy (${withPolicy.length})`);
+  else fail(`API routes without a cache policy: ${apiRoutes.filter((d) => !withPolicy.includes(d)).join(', ') || 'none found'}`);
 
   if (cfg.includes('/art/') && cfg.includes('immutable')) ok('art assets have immutable cache headers');
   else fail('art assets missing immutable cache headers');

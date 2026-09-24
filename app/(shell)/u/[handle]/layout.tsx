@@ -17,7 +17,12 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
       title: `${name} on heatt`,
       description: user.bio || `${name} writes on heatt.`,
       url: `/u/${user.handle}`,
-      images: user.cover ? [{ url: user.cover, width: 1200, height: 675, alt: name }] : undefined,
+      /* a profile without artwork still needs a picture in the card */
+      images: [
+        user.cover
+          ? { url: user.cover, width: 1200, height: 675, alt: name }
+          : { url: '/art/nocturne-ui.jpg', width: 1200, height: 627, alt: `${name} on heatt` },
+      ],
     },
     twitter: { card: 'summary', title: `${name} on heatt`, description: user.bio || `${name} writes on heatt.` },
   };
