@@ -2,8 +2,10 @@
 /* ============================================================================
    /settings — the controls, and nothing else.
 
-   Reading (type size, measure, serif), motion (how much of it you want), and
-   your own identity. No account, no plan, no connected apps.
+   Reading (type size, measure, serif), motion (how much of it you want), your
+   own identity, and the two things a local-only app owes you: a copy of your
+   data, and a confirmation before it is destroyed. No account, no plan, no
+   connected apps.
    ==========================================================================*/
 
 import * as React from 'react';
@@ -13,12 +15,15 @@ import { Avatar } from '@/components/ui/primitives';
 import { PageHead, TopBar } from '@/components/shell/Shell';
 import { ProfileEditor } from '@/components/profile/ProfileEditor';
 import { cls } from '@/lib/util';
+import { EASE_OUT } from '@/lib/motion';
+import { motion } from 'framer-motion';
 
 export default function SettingsPage() {
   const app = useApp();
   const p = app.prefs;
   const me = app.me;
   const [editing, setEditing] = React.useState(false);
+  const [armed, setArmed] = React.useState(false);
 
   return (
     <>
@@ -136,19 +141,54 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---------------------------------------------------------- local */}
-        <Section title="This device" hint="heatt stores everything locally">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => {
-                useStore.getState().reset();
-                app.go('/');
-              }}
-              className="ht-btn ht-btn--quiet"
-            >
+        <Section title="This device" hint="heatt stores everything locally — this is the only copy">
+          <Row label="Take your data with you" hint="one JSON file: your keeps, heat, replies, notes and preferences">
+            <button onClick={exportEverything} className="ht-btn ht-btn--quiet">
+              Download my data
+            </button>
+          </Row>
+
+          <div className="pt-1">
+            <button onClick={() => setArmed(true)} className="ht-btn ht-btn--quiet" disabled={armed}>
               Clear heat, keeps and drafts
             </button>
-            <span className="text-[12px] text-ink-4">Kept pieces and progress are removed. Your notes are not recoverable.</span>
+            <span className="ml-3 text-[12px] text-ink-4">Kept pieces and progress are removed. Your notes are not recoverable.</span>
           </div>
+
+          {armed && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, ease: EASE_OUT }}
+              role="alert"
+              className="rounded-[var(--r-md)] border border-[rgba(255,143,143,.34)] bg-[rgba(255,143,143,.06)] p-4"
+            >
+              <p className="text-[13.5px] font-semibold text-ink">Erase this device?</p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-2">
+                Heat, keeps, reading progress, replies, your published notes, your handle and every preference are
+                deleted from this browser. There is no copy on a server and no way to undo it.
+              </p>
+              <div className="mt-3.5 flex flex-wrap items-center gap-3">
+                <button onClick={() => setArmed(false)} className="ht-btn ht-btn--quiet !h-9">
+                  Keep everything
+                </button>
+                <button
+                  onClick={() => {
+                    useStore.getState().reset();
+                    setArmed(false);
+                    app.go('/');
+                  }}
+                  className="ht-btn !h-9 !bg-transparent !text-[var(--neg)]"
+                  style={{ border: '1px solid rgba(255,143,143,.4)' }}
+                >
+                  Erase everything
+                </button>
+                <button onClick={exportEverything} className="ht-btn ht-btn--ghost !h-9">
+                  Download a copy first
+                </button>
+              </div>
+            </motion.div>
+          )}
         </Section>
 
         <p className="mt-10 border-t border-line pt-6 text-[12px] text-ink-4">
@@ -162,6 +202,45 @@ export default function SettingsPage() {
 }
 
 /* ------------------------------------------------------------------ parts */
+
+/**
+ * Everything heatt knows about you, as one file. No server copy exists, so
+ * this is not a convenience — it is the only backup there can be.
+ */
+function exportEverything() {
+  const st = useStore.getState();
+  const dump = {
+    app: 'heatt',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    me: st.me,
+    prefs: st.prefs,
+    interests: st.interests,
+    saved: st.saved,
+    reads: st.reads,
+    heat: st.heat,
+    shares: st.shares,
+    votes: st.votes,
+    follows: st.follows,
+    muted: st.muted,
+    replies: st.replies,
+    mySparks: st.mySparks,
+    myArticles: st.myArticles,
+  };
+  try {
+    const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `heatt-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch {
+    /* a blocked download must not throw into the page */
+  }
+}
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (

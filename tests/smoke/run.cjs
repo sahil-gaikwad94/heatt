@@ -370,8 +370,46 @@ async function until(fn, ms = 4000, label = 'condition') {
     await wait(140);
     ok('ambient light can be turned off', S().prefs.ambient === false);
   }
+  /* a destructive action has to ask — and it has to offer a copy first */
+  const download = U.byText('button', /Download my data/i);
+  ok('your data can be taken out as a file', !!download);
+  if (download) {
+    let saved = null;
+    const realClick = window.HTMLAnchorElement.prototype.click;
+    window.HTMLAnchorElement.prototype.click = function () {
+      saved = this.download;
+    };
+    await U.click(download);
+    await wait(200);
+    window.HTMLAnchorElement.prototype.click = realClick;
+    ok('the export is a dated json file', /^heatt-\d{4}-\d{2}-\d{2}\.json$/.test(saved || ''), String(saved));
+  }
+
   const clear = U.byText('button', /Clear heat, keeps and drafts/i);
   ok('the device can be cleared, in plain words', !!clear);
+  if (clear) {
+    await U.click(clear);
+    await wait(320);
+    ok('erasing the device asks first', !!U.byText('button', /Erase everything/i) && /Erase this device/i.test(U.words()));
+    const keepIt = U.byText('button', /Keep everything/i);
+    ok('and offers a way back out of it', !!keepIt);
+    if (keepIt) {
+      const savedBefore = Object.keys(S().saved).length;
+      await U.click(keepIt);
+      await wait(260);
+      ok('backing out erases nothing', Object.keys(S().saved).length === savedBefore && !!S().me, `${Object.keys(S().saved).length} keeps`);
+    }
+    await U.click(clear);
+    await wait(320);
+    const erase = U.byText('button', /Erase everything/i);
+    if (erase) {
+      await U.click(erase);
+      await wait(320);
+      ok('only an explicit second tap wipes it', Object.keys(S().saved).length === 0 && S().me === null, `saved=${Object.keys(S().saved).length} me=${S().me}`);
+      /* the rest of the run expects a returning reader */
+      useStore.setState({ introSeen: true, onboarded: true, saved: { [origId]: Date.now() }, me: null });
+    }
+  }
 
   const replay = U.byText('button', /Replay the intro/i);
   ok('the opening can be replayed on demand', !!replay);
