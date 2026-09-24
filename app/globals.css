@@ -1835,6 +1835,42 @@ button.ht-stat:hover {
   border-color: var(--line-3);
 }
 
+/* -------------------------------------------------------- next in the room */
+
+.ht-nextrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.015);
+  transition:
+    border-color var(--t-fast) var(--ease),
+    background-color var(--t-fast) var(--ease);
+}
+.ht-nextrow:hover {
+  border-color: var(--line-2);
+  background: rgba(255, 255, 255, 0.035);
+}
+.ht-nextrow__art {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: var(--r-xs);
+  object-fit: cover;
+}
+.ht-nextrow__art--text {
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-4);
+  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+  font-size: 15px;
+}
+
 /* --------------------------------------------------------- cover picker */
 
 .ht-coverpick {

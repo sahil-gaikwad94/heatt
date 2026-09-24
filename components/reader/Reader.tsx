@@ -22,7 +22,7 @@ import type { ArticleBlock } from '@/lib/types';
 import { Avatar } from '@/components/ui/primitives';
 import { HeatButton } from '@/components/heat/HeatButton';
 import { FireOverlay } from '@/components/heat/FireOverlay';
-import { cls, compact, coverFallback, prettyDate, timeAgo } from '@/lib/util';
+import { cls, compact, coverFallback, plain, prettyDate, timeAgo } from '@/lib/util';
 import { fetchBody } from '@/lib/syndicate';
 import { EASE_OUT } from '@/lib/motion';
 import type { Post } from '@/lib/feed';
@@ -86,6 +86,10 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
         const max = el.scrollHeight - el.clientHeight;
         if (max > 200) el.scrollTo({ top: (savedPct / 100) * max, behavior: 'auto' });
       }, 60);
+    } else {
+      /* a different story starts where a story should: at the top */
+      el.scrollTop = 0;
+      setPct(0);
     }
     let raf = 0;
     let idle = 0;
@@ -130,6 +134,21 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [app, onClose, post.id, saved]);
+
+  /* What to read next. Shared topics first, then heat — never the piece you
+     just finished, and never a wall of them. */
+  const nextUp = React.useMemo(() => {
+    const tags = new Set(post.tags ?? []);
+    return app.posts
+      .filter((p) => p.id !== post.id)
+      .map((p) => {
+        const shared = (p.tags ?? []).filter((t) => tags.has(t)).length;
+        return { p, score: shared * 1000 + (p.heatScore?.heat ?? 0) + (p.origin === 'mine' ? -30 : 0) };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((x) => x.p);
+  }, [app.posts, post.id, post.tags]);
 
   const authorName = syndicated.author?.name ?? post.authorName;
   const authorHandle = syndicated.author?.handle ?? post.authorHandle;
@@ -350,6 +369,41 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
                   </button>
                 ))}
               </div>
+            )}
+
+            {nextUp.length > 0 && (
+              <section className="mt-10">
+                <span className="ht-eyebrow">next in the room</span>
+                <div className="mt-3.5 space-y-2.5">
+                  {nextUp.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => app.openPost(p.id)}
+                      className="ht-nextrow"
+                      aria-label={`Read next: ${p.title ?? plain(p.text ?? '').slice(0, 40)}`}
+                    >
+                      {p.cover ? (
+                        <img src={p.cover} alt="" loading="lazy" decoding="async" onError={coverFallback(p.id)} className="ht-nextrow__art" />
+                      ) : (
+                        <span className="ht-nextrow__art ht-nextrow__art--text" aria-hidden>
+                          #
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13.5px] font-semibold text-ink">
+                          {p.title ?? plain(p.text ?? '').slice(0, 70)}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11.5px] text-ink-faint">
+                          {p.authorName} · {p.kind === 'forge' ? `${p.minutes ?? 6} min read` : 'note'}
+                        </span>
+                      </span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-ink-4" aria-hidden>
+                        <path d="M5 12h13M13 6l6 6-6 6" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              </section>
             )}
           </footer>
         </article>

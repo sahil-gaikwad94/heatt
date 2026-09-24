@@ -271,6 +271,30 @@ async function until(fn, ms = 4000, label = 'condition') {
     await wait(120);
   }
 
+  /* what to read after this one */
+  const nextRows = U.qa('[aria-label^="Read next:"]');
+  ok('the end of a story offers the next one', nextRows.length === 3, `${nextRows.length} suggestions`);
+  if (nextRows.length) {
+    const labels = nextRows.map((r) => r.getAttribute('aria-label'));
+    ok('the suggestions are all different pieces', new Set(labels).size === labels.length, labels.length + ' rows');
+    const currentTitle = (U.q('.ht-prose h1, article h1, article h2')?.textContent || '').trim();
+    ok('the story you are reading is not suggested back', !currentTitle || !labels.some((l) => l && l.includes(currentTitle)), currentTitle.slice(0, 40));
+    nav.__nav.length = 0;
+    await U.click(nextRows[0]);
+    await wait(600);
+    const openedThread = !!U.q('textarea[placeholder="Add to the thread…"]');
+    ok(
+      'tapping a suggestion opens that piece',
+      openedThread || nav.__nav.some((h) => /\/read\//.test(String(h.href))),
+      JSON.stringify(nav.__nav.slice(-1))
+    );
+    if (openedThread) {
+      const x = U.q('[aria-label="Close"]');
+      if (x) await U.click(x);
+      await wait(200);
+    }
+  }
+
   /* ------------------------------------------------------- 6. ⌘K palette */
   step('command palette');
   await U.key(window, 'k', { metaKey: true });
