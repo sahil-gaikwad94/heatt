@@ -144,6 +144,11 @@
 html {
   background: var(--void);
   color-scheme: dark;
+  /* reserve the scrollbar so navigating between a scrolling board and a short
+     settings page never shifts the whole layout sideways */
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html[data-measure='narrow'] {
@@ -274,6 +279,7 @@ button:disabled {
 }
 .ht-title {
   letter-spacing: -0.035em;
+  text-wrap: pretty;
 }
 .ht-serif {
   font-family: 'Newsreader Variable', ui-serif, Georgia, serif;
@@ -402,13 +408,15 @@ button:disabled {
     background-color var(--t-fast) var(--ease);
   will-change: transform;
 }
-.ht-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--line-2);
-  box-shadow: var(--shadow-2);
-}
-.ht-card--flat:hover {
-  transform: none;
+@media (hover: hover) and (pointer: fine) {
+  .ht-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-2);
+    box-shadow: var(--shadow-2);
+  }
+  .ht-card--flat:hover {
+    transform: none;
+  }
 }
 .ht-card--ignited {
   border-color: var(--acc-line);
@@ -929,8 +937,13 @@ a.ht-chip:hover {
   transform: translateY(-2px);
   transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
 }
-.ht-dock-item[data-active='true'] .ht-dock-item__label {
-  opacity: 0;
+/* the label is a desktop affordance: it arrives on hover only, so the pill
+   stays the loudest thing in the dock */
+@media (hover: hover) {
+  .ht-dock-item:hover .ht-dock-item__label {
+    opacity: 0.92;
+    transform: translateY(0);
+  }
 }
 .ht-dock-pill {
   position: absolute;

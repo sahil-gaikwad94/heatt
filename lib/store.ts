@@ -50,6 +50,8 @@ export type State = {
   /** pieces you kept */
   saved: Record<HeatKey, number>;
   shares: Record<HeatKey, number>;
+  /** poll answers: postId → option index. Tapping the same option again clears it. */
+  votes: Record<HeatKey, number>;
   follows: string[];
   muted: string[];
   replies: Reply[];
@@ -69,6 +71,7 @@ export type State = {
   setRead: (id: HeatKey, pct: number, minutes?: number) => void;
   toggleSave: (id: HeatKey) => void;
   addShare: (id: HeatKey) => void;
+  castVote: (id: HeatKey, option: number) => void;
   toggleFollow: (handle: string) => void;
   toggleMute: (entry: string) => void;
   isMuted: (entry: string) => boolean;
@@ -104,6 +107,7 @@ export const useStore = create<State>()(
       reads: {},
       saved: {},
       shares: {},
+      votes: {},
       follows: ['heatt'],
       muted: [],
       replies: [],
@@ -173,6 +177,13 @@ export const useStore = create<State>()(
 
       addShare: (id) => set({ shares: { ...get().shares, [id]: (get().shares[id] ?? 0) + 1 } }),
 
+      castVote: (id, option) => {
+        const votes = { ...get().votes };
+        if (votes[id] === option) delete votes[id];
+        else votes[id] = option;
+        set({ votes });
+      },
+
       toggleFollow: (handle) => {
         const has = get().follows.includes(handle);
         set({ follows: has ? get().follows.filter((h) => h !== handle) : [...get().follows, handle] });
@@ -217,6 +228,7 @@ export const useStore = create<State>()(
           reads: {},
           saved: {},
           shares: {},
+          votes: {},
           replies: [],
           mySparks: [],
           myArticles: [],

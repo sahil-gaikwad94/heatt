@@ -212,9 +212,19 @@ export function WireStatus() {
           />
           {app.live ? 'Wire connected · live stories from Dev.to' : 'Offline · showing the bundled library'}
         </div>
-        <div className="flex items-center gap-2 text-[11.5px] text-ink-4">
-          <kbd className="ht-kbd">⌘K</kbd> search
-          <kbd className="ht-kbd">S</kbd> save
+        <div className="flex items-center gap-3 text-[11.5px] text-ink-4">
+          <span className="hidden items-center gap-2 sm:flex">
+            <kbd className="ht-kbd">⌘K</kbd> search
+            <kbd className="ht-kbd">S</kbd> save
+          </span>
+          <button
+            onClick={() => app.refresh(true)}
+            disabled={app.loading}
+            className="ht-chip disabled:opacity-60"
+            aria-label="Refresh the wire"
+          >
+            {app.loading ? 'Checking…' : 'Refresh'}
+          </button>
         </div>
       </div>
       <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-ink-4">

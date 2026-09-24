@@ -15,6 +15,7 @@
 
 import * as React from 'react';
 import { HOLD_MS, LEVEL_META } from '@/lib/heat';
+import { originInside } from '@/components/heat/FireOverlay';
 import type { HeatLevel } from '@/lib/types';
 import { cls, compact } from '@/lib/util';
 
@@ -74,10 +75,13 @@ export function HeatButton({
     if (!el || document.documentElement.dataset.reduceMotion === 'true') return;
     const host = el.parentElement;
     if (!host) return;
+    /* rects, not offsets: the spark shower must land on the control no matter
+       what the button's offsetParent happens to be */
     for (let i = 0; i < 10; i++) {
+      const { x, y } = originInside(host, el, 4);
       const e = document.createElement('span');
       e.className = 'ht-spark';
-      e.style.cssText = `left:${el.offsetLeft + el.offsetWidth / 2}px;top:${el.offsetTop + 4}px;--dx:${
+      e.style.cssText = `left:${x + (Math.random() - 0.5) * 14}px;top:${y}px;--dx:${
         (Math.random() - 0.5) * 80
       }px;animation-delay:${(Math.random() * 0.25).toFixed(2)}s`;
       host.appendChild(e);

@@ -235,6 +235,15 @@ async function until(fn, ms = 4000, label = 'condition') {
     const unknown = ops.filter((o) => o[0].startsWith('unknown:')).map((o) => o[0]);
     ok('no unknown canvas APIs in the painter', unknown.length === 0, [...new Set(unknown)].slice(0, 5).join(','));
     ok('the studio shows three frames', U.qa('[role="tab"]').length === 3);
+    const selectedFrame = () =>
+      U.q('[role="tablist"][aria-label="Frames"] [role="tab"][aria-selected="true"]')?.getAttribute('aria-label') ?? null;
+    const firstFrame = selectedFrame();
+    await U.key(window, 'ArrowRight');
+    await wait(220);
+    ok('→ steps the story forward', selectedFrame() === 'The line' && selectedFrame() !== firstFrame, `${firstFrame} → ${selectedFrame()}`);
+    await U.key(window, 'ArrowLeft');
+    await wait(220);
+    ok('← steps back', selectedFrame() === firstFrame, `${selectedFrame()}`);
     const square = U.byText('button', /Square 1:1/);
     ok('format switcher offers the square', !!square);
     if (square) {
@@ -304,7 +313,7 @@ async function until(fn, ms = 4000, label = 'condition') {
   step('explore');
   nav.__state.path = '/explore';
   await mountApp(page('app/(shell)/explore/page.js'));
-  const search = U.q('input[placeholder^="Search forges"]');
+  const search = U.q('input[aria-label="Search heatt"]') || U.q('input[placeholder^="Search stories"]');
   ok('explore has a real search field', !!search);
   ok('topic chips are rendered', U.qa('.ht-chip').length >= 4, `${U.qa('.ht-chip').length} chips`);
   const before = U.qa('.ht-card').length;
@@ -364,6 +373,19 @@ async function until(fn, ms = 4000, label = 'condition') {
   const clear = U.byText('button', /Clear heat, keeps and drafts/i);
   ok('the device can be cleared, in plain words', !!clear);
 
+  const replay = U.byText('button', /Replay the intro/i);
+  ok('the opening can be replayed on demand', !!replay);
+  if (replay) {
+    await U.click(replay);
+    await wait(200);
+    ok('replaying re-arms the intro', S().introSeen === false, `introSeen=${S().introSeen}`);
+    /* put the room back where it was for the rest of the run */
+    useStore.setState({ introSeen: true, onboarded: true });
+    await wait(120);
+  }
+  const replayTour = U.byText('button', /Replay the tour/i);
+  ok('the tour can be replayed too', !!replayTour);
+
   /* ---------------------------------------------------------- 12. profile */
   step('profile');
   nav.__state.path = '/u/heatt';
@@ -394,7 +416,82 @@ async function until(fn, ms = 4000, label = 'condition') {
   const enter = U.byText('button', /Open the board|Enter the room|Step inside/i);
   ok('the landing has one commit action', !!enter);
 
-  /* ------------------------------------------------- 14. hydration + errors */
+  /* ------------------------------------------- 14. drafts, votes, dead ends */
+  step('drafts & votes');
+  nav.__state.path = '/feed';
+  await mountApp(page('app/(shell)/feed/page.js'));
+
+  /* a poll answer is a real choice on this device, not a painted number */
+  const group = U.q('[role="group"][aria-label="What should the house write next?"]');
+  ok('a house note carries a real poll', !!group);
+  if (group) {
+    const opts = [...group.querySelectorAll('button[aria-pressed]')];
+    ok('every poll option is tappable', opts.length === 4, `${opts.length} options`);
+    await U.click(opts[1]);
+    await wait(140);
+    const voted = Object.entries(S().votes);
+    ok('voting is stored on the device', voted.length === 1 && voted[0][1] === 1, JSON.stringify(S().votes));
+    await U.click(opts[1]);
+    await wait(140);
+    ok('tapping your answer again takes it back', Object.keys(S().votes).length === 0);
+  }
+
+  /* writing is never lost to a mis-tap */
+  const openComposer = async () => {
+    const b = U.q('[aria-label="Write something"]');
+    await U.click(b);
+    await wait(240);
+    return U.qa('textarea').find((t) => /What stayed with you/.test(t.getAttribute('placeholder') || '')) || null;
+  };
+  const ta1 = await openComposer();
+  ok('the composer still opens on a note', !!ta1);
+  if (ta1) {
+    await U.type(ta1, 'A draft that must survive leaving the room.');
+    await wait(620); /* autosave debounce */
+    ok('the draft is written to this device', /must survive/.test(window.localStorage.getItem('heatt-draft-v1') || ''), 'heatt-draft-v1');
+  }
+  await mountApp(page('app/(shell)/feed/page.js')); /* leave the room entirely */
+  const ta2 = await openComposer();
+  ok('the draft comes back when the composer reopens', !!ta2 && /must survive/.test(ta2.value || ''), ta2 ? String(ta2.value).slice(0, 44) : 'no field');
+  if (ta2) {
+    await U.click(U.q('[aria-label="Close composer"]'));
+    await wait(180);
+    ok('closing on unsaved work asks before discarding', !!U.byText('button', /Keep writing/i));
+    const keep = U.byText('button', /Keep writing/i);
+    if (keep) {
+      await U.click(keep);
+      await wait(140);
+      const back = U.qa('textarea').find((t) => /What stayed with you/.test(t.getAttribute('placeholder') || ''));
+      ok('keep writing leaves the draft alone', !!back && /must survive/.test(back.value || ''));
+      const before = S().mySparks.length;
+      await U.key(back, 'Enter', { metaKey: true });
+      await until(() => S().mySparks.length > before, 2000, 'the note to commit').catch(() => null);
+      ok('the keyboard shortcut publishes', S().mySparks.length === before + 1, `${before} -> ${S().mySparks.length}`);
+      ok('the draft is cleared once published', (window.localStorage.getItem('heatt-draft-v1') || '') === '');
+    }
+  }
+
+  /* dead ends still look like the room */
+  const NotFound = require(path.join(process.cwd(), '.tmp-client/app/not-found.js')).default;
+  await mount(React.createElement(ShellProviders, null, React.createElement(NotFound)));
+  ok('a wrong address explains itself', /never here/i.test(U.words()) && !!U.byText('a', /Back to the board/i));
+  await unmount();
+  const ErrorPage = require(path.join(process.cwd(), '.tmp-client/app/error.js')).default;
+  let resetCalled = false;
+  await mount(React.createElement(ErrorPage, { error: Object.assign(new Error('boom'), { digest: 'ref-1' }), reset: () => { resetCalled = true; } }));
+  const tryAgain = U.byText('button', /Try again/i);
+  ok('an error keeps the room and offers a way back', /did not load/i.test(U.words()) && !!tryAgain);
+  if (tryAgain) {
+    await U.click(tryAgain);
+    await wait(120);
+    ok('try again calls the reset boundary', resetCalled);
+  }
+  await unmount();
+  /* the boundary logs its own error on purpose — do not judge the run by it */
+  consoleErrors.length = 0;
+  consoleWarns.length = 0;
+
+  /* ------------------------------------------------- 15. hydration + errors */
   step('hygiene');
   await unmount();
   await flush();

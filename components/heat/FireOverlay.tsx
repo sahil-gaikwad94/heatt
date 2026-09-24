@@ -127,6 +127,18 @@ export function FireOverlay({ active, duration = 2100, variant = 'full', onDone,
   );
 }
 
+/** Where an element sits inside a positioned host, in the host's coordinates. */
+export function originInside(host: HTMLElement, el: HTMLElement, biasY = 0) {
+  const h = host.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return { x: r.left - h.left + r.width / 2, y: r.top - h.top + biasY };
+}
+
+/** Sparks off the element itself — the common case. */
+export function burstFrom(host: HTMLElement, el: HTMLElement, count = 12) {
+  burstSparks(host, originInside(host, el, 6), count);
+}
+
 /** Dust that lifts off a card the moment it ignites. Created imperatively. */
 export function burstSparks(host: HTMLElement, origin: { x: number; y: number }, count = 12) {
   if (typeof document === 'undefined') return;

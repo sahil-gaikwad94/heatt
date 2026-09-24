@@ -87,7 +87,7 @@ function Explore() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search forges, sparks, writers, topics…"
+            placeholder="Search stories, notes, writers, topics…"
             aria-label="Search heatt"
             className="ht-input !h-[50px] !rounded-full !pl-11 !pr-11"
           />

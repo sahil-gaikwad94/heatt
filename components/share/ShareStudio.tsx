@@ -19,6 +19,7 @@ import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
 import { avatarDataUri, cls, plain } from '@/lib/util';
 import { EASE_OUT } from '@/lib/motion';
+import { useMotionPrefs } from '@/components/ui/motion';
 
 const FRAMES = ['Cover', 'The line', 'Signature'] as const;
 
@@ -60,6 +61,7 @@ export function ShareStudio() {
   const [paused, setPaused] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
+  const { reduced } = useMotionPrefs();
   const [note, setNote] = React.useState('');
   const [done, setDone] = React.useState<string | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
@@ -82,9 +84,10 @@ export function ShareStudio() {
     setDone(null);
   }, [open, id]);
 
-  /* story playback: 7s a frame, paused while you decide */
+  /* story playback: 7s a frame, paused while you decide — and never
+     auto-advancing for someone who asked for less motion */
   React.useEffect(() => {
-    if (!open || paused) return;
+    if (!open || paused || reduced) return;
     const t0 = Date.now();
     const iv = window.setInterval(() => {
       const v = (Date.now() - t0) / 7000;
@@ -95,7 +98,7 @@ export function ShareStudio() {
       }
     }, 80);
     return () => window.clearInterval(iv);
-  }, [open, paused, frame]);
+  }, [open, paused, frame, reduced]);
 
   /* paint */
   React.useEffect(() => {
@@ -434,6 +437,68 @@ export function ShareStudio() {
 
   const title = isProfile ? `@${profHandle}` : post?.title ?? 'Note';
 
+  /* ------------------------------------------------------------ stepping */
+
+  const drag = React.useRef({ x: 0, active: false, moved: false, endedAt: 0 });
+  const [dragX, setDragX] = React.useState(0);
+
+  const step = React.useCallback(
+    (delta: number) => {
+      setFrame((n) => (n + delta + FRAMES.length) % FRAMES.length);
+      setProgress(0);
+    },
+    []
+  );
+
+  /* arrows step, space holds, escape leaves — the way a story behaves */
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return app.setShare(null);
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        step(1);
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        step(-1);
+      }
+      if (e.key === ' ') {
+        e.preventDefault();
+        setPaused((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, app, step]);
+
+  /* drag the preview left/right to move through the frames */
+  const dragStart = (e: React.PointerEvent) => {
+    drag.current = { ...drag.current, x: e.clientX, active: true, moved: false };
+    setDragX(0);
+  };
+  const dragMove = (e: React.PointerEvent) => {
+    if (!drag.current.active) return;
+    const d = e.clientX - drag.current.x;
+    if (Math.abs(d) > 8) drag.current.moved = true;
+    setDragX(Math.max(-170, Math.min(170, d)));
+    if (drag.current.moved) setPaused(true);
+  };
+  const dragEnd = () => {
+    const d = dragX;
+    const moved = drag.current.moved;
+    drag.current.active = false;
+    setDragX(0);
+    setPaused(false);
+    if (moved && Math.abs(d) > 56) step(d < 0 ? 1 : -1);
+    /* a drag must never also count as a tap on the zone underneath: the click
+       fires right after the pointerup, so the guard is time-based */
+    drag.current.endedAt = Date.now();
+  };
+
+  /** true when the click arriving now is really the tail of a drag */
+  const wasDrag = () => Date.now() - drag.current.endedAt < 300;
+
   return (
     <AnimatePresence>
       {open && (
@@ -447,7 +512,14 @@ export function ShareStudio() {
           aria-label={`Share ${title}`}
         >
           {/* --------------------------------------------------------- stage */}
-          <div className="ht-share__stage">
+          <div
+            className="ht-share__stage"
+            onPointerDown={dragStart}
+            onPointerMove={dragMove}
+            onPointerUp={dragEnd}
+            onPointerCancel={dragEnd}
+            onPointerLeave={dragEnd}
+          >
             <div className="absolute inset-x-0 top-0 z-[1] flex items-center gap-2 px-4 py-3">
               <div className="ht-share__segments" role="tablist" aria-label="Frames">
                 {FRAMES.map((f, i) => (
@@ -485,16 +557,16 @@ export function ShareStudio() {
               aria-label="Previous frame"
               className="absolute bottom-0 left-0 top-[52px] z-[2] w-[32%] cursor-default"
               onClick={() => {
-                setFrame((n) => (n - 1 + FRAMES.length) % FRAMES.length);
-                setProgress(0);
+                if (wasDrag()) return;
+                step(-1);
               }}
             />
             <button
               aria-label="Next frame"
               className="absolute bottom-0 right-0 top-[52px] z-[2] w-[68%] cursor-default"
               onClick={() => {
-                setFrame((n) => (n + 1) % FRAMES.length);
-                setProgress(0);
+                if (wasDrag()) return;
+                step(1);
               }}
               onPointerDown={() => setPaused(true)}
               onPointerUp={() => setPaused(false)}
@@ -512,7 +584,12 @@ export function ShareStudio() {
                 maxWidth: '94%',
               }}
             >
-              <canvas ref={attach} aria-label={`${FRAMES[frame]} poster preview`} style={{ height: '100%', width: '100%', objectFit: 'contain' }} />
+              <div
+                className="h-full w-full transition-transform duration-200 ease-out"
+                style={{ transform: `translateX(${(dragX * 0.3).toFixed(1)}px)`, opacity: 1 - Math.min(0.4, Math.abs(dragX) / 400) }}
+              >
+                <canvas ref={attach} aria-label={`${FRAMES[frame]} poster preview`} style={{ height: '100%', width: '100%', objectFit: 'contain' }} />
+              </div>
             </motion.div>
 
             {done && (
@@ -625,7 +702,17 @@ export function ShareStudio() {
               </button>
             </div>
 
-            <div className="mt-5 flex items-center gap-2.5 border-t border-line pt-4">
+            <p className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-4">
+              <span>
+                <span className="ht-kbd">←</span> <span className="ht-kbd">→</span> step
+              </span>
+              <span>
+                <span className="ht-kbd">space</span> hold
+              </span>
+              <span>drag the preview to move through the frames</span>
+            </p>
+
+            <div className="mt-4 flex items-center gap-2.5 border-t border-line pt-4">
               <Avatar name={post?.authorName ?? 'heatt'} handle={post?.authorHandle ?? 'heatt'} src={post?.authorAvatar} size={30} />
               <p className="text-[11.5px] leading-relaxed text-ink-4">
                 The file you export is drawn at {DIMS[fmt][0]}×{DIMS[fmt][1]} — the preview above is the same pixels, not a mock-up.

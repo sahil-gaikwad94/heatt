@@ -96,6 +96,33 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
+        {/* ----------------------------------------------------- the opening */}
+        <Section title="The opening" hint="four seconds of intro, then four scenes of the tour">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => {
+                useStore.setState({ introSeen: false });
+                app.go('/feed');
+              }}
+              className="ht-btn ht-btn--quiet"
+            >
+              Replay the intro
+            </button>
+            <button
+              onClick={() => {
+                useStore.setState({ introSeen: true, onboarded: false });
+                app.go('/feed');
+              }}
+              className="ht-btn ht-btn--ghost"
+            >
+              Replay the tour
+            </button>
+            <span className="text-[12px] text-ink-4">
+              A returning reader never sees either one unless they ask for it here.
+            </span>
+          </div>
+        </Section>
+
         {/* ---------------------------------------------------------- local */}
         <Section title="This device" hint="heatt stores everything locally">
           <div className="flex flex-wrap items-center gap-3">

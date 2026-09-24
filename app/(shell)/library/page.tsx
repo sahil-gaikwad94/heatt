@@ -16,7 +16,7 @@ import { PostCard } from '@/components/cards/PostCard';
 import { Empty, Meter, Avatar } from '@/components/ui/primitives';
 import { PageHead, TopBar } from '@/components/shell/Shell';
 import { EASE_OUT } from '@/lib/motion';
-import { timeAgo } from '@/lib/util';
+import { plain, timeAgo } from '@/lib/util';
 
 type Shelf = 'kept' | 'reading';
 
@@ -136,9 +136,9 @@ export default function LibraryPage() {
                         <Avatar name={post.authorName} handle={post.authorHandle} src={post.authorAvatar} size={46} />
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[14px] font-semibold text-ink">{post.title ?? post.text?.slice(0, 60)}</p>
+                        <p className="truncate text-[14px] font-semibold text-ink">{post.title ?? plain(post.text ?? '').slice(0, 60)}</p>
                         <p className="mt-0.5 text-[11.5px] text-ink-faint">
-                          @{post.authorHandle} · stopped {timeAgo(at)} ago
+                          @{post.authorHandle} · {at ? `stopped ${timeAgo(at)} ago` : 'in progress'}
                         </p>
                       </div>
                       <span className="ht-num shrink-0 text-[12.5px] text-ember-300">{pct}%</span>

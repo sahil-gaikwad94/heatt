@@ -136,6 +136,15 @@ export const SPARKS: Spark[] = [
     reposts: 102,
     text: 'Every piece here is either written by the house, syndicated from a real writer, or written by you.\n\nWe would rather show you an honest empty shelf than a wall of imaginary people.',
     tags: ['meta'],
+    poll: {
+      question: 'What should the house write next?',
+      options: [
+        { label: 'How the wire is curated', votes: 184 },
+        { label: 'The share studio, end to end', votes: 236 },
+        { label: 'Why there is no algorithm', votes: 301 },
+        { label: 'A reading guide for the dark', votes: 158 },
+      ],
+    },
   },
   {
     id: 'ht-note-keep',

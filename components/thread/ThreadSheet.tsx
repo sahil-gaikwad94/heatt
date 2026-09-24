@@ -139,6 +139,7 @@ export function ThreadSheet() {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send();
                 }}
                 rows={2}
+                data-autofocus
                 placeholder="Add to the thread…"
                 aria-label="Add a reply"
                 className="ht-input !h-auto min-h-[54px] resize-none py-2.5"

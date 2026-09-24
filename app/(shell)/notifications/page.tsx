@@ -14,7 +14,7 @@ import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
 import { Avatar, Empty } from '@/components/ui/primitives';
 import { PageHead, TopBar } from '@/components/shell/Shell';
-import { cls, timeAgo } from '@/lib/util';
+import {cls, timeAgo, plain } from '@/lib/util';
 import { EASE_OUT } from '@/lib/motion';
 
 export default function NotificationsPage() {
@@ -73,7 +73,7 @@ export default function NotificationsPage() {
                       <span className="font-semibold text-ink">You</span> wrote{' '}
                       <span className="text-ink-3">{timeAgo(post.date)} ago</span>
                     </p>
-                    <p className="mt-1 line-clamp-2 text-[13.5px] text-ink">{post.title ?? post.text?.slice(0, 120)}</p>
+                    <p className="mt-1 line-clamp-2 text-[13.5px] text-ink">{post.title ?? plain(post.text ?? '').slice(0, 120)}</p>
                     <div className="mt-2.5 flex items-center gap-4">
                       <span className="ht-num text-[12px] text-ember-300">{heats} heats</span>
                       <button onClick={() => app.setThread(post.id)} className="text-[12px] text-ink-3 hover:text-ink">
@@ -95,7 +95,7 @@ export default function NotificationsPage() {
               <Link key={p.id} href={p.kind === 'forge' ? `/read/${encodeURIComponent(p.id)}` : '/feed'} className="ht-row">
                 <Avatar name={p.authorName} handle={p.authorHandle} src={p.authorAvatar} size={34} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold text-ink">{p.title ?? p.text?.slice(0, 70)}</span>
+                  <span className="block truncate text-[13px] font-semibold text-ink">{p.title ?? plain(p.text ?? '').slice(0, 70)}</span>
                   <span className="block text-[11.5px] text-ink-faint">
                     @{p.authorHandle} · {p.heatScore?.heat ?? 0}° heat · {timeAgo(p.date)} ago
                   </span>

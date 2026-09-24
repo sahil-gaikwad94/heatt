@@ -22,7 +22,7 @@ import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
 import { getUser, HOUSE_HANDLE, HOUSE_COVER } from '@/lib/seed/users';
-import { avatarDataUri, cls, compact, coverDataUri, prettyDate, timeAgo } from '@/lib/util';
+import {avatarDataUri, cls, compact, coverDataUri, prettyDate, timeAgo, plain } from '@/lib/util';
 import { Empty, Stat } from '@/components/ui/primitives';
 import { ProfileEditor } from '@/components/profile/ProfileEditor';
 import { TopBar } from '@/components/shell/Shell';
@@ -346,7 +346,7 @@ function Tile({ post, onOpen, index }: { post: Post; onOpen: () => void; index: 
                     'radial-gradient(120% 100% at 20% 0%, rgba(232,211,164,.14), transparent 60%), radial-gradient(100% 90% at 90% 100%, rgba(107,162,255,.12), transparent 60%), linear-gradient(160deg,#12141a,#08090c)',
                 }}
               >
-                {post.text?.slice(0, 110)}
+                {plain(post.text ?? '').slice(0, 110)}
               </span>
             )}
             <span aria-hidden className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.05) 36%,rgba(0,0,0,.88))' }} />

@@ -47,6 +47,7 @@ export function Avatar({
         onError={() => setBroken(true)}
         className="h-full w-full rounded-full object-cover"
         loading="lazy"
+        decoding="async"
       />
     </span>
   );
@@ -70,9 +71,12 @@ export function Modal({
   bare?: boolean;
 }) {
   const ref = React.useRef<HTMLDivElement | null>(null);
+  /* remember who opened the dialog so focus can be handed back on close */
+  const returnTo = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     if (!open) return;
+    returnTo.current = (document.activeElement as HTMLElement | null) ?? null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       if (e.key !== 'Tab') return;
@@ -92,18 +96,38 @@ export function Modal({
       }
     };
     window.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+
+    /* scroll lock — compensate for the vanishing scrollbar so the page
+       underneath does not jump sideways when the sheet opens or closes */
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    const prevPad = body.style.paddingRight;
+    const gap = window.innerWidth - document.documentElement.clientWidth;
+    body.style.overflow = 'hidden';
+    if (gap > 0) body.style.paddingRight = `${gap}px`;
+
     const t = window.setTimeout(() => {
-      const focusable = ref.current?.querySelector<HTMLElement>(
-        'input,textarea,button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])'
-      );
-      focusable?.focus?.();
+      const target =
+        ref.current?.querySelector<HTMLElement>('[data-autofocus]') ??
+        ref.current?.querySelector<HTMLElement>('textarea,input,button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])');
+      target?.focus?.();
+      /* typing should land at the end of a restored draft */
+      if (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement) {
+        const n = target.value.length;
+        try {
+          target.setSelectionRange(n, n);
+        } catch {/* some inputs disallow selection */}
+      }
     }, 40);
+
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
+      body.style.overflow = prevOverflow;
+      body.style.paddingRight = prevPad;
       window.clearTimeout(t);
+      /* hand focus back to the control that opened the dialog */
+      const back = returnTo.current;
+      if (back && document.contains(back)) back.focus?.();
     };
   }, [open, onClose]);
 
@@ -146,7 +170,12 @@ export function Modal({
 
 export function Toast({ items, dismiss }: { items: { id: number; text: string; tone?: string; icon?: React.ReactNode }[]; dismiss: (id: number) => void }) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[max(96px,calc(env(safe-area-inset-bottom)+96px))] z-[120] flex flex-col items-center gap-2 px-4">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="false"
+      className="pointer-events-none fixed inset-x-0 bottom-[max(96px,calc(env(safe-area-inset-bottom)+96px))] z-[120] flex flex-col items-center gap-2 px-4"
+    >
       <AnimatePresence>
         {items.map((t) => (
           <motion.button

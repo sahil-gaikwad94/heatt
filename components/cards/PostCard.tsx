@@ -25,8 +25,8 @@ import { useStore } from '@/lib/store';
 import { cls, compact, plain, timeAgo } from '@/lib/util';
 import { Avatar, Chip } from '@/components/ui/primitives';
 import { HeatButton } from '@/components/heat/HeatButton';
-import { FireOverlay, burstSparks } from '@/components/heat/FireOverlay';
-import { tileIn } from '@/lib/motion';
+import { FireOverlay, burstFrom } from '@/components/heat/FireOverlay';
+import { EASE_OUT, tileIn } from '@/lib/motion';
 import type { Post } from '@/lib/feed';
 
 export function PostCard({
@@ -66,8 +66,9 @@ export function PostCard({
   const onHeat = (next: 1 | 2 | 3 | 0, meta: { ignited: boolean }) => {
     app.setHeat(post.id, next, { title: title ?? plain(post.text ?? '').slice(0, 46), author: post.authorHandle });
     if (meta.ignited) {
-      const host = cardRef.current?.parentElement ?? cardRef.current;
-      if (host && cardRef.current) burstSparks(host, { x: cardRef.current.offsetLeft + 40, y: cardRef.current.offsetTop + 10 }, 14);
+      const card = cardRef.current;
+      const host = card?.parentElement ?? card;
+      if (host && card) burstFrom(host, card, 14);
     }
   };
 
@@ -107,7 +108,7 @@ export function PostCard({
             {body && <p className="mt-2 line-clamp-2 text-[13.5px] leading-relaxed text-ink-dim">{plain(body)}</p>}
           </button>
         ) : (
-          <RichText text={post.text ?? ''} className="mt-3.5 text-[14.5px] leading-[1.62] text-ink/92" onTag={() => app.setPalette(true)} />
+          <RichText text={post.text ?? ''} className="mt-3.5 text-[14.5px] leading-[1.62] text-ink/92" onTag={(t) => app.go(`/explore?q=${encodeURIComponent(t.replace(/^#/, ''))}`)} />
         )}
 
         {post.media?.[0] && (
@@ -117,6 +118,7 @@ export function PostCard({
               alt={post.media[0].alt}
               className="aspect-[16/10] w-full object-cover transition-transform duration-[900ms] hover:scale-[1.03]"
               loading="lazy"
+              decoding="async"
             />
           </button>
         )}
@@ -186,7 +188,7 @@ const Shell = React.forwardRef<
       tabIndex={active ? -1 : undefined}
     >
       {children}
-      <FireOverlay active={burning} variant={feature ? 'full' : 'full'} />
+      <FireOverlay active={burning} variant="full" />
     </motion.article>
   );
 });
@@ -213,7 +215,16 @@ function FeatureBody({
   return (
     <>
       <button onClick={onOpen} className="ht-feature__media block w-full" aria-label={`Read ${post.title}`}>
-        <img src={post.cover} alt="" loading="lazy" />
+        {/* one slow settle on entry, then completely still */}
+        <motion.img
+          src={post.cover}
+          alt=""
+          loading="lazy"
+          initial={{ scale: 1.055, opacity: 0.55 }}
+          whileInView={{ scale: 1, opacity: 1 }}
+          viewport={{ once: true, margin: '-8% 0px' }}
+          transition={{ duration: 1.35, ease: EASE_OUT }}
+        />
         <span className="ht-feature__veil" />
         <span className="absolute left-4 top-4 flex items-center gap-2">
           <Chip tone="heat" as="span">
@@ -364,37 +375,54 @@ function LinkCard({ link }: { link: NonNullable<Post['link']> }) {
 }
 
 function Poll({ postId, poll }: { postId: string; poll: NonNullable<Post['poll']> }) {
-  const [voted, setVoted] = React.useState<number | null>(null);
-  const total = poll.options.reduce((a, o) => a + o.votes, 0) + (voted !== null ? 1 : 0);
+  /* your answer is stored, not just displayed — and tapping it again clears it */
+  const voted = useStore((s) => s.votes[postId]);
+  const hasVoted = typeof voted === 'number';
+  const total = poll.options.reduce((a, o) => a + o.votes, 0) + (hasVoted ? 1 : 0);
+
   return (
     <div className="mt-3.5 rounded-[var(--r-md)] border border-line p-3.5" role="group" aria-label={poll.question}>
-      <p className="text-[13.5px] font-semibold text-ink">{poll.question}</p>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[13.5px] font-semibold text-ink">{poll.question}</p>
+        <span className="ht-num shrink-0 text-[11px] text-ink-4">{compact(total)} votes</span>
+      </div>
       <div className="mt-3 space-y-2">
         {poll.options.map((o, i) => {
           const votes = o.votes + (voted === i ? 1 : 0);
           const pct = total ? Math.round((votes / total) * 100) : 0;
+          const mine = voted === i;
           return (
             <button
               key={`${postId}-${o.label}`}
-              onClick={() => setVoted(i)}
-              aria-pressed={voted === i}
-              className="relative block w-full overflow-hidden rounded-[var(--r-xs)] border border-line px-3 py-2 text-left transition-colors hover:border-line-2"
+              onClick={() => useStore.getState().castVote(postId, i)}
+              aria-pressed={mine}
+              className={cls(
+                'relative block w-full overflow-hidden rounded-[var(--r-xs)] border px-3 py-2 text-left transition-colors',
+                mine ? 'border-[var(--champ-line)]' : 'border-line hover:border-line-2'
+              )}
             >
-              {voted !== null && (
+              {hasVoted && (
                 <span
                   aria-hidden
-                  className="absolute inset-y-0 left-0 bg-ember-500/14"
-                  style={{ width: `${pct}%`, transition: 'width 640ms cubic-bezier(.22,1,.36,1)' }}
+                  className="absolute inset-y-0 left-0"
+                  style={{
+                    width: `${pct}%`,
+                    background: mine ? 'rgba(232,211,164,.16)' : 'rgba(255,255,255,.05)',
+                    transition: 'width 640ms cubic-bezier(.22,1,.36,1)',
+                  }}
                 />
               )}
               <span className="relative flex items-center justify-between text-[13px]">
-                <span className={voted === i ? 'font-semibold text-ink' : 'text-ink-2'}>{o.label}</span>
-                {voted !== null && <span className="ht-num text-[11.5px] text-ink-mute">{pct}%</span>}
+                <span className={cls(mine ? 'font-semibold text-ink' : 'text-ink-2')}>{o.label}</span>
+                {hasVoted && <span className="ht-num text-[11.5px] text-ink-mute">{pct}%</span>}
               </span>
             </button>
           );
         })}
       </div>
+      <p className="mt-2.5 text-[11px] text-ink-4">
+        {hasVoted ? 'Your answer is stored on this device. Tap it again to take it back.' : 'One tap to answer — nothing is sent anywhere.'}
+      </p>
     </div>
   );
 }
