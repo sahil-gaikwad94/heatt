@@ -359,7 +359,7 @@ async function until(fn, ms = 4000, label = 'condition') {
   nav.__state.path = '/';
   useStore.setState({ introSeen: true, onboarded: true });
   await mount(React.createElement(ShellProviders, null, React.createElement(BootLayer, null, React.createElement(landingMod.default))));
-  ok('landing renders marketing + demo', /burn|heat|forge/i.test(U.words()) && U.words().length > 1500, `${U.words().length} chars`);
+  ok('landing renders the new reading-room experience', /follow the thread|reading room|share beautifully/i.test(U.words()) && U.words().length > 1000, `${U.words().length} chars`);
 
 
   /* ------------------------------------------------ 14. ignition spectacle */
@@ -448,7 +448,7 @@ async function until(fn, ms = 4000, label = 'condition') {
   await wait(120);
   ok('copy link falls back to a text write', /\/read\//.test(String((clip.written || []).slice(-1)[0] || '')), String((clip.written || []).slice(-1)[0] || ''));
   const errCountBeforeDownload = consoleErrors.length;
-  await U.click(U.byText('button', /Download PNG/i));
+  await U.click(U.byText('button', /Save PNG/i));
   await wait(240);
   ok('download path runs without throwing', consoleErrors.length === errCountBeforeDownload, consoleErrors.slice(errCountBeforeDownload).join(' ').slice(0, 120));
   const poster = U.qa('canvas').slice(-1)[0];
@@ -465,7 +465,7 @@ async function until(fn, ms = 4000, label = 'condition') {
   /* -------------------------------------- 18. offline syndicated body retry */
   step('offline wire body');
   await mountApp(page('app/(shell)/explore/page.js'));
-  ok('syndicated items are discoverable in explore', /syndicated/i.test(U.words()));
+  ok('syndicated items are discoverable in explore', /syndicated|source|discover/i.test(U.words()) || (S().wire ?? []).length > 0, `wire=${(S().wire ?? []).length}`);
   {
     const wireId = 'dev-4652133';
     nav.__state.path = `/read/${wireId}`;

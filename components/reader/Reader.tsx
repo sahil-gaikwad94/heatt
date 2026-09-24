@@ -144,9 +144,9 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
   const remaining = Math.max(0, Math.round((post.minutes ?? 6) * (1 - pct / 100)));
 
   return (
-    <div ref={scrollRef} className="fixed inset-0 z-[120] overflow-y-auto overscroll-contain bg-[#050505]" style={{ animation: 'ht-read-in .6s cubic-bezier(.2,1,.3,1)' }}>
+    <div ref={scrollRef} className="reader-new fixed inset-0 z-[120] overflow-y-auto overscroll-contain" style={{ animation: 'ht-read-in .6s cubic-bezier(.2,1,.3,1)' }}>
       {/* ------------------------------- sticky chrome */}
-      <div className="sticky top-0 z-30 -mb-px border-b border-white/[.06] bg-[#050505]/82 backdrop-blur-2xl">
+      <div className="reader-new__bar sticky top-0 z-30 -mb-px backdrop-blur-2xl">
         <div className="mx-auto flex h-[54px] max-w-[1180px] items-center gap-2 px-3 sm:px-5">
           <button onClick={onClose} className="ht-btn ht-btn--ghost !px-2.5" aria-label="Close reader">
             ←
