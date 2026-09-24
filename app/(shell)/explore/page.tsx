@@ -43,6 +43,20 @@ function Explore() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
+  /* the URL carries the query too, so a search can be linked, reloaded or
+     shared — written straight to history so typing never re-renders the page */
+  React.useEffect(() => {
+    const id = window.setTimeout(() => {
+      const want = q.trim();
+      const url = new URL(window.location.href);
+      if ((url.searchParams.get('q') ?? '') === want) return;
+      if (want) url.searchParams.set('q', want);
+      else url.searchParams.delete('q');
+      window.history.replaceState(null, '', url.toString());
+    }, 420);
+    return () => window.clearTimeout(id);
+  }, [q]);
+
   /* a link can carry a query (?q=design) — a trait chip, a trending topic */
   React.useEffect(() => {
     const url = params?.get('q');

@@ -168,7 +168,13 @@ export function Modal({
 
 /* ------------------------------------------------------------------- Toast */
 
-export function Toast({ items, dismiss }: { items: { id: number; text: string; tone?: string; icon?: React.ReactNode }[]; dismiss: (id: number) => void }) {
+export function Toast({
+  items,
+  dismiss,
+}: {
+  items: { id: number; text: string; tone?: string; icon?: React.ReactNode; action?: { label: string; run: () => void } }[];
+  dismiss: (id: number) => void;
+}) {
   return (
     <div
       role="status"
@@ -178,10 +184,9 @@ export function Toast({ items, dismiss }: { items: { id: number; text: string; t
     >
       <AnimatePresence>
         {items.map((t) => (
-          <motion.button
+          <motion.div
             key={t.id}
             layout
-            onClick={() => dismiss(t.id)}
             initial={{ opacity: 0, y: 14, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -190,8 +195,24 @@ export function Toast({ items, dismiss }: { items: { id: number; text: string; t
             data-tone={t.tone ?? 'plain'}
           >
             {t.icon}
-            {t.text}
-          </motion.button>
+            <span className="min-w-0">{t.text}</span>
+            {t.action && (
+              <button
+                onClick={() => {
+                  t.action?.run();
+                  dismiss(t.id);
+                }}
+                className="ht-toast__action"
+              >
+                {t.action.label}
+              </button>
+            )}
+            <button onClick={() => dismiss(t.id)} className="ht-toast__x" aria-label="Dismiss">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </motion.div>
         ))}
       </AnimatePresence>
     </div>

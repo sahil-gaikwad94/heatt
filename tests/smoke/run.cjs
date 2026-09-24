@@ -323,6 +323,9 @@ async function until(fn, ms = 4000, label = 'condition') {
     ok('search is live', U.qa('.ht-card').length !== before || /dark/i.test(U.words()), `${before} → ${U.qa('.ht-card').length}`);
   }
   ok('writers are listed with their counts', /the house/.test(U.words()));
+  await wait(560);
+  ok('the search is written into the address', /q=dark/.test(window.location.search), window.location.search);
+  window.history.replaceState(null, '', '/explore');
 
   /* ----------------------------------------------------------- 9. library */
   step('library');
@@ -612,6 +615,25 @@ async function until(fn, ms = 4000, label = 'condition') {
   await U.key(window, 'n');
   await wait(200);
   ok('g then n still reaches Signals', JSON.stringify(nav.__nav).includes('notifications'), JSON.stringify(nav.__nav.slice(-1)));
+
+  step('keeps can be taken back');
+  nav.__state.path = '/feed';
+  await mountApp(page('app/(shell)/feed/page.js'));
+  const keepBtn = U.q('[aria-label="Keep in library"]');
+  ok('a card can be kept in one tap', !!keepBtn);
+  if (keepBtn) {
+    await U.click(keepBtn);
+    await wait(220);
+    const kept = Object.keys(S().saved);
+    ok('keeping registers in the library', kept.length >= 1, `${kept.length} kept`);
+    const undo = U.byText('button', /^Undo$/);
+    ok('the toast offers to take it back', !!undo);
+    if (undo) {
+      await U.click(undo);
+      await wait(220);
+      ok('undo really unkeeps it', Object.keys(S().saved).length === kept.length - 1 || Object.keys(S().saved).length === 0, JSON.stringify(Object.keys(S().saved)));
+    }
+  }
 
   step('the board keeps your place');
   await unmount();

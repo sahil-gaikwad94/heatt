@@ -125,10 +125,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === 'Escape') onClose();
-      if (e.key === 's' || e.key === 'S') {
-        useStore.getState().toggleSave(post.id);
-        app.toast(!saved ? 'Kept in your library' : 'Removed from your library', !saved ? 'heat' : 'plain');
-      }
+      if (e.key === 's' || e.key === 'S') app.toggleKeep(post.id);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -170,10 +167,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
           </span>
         </button>
         <button
-          onClick={() => {
-            useStore.getState().toggleSave(post.id);
-            app.toast(!saved ? 'Kept in your library' : 'Removed from your library', !saved ? 'heat' : 'plain');
-          }}
+          onClick={() => app.toggleKeep(post.id)}
           className="ht-icon-btn"
           data-active={saved || undefined}
           aria-label={saved ? 'Remove from library' : 'Keep in library'}
@@ -318,10 +312,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
               </button>
               <span className="flex-1" />
               <button
-                onClick={() => {
-                  useStore.getState().toggleSave(post.id);
-                  app.toast(!saved ? 'Kept in your library' : 'Removed from your library', !saved ? 'heat' : 'plain');
-                }}
+                onClick={() => app.toggleKeep(post.id)}
                 className="ht-icon-btn"
                 data-active={saved || undefined}
                 aria-label={saved ? 'Remove from library' : 'Keep in library'}

@@ -16,7 +16,14 @@ import { loadWire, type WireItem } from './syndicate';
 import { getUser } from './seed/users';
 import type { HeatLevel, User } from './types';
 
-export type Toast = { id: number; text: string; tone?: 'heat' | 'cool' | 'plain'; icon?: React.ReactNode };
+export type Toast = {
+  id: number;
+  text: string;
+  tone?: 'heat' | 'cool' | 'plain';
+  icon?: React.ReactNode;
+  /** one tap that takes the action back — used for keeps */
+  action?: { label: string; run: () => void };
+};
 
 export type Ctx = {
   posts: Post[];
@@ -43,7 +50,9 @@ export type Ctx = {
   igniting: Record<string, number>;
   setHeat: (id: string, level: HeatLevel, opts?: { title?: string; author?: string }) => void;
 
-  toast: (text: string, tone?: Toast['tone'], icon?: React.ReactNode) => void;
+  toast: (text: string, tone?: Toast['tone'], icon?: React.ReactNode, action?: Toast['action']) => void;
+  /** keep or unkeep, with an undo on the toast */
+  toggleKeep: (id: string) => void;
   toasts: Toast[];
   dismissToast: (id: number) => void;
 
@@ -208,12 +217,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /* ------------------------------------------------------------- toasts */
-  const toast = React.useCallback((text: string, tone: Toast['tone'] = 'plain', icon?: React.ReactNode) => {
-    const id = Date.now() + Math.floor(Math.random() * 1000);
-    setToasts((t) => [...t.slice(-2), { id, text, tone, icon }]);
-    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000);
-  }, []);
+  const toast = React.useCallback(
+    (text: string, tone: Toast['tone'] = 'plain', icon?: React.ReactNode, action?: Toast['action']) => {
+      const id = Date.now() + Math.floor(Math.random() * 1000);
+      setToasts((t) => [...t.slice(-2), { id, text, tone, icon, action }]);
+      /* anything with an undo gets longer to be undone */
+      window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), action ? 6000 : 3000);
+    },
+    []
+  );
   const dismissToast = React.useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+
+  const toggleKeep = React.useCallback(
+    (id: string) => {
+      const store = useStore.getState();
+      const was = !!store.saved[id];
+      store.toggleSave(id);
+      const undo = { label: 'Undo', run: () => useStore.getState().toggleSave(id) };
+      if (was) toast('Removed from your library', 'plain', undefined, undo);
+      else toast('Kept — it is waiting in your library', 'heat', undefined, undo);
+    },
+    [toast]
+  );
 
   const adoptNew = React.useCallback(() => {
     setWire((cur) => {
@@ -337,6 +362,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     igniting,
     setHeat,
     toast,
+    toggleKeep,
     toasts,
     dismissToast,
     composerOpen,

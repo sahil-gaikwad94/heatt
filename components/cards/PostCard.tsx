@@ -139,10 +139,7 @@ export function PostCard({
           </button>
           <span className="flex-1" />
           <button
-            onClick={() => {
-              useStore.getState().toggleSave(post.id);
-              app.toast(saved ? 'Removed from your library' : 'Kept in your library', saved ? 'plain' : 'heat');
-            }}
+            onClick={() => app.toggleKeep(post.id)}
             className="ht-icon-btn !h-9 !w-9"
             data-active={saved || undefined}
             aria-label={saved ? 'Remove from library' : 'Keep in library'}
@@ -269,10 +266,7 @@ function SaveButton({ id, saved }: { id: string; saved: boolean }) {
   const app = useApp();
   return (
     <button
-      onClick={() => {
-        useStore.getState().toggleSave(id);
-        app.toast(saved ? 'Removed from your library' : 'Kept in your library', saved ? 'plain' : 'heat');
-      }}
+      onClick={() => app.toggleKeep(id)}
       className="ht-icon-btn !h-9 !w-9"
       data-active={saved || undefined}
       aria-label={saved ? 'Remove from library' : 'Keep in library'}
@@ -464,8 +458,7 @@ export function CardMenu({ post }: { post: Post }) {
             >
               <MenuRow
                 onClick={() => {
-                  useStore.getState().toggleSave(post.id);
-                  app.toast(saved ? 'Removed from your library' : 'Kept in your library', saved ? 'plain' : 'heat');
+                  app.toggleKeep(post.id);
                   setOpen(false);
                 }}
               >
