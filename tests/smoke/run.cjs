@@ -421,6 +421,29 @@ async function until(fn, ms = 4000, label = 'condition') {
   nav.__state.path = '/feed';
   await mountApp(page('app/(shell)/feed/page.js'));
 
+  /* the board remembers how you last looked at it */
+  const notesTab = U.byText('button', /^Notes$/);
+  ok('the board offers view tabs', !!notesTab);
+  if (notesTab) {
+    await U.click(notesTab);
+    await wait(180);
+    const saved = JSON.parse(window.localStorage.getItem('heatt-board-v1') || '{}');
+    ok('the chosen view is written to this device', saved.tab === 'notes', JSON.stringify(saved));
+    await mountApp(page('app/(shell)/feed/page.js'));
+    await wait(200);
+    const backAgain = U.qa('button').find(
+      (b) =>
+        (b.textContent || '').trim() === 'Notes' &&
+        (b.getAttribute('aria-selected') === 'true' || b.getAttribute('aria-pressed') === 'true')
+    );
+    ok('the view comes back on the next visit', !!backAgain);
+    const allTab = U.byText('button', /^All$/);
+    if (allTab) {
+      await U.click(allTab);
+      await wait(160);
+    }
+  }
+
   /* a poll answer is a real choice on this device, not a painted number */
   const group = U.q('[role="group"][aria-label="What should the house write next?"]');
   ok('a house note carries a real poll', !!group);

@@ -71,6 +71,18 @@ export type Ctx = {
   ready: boolean;
 };
 
+const BOARD_KEY = 'heatt-board-v1';
+
+/** The board remembers its view between visits — tab and ranking mode. */
+function readBoard(): { tab?: Tab; mode?: RankMode } {
+  try {
+    const raw = localStorage.getItem(BOARD_KEY);
+    return raw ? (JSON.parse(raw) as { tab?: Tab; mode?: RankMode }) : {};
+  } catch {
+    return {};
+  }
+}
+
 const AppCtx = React.createContext<Ctx | null>(null);
 export const useApp = () => {
   const c = React.useContext(AppCtx);
@@ -86,6 +98,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true);
   const [tab, setTab] = React.useState<Tab>('all');
   const [mode, setMode] = React.useState<RankMode>('for-you');
+  const boardReady = React.useRef(false);
+
+  /* restore the remembered view after mount (never during SSR), then keep it */
+  React.useEffect(() => {
+    const b = readBoard();
+    if (b.tab) setTab(b.tab);
+    if (b.mode) setMode(b.mode);
+    boardReady.current = true;
+  }, []);
+
+  React.useEffect(() => {
+    if (!boardReady.current) return;
+    try {
+      localStorage.setItem(BOARD_KEY, JSON.stringify({ tab, mode }));
+    } catch {/* storage can be full or blocked — the board still works */}
+  }, [tab, mode]);
   const [query, setQuery] = React.useState('');
   const [igniting, setIgniting] = React.useState<Record<string, number>>({});
   const [toasts, setToasts] = React.useState<Toast[]>([]);
