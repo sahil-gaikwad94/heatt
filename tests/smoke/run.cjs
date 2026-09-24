@@ -698,6 +698,35 @@ async function until(fn, ms = 4000, label = 'condition') {
     await wait(160);
   }
 
+  step('a story gets a face');
+  nav.__state.path = '/feed';
+  await mountApp(page('app/(shell)/feed/page.js'));
+  const writeStory = U.q('[aria-label="Write something"]');
+  await U.click(writeStory);
+  await wait(240);
+  const storyTab = U.byText('button', /^Story$/);
+  ok('the composer has a story mode', !!storyTab);
+  if (storyTab) {
+    await U.click(storyTab);
+    await wait(200);
+    ok('a story can pick a cover before it is published', U.qa('[aria-label^="Cover:"]').length >= 4, `${U.qa('[aria-label^="Cover:"]').length} covers`);
+    await U.type(U.q('[aria-label="Story title"]'), 'A story that needed a face');
+    const body = U.qa('textarea').find((t) => /Markdown works/.test(t.getAttribute('placeholder') || ''));
+    if (body) await U.type(body, '## A section\n\nSome prose with **weight** to it, long enough to publish.');
+    const pick = U.q('[aria-label="Cover: Signal Grid"]');
+    if (pick) {
+      await U.click(pick);
+      await wait(180);
+      ok('the chosen cover is marked', pick.getAttribute('aria-pressed') === 'true');
+    }
+    const publishStory = U.byText('button', /Publish story/i);
+    ok('the publish control is ready', !!publishStory && !publishStory.disabled, publishStory ? `disabled=${publishStory.disabled}` : 'missing');
+    await U.click(publishStory);
+    await wait(420);
+    const story = S().myArticles[0];
+    ok('the story is published with its artwork', !!story && story.cover === '/art/signal-grid.jpg', String(story && story.cover));
+  }
+
   step('a note has an address');
   const shareable = S().mySparks[0];
   if (shareable) {

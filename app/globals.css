@@ -1835,6 +1835,34 @@ button.ht-stat:hover {
   border-color: var(--line-3);
 }
 
+/* --------------------------------------------------------- cover picker */
+
+.ht-coverpick {
+  position: relative;
+  width: 56px;
+  height: 38px;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--line-2);
+  background: rgba(255, 255, 255, 0.03);
+  display: grid;
+  place-items: center;
+  transition:
+    border-color var(--t-micro) var(--ease),
+    transform var(--t-micro) var(--ease);
+}
+.ht-coverpick:hover {
+  border-color: var(--line-3);
+}
+.ht-coverpick--on {
+  border-color: var(--champ);
+  box-shadow: 0 0 0 1px rgba(232, 211, 164, 0.35);
+}
+.ht-coverpick img {
+  pointer-events: none;
+}
+
 /* ------------------------------------------------- new-on-the-wire strip */
 
 .ht-newstrip {

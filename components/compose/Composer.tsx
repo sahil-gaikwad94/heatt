@@ -18,7 +18,7 @@ import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
 import { Modal } from '@/components/ui/primitives';
 import { Markdown, parseMarkdown, type ParsedDoc } from '@/lib/markdown';
-import { cls, leadSentence, plain, timeAgo } from '@/lib/util';
+import { cls, coverDataUri, leadSentence, plain, timeAgo } from '@/lib/util';
 import { EASE_OUT } from '@/lib/motion';
 
 type Mode = 'note' | 'story';
@@ -29,8 +29,15 @@ type Draft = {
   title: string;
   dek: string;
   tags: string;
+  cover?: string;
   at: number;
 };
+
+/* Six artworks and three generated fields. A published story should look
+   deliberate in the grid, and this is the whole choice: no upload, nothing
+   to crop, no broken image if the file moves. */
+const COVERS = ['/art/obsidian-atelier.jpg', '/art/signal-grid.jpg', '/art/story-canvas.jpg', '/art/graphite-lattice.jpg'];
+const COVER_LABELS = ['Obsidian Atelier', 'Signal Grid', 'Story Canvas', 'Graphite Lattice'];
 
 const DRAFT_KEY = 'heatt-draft-v1';
 
@@ -63,6 +70,7 @@ export function Composer() {
   const [title, setTitle] = React.useState('');
   const [dek, setDek] = React.useState('');
   const [tags, setTags] = React.useState('');
+  const [cover, setCover] = React.useState<string | undefined>(undefined);
   const [preview, setPreview] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [restoredAt, setRestoredAt] = React.useState<number | null>(null);
@@ -85,6 +93,7 @@ export function Composer() {
       setTitle(draft.title ?? '');
       setDek(draft.dek ?? '');
       setTags(draft.tags ?? '');
+      setCover(draft.cover);
       setRestoredAt(draft.at ?? null);
     } else {
       setMode(seed.kind === 'forge' ? 'story' : seed.kind === 'spark' ? 'note' : seed.article ? 'story' : 'note');
@@ -92,6 +101,7 @@ export function Composer() {
       setTitle(seed.article?.title ?? '');
       setDek(seed.article?.dek ?? '');
       setTags((seed.article?.tags ?? []).join(', '));
+      setCover(seed.article?.cover);
       setRestoredAt(null);
     }
     setPreview(false);
@@ -104,11 +114,11 @@ export function Composer() {
   React.useEffect(() => {
     if (!open || !dirty) return;
     const id = window.setTimeout(
-      () => writeDraft({ mode, body, title, dek, tags, at: Date.now() }),
+      () => writeDraft({ mode, body, title, dek, tags, cover, at: Date.now() }),
       400
     );
     return () => window.clearTimeout(id);
-  }, [open, dirty, mode, body, title, dek, tags]);
+  }, [open, dirty, mode, body, title, dek, tags, cover]);
 
   const doc: ParsedDoc | null = React.useMemo(
     () => (preview && mode === 'story' ? parseMarkdown(body) : null),
@@ -136,7 +146,7 @@ export function Composer() {
         dek: dek.trim() || leadSentence(body, 140),
         author: store.me?.handle ?? 'you',
         tags: tagList,
-        cover: undefined,
+        cover,
         markdown: body.trim(),
       });
       app.toast('Story published — it is the first card on Fresh', 'heat');
@@ -150,7 +160,7 @@ export function Composer() {
     app.setTab('all');
     app.setMode('fresh');
     app.push('/feed');
-  }, [valid, tags, mode, body, title, dek, app]);
+  }, [valid, tags, mode, body, title, dek, cover, app]);
 
   /* --------------------------------------------------------------- close */
   const close = React.useCallback(() => {
@@ -223,6 +233,7 @@ export function Composer() {
                     setTitle('');
                     setDek('');
                     setTags('');
+                    setCover(undefined);
                     setRestoredAt(null);
                   }}
                   className="ht-chip"
@@ -251,6 +262,47 @@ export function Composer() {
                     className="ht-input !h-auto border-0 !bg-transparent px-0 text-[14px] text-ink-2 focus:!bg-transparent"
                   />
                   <div className="ht-hairline" />
+                  <div>
+                    <span className="ht-label block !text-[9.5px] text-ink-4">cover</span>
+                    <div className="ht-no-scrollbar mt-2 flex items-center gap-2 overflow-x-auto pb-1">
+                      <button
+                        onClick={() => setCover(undefined)}
+                        aria-pressed={!cover}
+                        className={cls('ht-coverpick', !cover && 'ht-coverpick--on')}
+                        aria-label="No cover"
+                      >
+                        <span className="text-[10px] font-semibold tracking-tight text-ink-4">none</span>
+                      </button>
+                      <button
+                        onClick={() => setCover(coverDataUri(title + Date.now()))}
+                        aria-pressed={!!cover && cover.startsWith('data:')}
+                        className={cls('ht-coverpick', !!cover && cover.startsWith('data:') && 'ht-coverpick--on')}
+                        aria-label="Generated cover"
+                      >
+                        <span
+                          className="block h-full w-full"
+                          style={{ background: 'linear-gradient(135deg, #6BA2FF 0%, #1B2A45 46%, #E8D3A4 100%)' }}
+                        />
+                      </button>
+                      {COVERS.map((c, i) => (
+                        <button
+                          key={c}
+                          onClick={() => setCover(c)}
+                          aria-pressed={cover === c}
+                          className={cls('ht-coverpick', cover === c && 'ht-coverpick--on')}
+                          aria-label={`Cover: ${COVER_LABELS[i]}`}
+                          title={COVER_LABELS[i]}
+                        >
+                          <img src={c} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-ink-4">
+                      {cover
+                        ? 'This artwork heads the card on the board and the reader.'
+                        : 'A story without artwork still reads fine — it just sits lower on the board.'}
+                    </p>
+                  </div>
                 </div>
               )}
 
