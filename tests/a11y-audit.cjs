@@ -169,27 +169,25 @@ async function visit(label, rel, opts = {}) {
   useStore.setState({
     introSeen: true,
     onboarded: true,
-    me: { handle: 'auditor', name: 'Style Auditor', bio: 'Checking a11y.', avatar: null, tags: [], followers: 12, following: 3, thermalMass: 1.1 },
+    me: { handle: 'auditor', name: 'Style Auditor', bio: 'Checking a11y.', joined: '2026-01-04', traits: ['design'] },
     heat: { 'sp-01': { level: 2, at: Date.now() } },
-    saved: { 'orig-heat-diffusion': Date.now() },
-    reads: { 'orig-heat-diffusion': { pct: 62, at: Date.now() } },
-    follows: ['nyra'],
-    notifications: [{ id: 'n1', type: 'ignite', actor: 'nyra', text: 'ignited your spark', at: Date.now() - 3600e3, read: false }],
+    saved: { 'orig-heat': Date.now() },
+    reads: { 'orig-heat': { pct: 62, at: Date.now() } },
+    follows: ['heatt'],
     activity: { [new Date().toISOString().slice(0, 10)]: { reads: 3, heats: 5, ignites: 2, posts: 1, minutes: 12 } },
   });
 
   console.log('A11Y AUDIT — checking rendered DOM for accessibility issues\n');
 
   await visit('feed', 'app/(shell)/feed/page.js', { path: '/feed' });
-  await visit('reader', 'app/(shell)/read/[id]/page.js', { path: '/read/orig-heat-diffusion', params: { id: 'orig-heat-diffusion' } });
+  await visit('reader', 'app/(shell)/read/[id]/page.js', { path: '/read/orig-heat', params: { id: 'orig-heat' } });
   await visit('offline reader', 'app/(shell)/read/[id]/page.js', { path: '/read/dev-4652133', params: { id: 'dev-4652133' } });
   await visit('explore', 'app/(shell)/explore/page.js', { path: '/explore' });
   await visit('library', 'app/(shell)/library/page.js', { path: '/library' });
   await visit('notifications', 'app/(shell)/notifications/page.js', { path: '/notifications' });
   await visit('settings', 'app/(shell)/settings/page.js', { path: '/settings' });
-  await visit('heatmap', 'app/(shell)/heatmap/page.js', { path: '/heatmap' });
   await visit('profile', 'app/(shell)/u/[handle]/page.js', { path: '/u/auditor', params: { handle: 'auditor' } });
-  await visit('other profile', 'app/(shell)/u/[handle]/page.js', { path: '/u/nyra', params: { handle: 'nyra' } });
+  await visit('other profile', 'app/(shell)/u/[handle]/page.js', { path: '/u/heatt', params: { handle: 'heatt' } });
   await visit('landing', 'app/page.js', { path: '/' });
 
   // Overlays

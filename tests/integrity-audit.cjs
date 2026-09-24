@@ -258,7 +258,7 @@ else warn(`art total ${(totalArtSize/1024/1024).toFixed(1)}MB — consider optim
 console.log('\n▸ store');
 try {
   const storeSrc = fs.readFileSync(path.join(ROOT, 'lib/store.ts'), 'utf8');
-  if (storeSrc.includes('heatt-store-v1')) ok('store uses versioned key heatt-store-v1');
+  if (storeSrc.includes('heatt-store-v2')) ok('store uses versioned key heatt-store-v2');
   else fail('store key not versioned');
 
   if (storeSrc.includes('persist')) ok('store uses persist');
@@ -275,8 +275,10 @@ console.log('\n▸ heat model constants');
 try {
   const heatSrc = fs.readFileSync(path.join(ROOT, 'lib/heat.ts'), 'utf8');
   if (heatSrc.includes('τ') || heatSrc.includes('9')) ok('heat model mentions τ=9h');
-  if (heatSrc.includes('HOLD_MS') && heatSrc.includes('2450')) ok('HOLD_MS includes 2450ms ignition');
+  if (heatSrc.includes('HOLD_MS') && heatSrc.includes('2200')) ok('HOLD_MS includes the 2.2s ignition threshold');
   else fail('HOLD_MS missing ignition timing');
+  if (!/thermalMass|diffuse|cliffIndex/.test(heatSrc)) ok('no thermal-mass physics left in the model');
+  else fail('thermal-mass physics still in the model');
 
   if (heatSrc.includes('LEVEL_META')) ok('LEVEL_META defined');
 } catch (e) {

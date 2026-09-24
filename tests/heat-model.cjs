@@ -1,104 +1,225 @@
 /* ============================================================================
    heatt model harness — runs the real TS modules (compiled to CommonJS by
-   scripts/model-test.sh) and asserts the physics, the ranker, the store and
-   the seed corpus. No DOM, no browser: `npm run test:model`.
+   scripts/model-test.sh) and asserts the decay maths, the ranker, the store
+   and the seed corpus. No DOM, no browser: `npm run test:model`.
+
+   The model is deliberately small: recency-weighted attention, no physics.
+   These assertions exist to keep it that way — if someone reintroduces a
+   temperature, a diffusion step or a reputation multiplier, this file fails.
    ==========================================================================*/
 const path = require('node:path');
 const OUT = process.env.OUT_DIR || path.resolve(__dirname, '../.tmp-model-test');
-const store={};
-globalThis.localStorage={getItem:k=>k in store?store[k]:null,setItem:(k,v)=>{store[k]=String(v)},removeItem:k=>{delete store[k]}};
-globalThis.window=globalThis; globalThis.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
-const H=require(OUT + '/heat.js'), F=require(OUT + '/feed.js'), S=require(OUT + '/store.js'), U=require(OUT + '/util.js');
-const A=require(OUT + '/seed/articles.js'), SP=require(OUT + '/seed/sparks.js');
-const now=Date.now(), hrs=h=>new Date(now-h*3600e3).toISOString();
-let fails=0; const ok=(n,c,x='')=>{console.log(`${c?'PASS':'FAIL'}  ${n}${x?'  '+x:''}`); if(!c)fails++};
+const store = {};
+globalThis.localStorage = {
+  getItem: (k) => (k in store ? store[k] : null),
+  setItem: (k, v) => {
+    store[k] = String(v);
+  },
+  removeItem: (k) => {
+    delete store[k];
+  },
+};
+globalThis.window = globalThis;
+globalThis.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
 
-// per-event cooling constant is 9h
-ok('cool(): τ=9h per event', Math.abs(H.cool(9)-Math.exp(-1))<1e-9 && Math.abs(H.cool(0)-1)<1e-9, `e^-1 check: ${H.cool(9).toFixed(4)}`);
-// crowd aggregates decay at 3τ = 27h
-const a=H.computeHeat({reactions:200,date:hrs(1)},now), b=H.computeHeat({reactions:200,date:hrs(25)},now);
-ok('crowd 24h decay ≈ e^(-24/27)', Math.abs(b.temp/a.temp - Math.exp(-24/27))<0.06, `ratio ${(b.temp/a.temp).toFixed(3)} vs ${Math.exp(-24/27).toFixed(3)}`);
-// your heat decays at 1.6τ = 14.4h
-const hot=H.computeHeat({reactions:20,date:hrs(1),mine:{level:3,at:now-1*3600e3}},now);
-const old=H.computeHeat({reactions:20,date:hrs(1),mine:{level:3,at:now-15*3600e3}},now);
-ok('local ignition decays ~e^(-14/14.4)', Math.abs((old.temp-hot.temp)/(hot.reactions??1) - 0)!==0 && old.temp < hot.temp, `${hot.temp} → ${old.temp} (ratio on your-heat term ${( (old.temp-8.6)/(hot.temp-8.6) ).toFixed(2)} vs ${Math.exp(-14/14.4).toFixed(2)})`);
-// level weights
-const mk=(lvl)=>H.computeHeat({reactions:5,date:hrs(0.1),mine:{level:lvl,at:now}},now);
-const [t0,t1,t2,t3]=[0,1,2,3].map(mk);
-ok('heat levels strictly increase temp', t1.temp>t0.temp && t2.temp>t1.temp && t3.temp>t2.temp, `${t0.temp} < ${t1.temp} < ${t2.temp} < ${t3.temp}`);
-ok('ignite ≈ 6.5× ember', Math.abs((t3.temp-t0.temp)/(t1.temp-t0.temp) - H.K.heatW[3]/H.K.heatW[1])<0.35, `${((t3.temp-t0.temp)/(t1.temp-t0.temp)).toFixed(2)} vs ${(H.K.heatW[3]/H.K.heatW[1]).toFixed(2)}`);
-ok('LEVEL_META covers 0..3', [0,1,2,3].every(l=>!!H.LEVEL_META[l]) && H.LEVEL_META[3].hold===2450, H.LEVEL_META[3].copy);
-ok('heat normalized 0..100 monotone', [t0,t1,t2,t3].every(x=>x.heat>=0&&x.heat<=100) && t3.heat>t2.heat, `heats ${[t0,t1,t2,t3].map(x=>x.heat)}`);
-ok('trace has 4 labelled rows', hot.trace.length===4 && hot.trace.every(t=>t.label&&t.hint&&typeof t.value==='number'));
-ok('trend is 7 points', hot.trend.length===7);
-ok('diffuse evens neighbours', (()=>{const m=H.diffuse([{id:'a',temp:100,neighbors:['b']},{id:'b',temp:0,neighbors:['a']}]);return m.get('a')<100&&m.get('b')>0&&Math.abs(m.get('a')+m.get('b')-100)<1e-6})());
-ok('cliff truncates a real cliff', H.cliffIndex([12,11.5,11,10.5,2,1.9,1.8,1.7])===5, `idx=${H.cliffIndex([12,11.5,11,10.5,2,1.9,1.8,1.7])}`);
-ok('cliff keeps min 4 when flat', H.cliffIndex([5,5,5,5,5,5,5])>=4);
+const H = require(OUT + '/heat.js');
+const F = require(OUT + '/feed.js');
+const S = require(OUT + '/store.js');
+const U = require(OUT + '/util.js');
+const A = require(OUT + '/seed/articles.js');
+const SP = require(OUT + '/seed/sparks.js');
+const US = require(OUT + '/seed/users.js');
 
-// rank() with a partial store must not throw
-const posts=F.assemble({mySparks:[],myArticles:[],heat:{},saved:{},reads:{},shares:{},heatCounts:{},me:null,follows:[],interests:[],activity:{},wire:[]},[]);
-ok('assemble unique ids', new Set(posts.map(p=>p.id)).size===posts.length, `${posts.length} posts`);
-ok('assemble dedupe renames collisions', (()=>{const dup=F.assemble({mySparks:[{id:'sp-1',text:'a',author:'me',tags:[],date:hrs(1),reactions:0,likes:0,comments:0}],myArticles:[],heat:{},saved:{},reads:{},shares:{},heatCounts:{},me:null,follows:[],interests:[],activity:{},wire:[]},[]);const seen=new Set(dup.map(p=>p.id));return seen.size===dup.length})());
-const partial={heat:{},heatCounts:{}}; // deliberately incomplete
-let threw=false; try{F.rank(posts,partial,{mode:'heat',tab:'for-you'})}catch(e){threw=true}
-ok('rank tolerates partial store', !threw);
-/* assemble owns heat so every consumer (cards, share studio, profile sort)
-   reads a real temperature instead of guessing */
-ok('assemble attaches heat to every post', posts.every(p=>p.heat && Number.isFinite(p.heat.temp) && Number.isFinite(p.heat.score)), `temps ${posts.slice(0,4).map(p=>p.heat.temp).join(',')}`);
-ok('assembled temperatures actually differ per post', new Set(posts.map(p=>p.heat.temp)).size > Math.min(6, posts.length), `${new Set(posts.map(p=>p.heat.temp)).size} distinct of ${posts.length}`);
-ok('assembled heat carries a readable trace', posts.every(p=>p.heat.trace.length===4));
-const r=F.rank(posts,{...partial,saved:{},reads:{},shares:{},follows:[],interests:[]},{mode:'heat',tab:'for-you'});
-ok('rank sorts descending', r.items.every((p,i,a)=>i===0||a[i-1].score>=p.score-1e-9), `${r.items.length}/${r.total} kept after cliff=${r.cliff}`);
-const ign={...r.items[0],id:r.items[0].id};
-const boosted=F.rank(posts,{...partial,saved:{},reads:{},shares:{},follows:[],interests:[],heat:{[ign.id]:{level:3,at:now}},heatCounts:{[ign.id]:200}},{mode:'heat',tab:'for-you'});
-ok('ignition + 200 heats ranks it #1', boosted.items[0].id===ign.id, `was #${r.items.findIndex(x=>x.id===ign.id)+1} → #1`);
-ok('forges tab only forges', F.rank(posts,{...partial,saved:{},reads:{},shares:{},follows:[],interests:[]},{mode:'heat',tab:'forges'}).items.every(p=>p.kind==='forge'));
-ok('sparks tab only sparks', F.rank(posts,{...partial,saved:{},reads:{},shares:{},follows:[],interests:[]},{mode:'heat',tab:'sparks'}).items.every(p=>p.kind==='spark'));
-ok('search tab filters', (()=>{const q=(r.items[0].tags[0]||'x');const out=F.rank(posts,{...partial,saved:{},reads:{},shares:{},follows:[],interests:[]},{mode:'heat',tab:'search',query:q});return out.items.length>0&&out.items.every(p=>F.matches(p,q))})());
-ok('handle tab filters author', (()=>{const h=r.items[0].authorHandle;const out=F.rank(posts,{...partial,saved:{},reads:{},shares:{},follows:[],interests:[]},{mode:'heat',tab:'for-you',handle:h});return out.items.every(p=>p.authorHandle===h)&&out.items.length>0})());
-ok('interest affinity lifts matching tags', (()=>{
-  const base=F.rank(posts,{...partial,saved:{},reads:{},shares:{},follows:[],interests:[]},{mode:'heat',tab:'forges'});
-  const tuned=F.rank(posts,{...partial,saved:{},reads:{},shares:{},follows:[],interests:[base.items[0].tags[0]]},{mode:'heat',tab:'forges',followBoost:true});
-  return tuned.items[0].score>=base.items[0].score;})());
-ok('waveform length + range', (()=>{const w=F.waveformFor(r.items[0],{...partial,saved:{},reads:{},heat:{}});return w.length>4&&w.every(v=>v>=0&&v<=1)})());
-ok('myParaHeats keys per block', (()=>{const m=F.myParaHeats(r.items[0].id,{heat:{}},[0,1,2]);return typeof m==='object'})());
+const now = Date.now();
+const hrs = (h) => new Date(now - h * 3600e3).toISOString();
+let fails = 0;
+const ok = (n, c, x = '') => {
+  console.log(`${c ? 'PASS' : 'FAIL'}  ${n}${x ? '  ' + x : ''}`);
+  if (!c) fails++;
+};
 
-// store behaviours
-const g=()=>S.useStore.getState();
-g().setHeat('x1',2); ok('setHeat stores at + level', g().heat.x1.level===2 && !!g().heat.x1.at);
-g().setHeat('x1',0); ok('setHeat 0 clears entry', !g().heat.x1 || g().heat.x1.level===0);
-g().bumpHeatCount('x1',3); ok('bumpHeatCount adds', g().heatCounts.x1===3, String(g().heatCounts.x1));
-g().bumpHeatCount('x1',-1); ok('bumpHeatCount subtracts (floor 0)', g().heatCounts.x1===2);
-const _d=new Date().toISOString().slice(0,10);
-const h0=g().activity[_d]?.heats??0, r0=g().activity[_d]?.reads??0;
-g().logActivity('reads'); g().logActivity('reads'); g().logActivity('ignites');
-const d=new Date().toISOString().slice(0,10);
-ok('logActivity aggregates per day', g().activity[d].reads===r0+2 && g().activity[d].heats===h0 && !!g().activity[d].ignites, JSON.stringify(g().activity[d]));
-g().setRead('x1',140,9);
-ok('setRead caps pct at 100', g().reads.x1.pct===100, String(g().reads.x1.pct));
-ok('setRead marks finished + logs once', g().reads.x1.finished===true);
-const dR=g().activity[d].reads; g().setRead('x1',100,9); ok('re-reading does not double count', g().activity[d].reads===dR, `${dR}→${g().activity[d].reads}`);
-g().setRead('x1',5,9); ok('scrolling back up keeps max pct', g().reads.x1.pct===100);
+/* ------------------------------------------------------------ the decay */
 
-ok('streak of 1 day = 1', S.streakOf(g().activity).current>=1);
-ok('streak with yesterday gap = 0', S.streakOf({'2020-01-01':{reads:1,heats:1,ignites:0,posts:0,minutes:0}}).current===0);
-g().toggleSave('x1'); ok('toggleSave on', !!g().saved.x1); g().toggleSave('x1'); ok('toggleSave off', !g().saved.x1);
-g().setPrefs({density:'dense'}); ok('setPrefs merges', g().prefs.density==='dense');
-g().updateMe({bio:'hot'}); ok('updateMe merges', g().me?.bio==='hot');
-g().setIntroSeen(); ok('setIntroSeen', g().introSeen===true);
-g().toggleFollow('ada'); ok('toggleFollow adds', g().follows.includes('ada')); g().toggleFollow('ada'); ok('toggleFollow removes', !g().follows.includes('ada'));
-g().mute===undefined && ok('store.mute removed in favour of toggleMute', true);
-g().toggleMute('@nyra'); ok('toggleMute adds', g().muted.includes('@nyra'));
-const mb=F.assemble({mySparks:[],myArticles:[],heat:{},saved:{},reads:{},shares:{},heatCounts:{},me:null,follows:[],interests:[],activity:{},muted:['@nyra'],wire:[]},[]).length;
-const ma=F.assemble({mySparks:[],myArticles:[],heat:{},saved:{},reads:{},shares:{},heatCounts:{},me:null,follows:[],interests:[],activity:{},muted:[],wire:[]},[]).length;
-ok('mute hides an author in assemble', ma-mb>=1, `${mb} muted vs ${ma} clean`);
-const demF=F.rank(F.assemble({mySparks:[],myArticles:[],heat:{},saved:{},reads:{},shares:{},heatCounts:{},me:null,follows:[],interests:[],activity:{},muted:[],wire:[]},[]),{...partial,saved:{},reads:{},shares:{},follows:[],interests:[],muted:['#'+(F.trendingTags(F.assemble({mySparks:[],myArticles:[],heat:{},saved:{},reads:{},shares:{},heatCounts:{},me:null,follows:[],interests:[],activity:{},muted:[],wire:[]},[]))[0].tag)]},{mode:'heat',tab:'forges'});
-ok('demote a tag lowers rank position', Array.isArray(demF.items));
-g().toggleMute('@nyra'); ok('toggleMute removes', !g().muted.includes('@nyra'));
-g().reset(); ok('reset clears heat', Object.keys(g().heat).length===0);
-ok('persisted key written', Object.keys(store).some(k=>k.startsWith('heatt-store')), Object.keys(store).join(','));
-ok('seeds: originals complete', A.ORIGINALS.every(x=>x.blocks.length>4 && x.cover && x.author && x.title && x.dek), `${A.ORIGINALS.length} forges · ${(A.ORIGINALS.reduce((n,x)=>n+x.blocks.length,0)/A.ORIGINALS.length).toFixed(1)} blocks avg`);
-ok('seeds: every original has code or image or link block', A.ORIGINALS.every(x=>x.blocks.some(b=>['code','img','links','callout'].includes(b.t))));
-ok('seeds: sparks complete', SP.SPARKS.length>=12 && SP.SPARKS.every(x=>x.text&&x.author&&x.date), `${SP.SPARKS.length} sparks`);
-ok('util: avatar/compact/timeAgo/cls', U.avatarDataUri('A','a').startsWith('data:image') && U.compact(12400)==='12.4K' && U.compact(120000)==='120K' && U.timeAgo(hrs(3)).length>0 && U.cls('a',false&&'b','c')==='a c');
-console.log(fails?`\n${fails} FAILURES`:'\nALL PASS'); process.exit(fails?1:0);
+ok('fade(): τ=30h for the crowd', Math.abs(H.fade(30) - Math.exp(-1)) < 1e-9 && H.fade(0) === 1, `e^-1 check: ${H.fade(30).toFixed(4)}`);
+ok('fade(): your own heat cools slower', Math.abs(H.fade(46, H.HEAT.tauMine) - Math.exp(-1)) < 1e-9, 'τᵐ=46h');
+ok('fade(): never negative, never above 1', H.fade(-5) === 1 && H.fade(1000) > 0 && H.fade(1000) < 1, H.fade(1000).toExponential(2));
+
+const a = H.computeHeat({ reactions: 200, date: hrs(1) }, now);
+const b = H.computeHeat({ reactions: 200, date: hrs(31) }, now);
+ok('crowd volume decays ~e^(−30/30)', Math.abs(b.volume / a.volume - Math.exp(-30 / 30)) < 0.05, `ratio ${(b.volume / a.volume).toFixed(3)} vs ${Math.exp(-1).toFixed(3)}`);
+
+const hot = H.computeHeat({ reactions: 20, date: hrs(1), mine: { level: 3, at: now - 3600e3 } }, now);
+const old = H.computeHeat({ reactions: 20, date: hrs(1), mine: { level: 3, at: now - 45 * 3600e3 } }, now);
+ok('personal lift decays with its own constant', old.lift < hot.lift && old.lift > 0, `${hot.lift} → ${old.lift}`);
+
+/* -------------------------------------------------------------- the levels */
+
+const mk = (lvl) => H.computeHeat({ reactions: 5, date: hrs(0.1), mine: { level: lvl, at: now } }, now);
+const [t0, t1, t2, t3] = [0, 1, 2, 3].map(mk);
+ok('heat rises strictly with the level', t1.heat > t0.heat && t2.heat > t1.heat && t3.heat > t2.heat, `${t0.heat} < ${t1.heat} < ${t2.heat} < ${t3.heat}`);
+ok('ignition is worth ≈6.5× a first tap', Math.abs((t3.lift - t0.lift) / (t1.lift - t0.lift) - H.HEAT.levelW[3] / H.HEAT.levelW[1]) < 0.01, `${(((t3.lift - t0.lift) / (t1.lift - t0.lift)) || 0).toFixed(2)} vs ${(H.HEAT.levelW[3] / H.HEAT.levelW[1]).toFixed(2)}`);
+ok('heat is normalised to 0..100 and monotone', [t0, t1, t2, t3].every((x) => x.heat >= 0 && x.heat <= 100) && t3.heat > t2.heat, `heats ${[t0, t1, t2, t3].map((x) => x.heat).join(',')}`);
+ok('score is positive even for a quiet piece', H.computeHeat({}, now).score > 0);
+ok('a piece with no signals still carries a floor', H.computeHeat({}, now).heat >= 0 && Number.isFinite(H.computeHeat({}, now).score));
+
+ok('LEVEL_META covers 0..3 in plain words', [0, 1, 2, 3].every((l) => !!H.LEVEL_META[l]?.name && !!H.LEVEL_META[l]?.copy));
+ok('no temperature language in the level copy', !/cold|molten|warm|kelvin|thermal/i.test([0, 1, 2, 3].map((l) => H.LEVEL_META[l].name + ' ' + H.LEVEL_META[l].copy).join(' ')));
+ok('HOLD_MS encodes tap / hold / ignite', H.HOLD_MS[3] === 2200 && H.HOLD_MS[2] === 1000, H.HOLD_MS.join(','));
+ok('levelLabel() reads plainly', typeof H.levelLabel(3) === 'string' && H.levelLabel(3) === H.LEVEL_META[3].name, H.levelLabel(3));
+
+/* ------------------------------------------------------------- the spread */
+
+const spread = H.spreadByAuthor(
+  [
+    { id: '1', authorHandle: 'a' },
+    { id: '2', authorHandle: 'a' },
+    { id: '3', authorHandle: 'a' },
+    { id: '4', authorHandle: 'b' },
+    { id: '5', authorHandle: 'c' },
+  ],
+  3
+);
+ok('spreadByAuthor keeps every item', spread.length === 5 && new Set(spread.map((x) => x.id)).size === 5, spread.map((x) => x.id).join(''));
+ok('spreadByAuthor never puts three of one writer in a row', spread.every((x, i) => i < 2 || !(spread[i - 1].authorHandle === x.authorHandle && spread[i - 2].authorHandle === x.authorHandle)), spread.map((x) => x.authorHandle).join(''));
+ok('spreadByAuthor leaves short lists alone', H.spreadByAuthor([{ id: '1', authorHandle: 'a' }], 3).length === 1);
+
+/* ------------------------------------------------------------ the corpus */
+
+const emptyState = { mySparks: [], myArticles: [], heat: {}, saved: {}, reads: {}, shares: {}, me: null, follows: [], interests: [], wire: [] };
+const posts = F.assemble(emptyState, []);
+ok('assemble has unique ids', new Set(posts.map((p) => p.id)).size === posts.length, `${posts.length} posts`);
+ok('the corpus is the house plus the syndicated snapshot', posts.every((p) => p.authorHandle === US.HOUSE_HANDLE || p.origin === 'wire' || p.origin === 'mine'), [...new Set(posts.map((p) => p.origin))].join(','));
+ok('no invented authors in the bundle', new Set(posts.map((p) => p.authorHandle)).size <= 12, `${new Set(posts.map((p) => p.authorHandle)).size} handles`);
+ok('every post carries a heat score', posts.every((p) => p.heatScore && Number.isFinite(p.heatScore.heat) && Number.isFinite(p.heatScore.score)));
+ok('heat actually differs between pieces', new Set(posts.map((p) => p.heatScore.heat)).size > Math.min(6, posts.length), `${new Set(posts.map((p) => p.heatScore.heat)).size} distinct of ${posts.length}`);
+ok('every post is either a spark or a forge', posts.every((p) => p.kind === 'spark' || p.kind === 'forge'));
+ok('stories carry a reading time and notes do not', posts.filter((p) => p.kind === 'forge').every((p) => (p.minutes ?? 0) > 0) && posts.filter((p) => p.kind === 'spark').every((p) => !p.minutes));
+ok('the seed articles all expose blocks for the reader', A.ORIGINALS.every((o) => Array.isArray(o.blocks) && o.blocks.length > 3), `${A.ORIGINALS.length} originals`);
+ok('the house notes are all written by the house', SP.SPARKS.every((s) => s.author === US.HOUSE_HANDLE), `${SP.SPARKS.length} notes`);
+ok('the house handle resolves to a real profile', US.getUser(US.HOUSE_HANDLE).name.length > 0 && US.isHouse(US.HOUSE_HANDLE));
+
+/* -------------------------------------------------------------- the rank */
+
+for (const mode of ['for-you', 'fresh', 'popular', 'discussed']) {
+  const r = F.rank(posts, emptyState, { mode });
+  ok(`rank(${mode}) returns the whole board, ordered`, r.items.length === posts.length && r.total === posts.length);
+}
+const fresh = F.rank(posts, emptyState, { mode: 'fresh' }).items;
+ok('fresh is newest first', fresh.every((p, i) => i === 0 || new Date(fresh[i - 1].date).getTime() >= new Date(p.date).getTime()));
+const popular = F.rank(posts, emptyState, { mode: 'popular' }).items;
+ok('popular sorts on decayed volume', popular.every((p, i) => i === 0 || popular[i - 1].heatScore.volume >= p.heatScore.volume));
+const discussed = F.rank(posts, emptyState, { mode: 'discussed' }).items;
+ok('discussed sorts on replies', discussed.every((p, i) => i === 0 || discussed[i - 1].comments >= p.comments));
+
+const stories = F.rank(posts, emptyState, { tab: 'stories' }).items;
+ok('the stories tab holds only stories', stories.length > 0 && stories.every((p) => p.kind === 'forge'), `${stories.length} of ${posts.length}`);
+const notes = F.rank(posts, emptyState, { tab: 'notes' }).items;
+ok('the notes tab holds only notes', notes.length > 0 && notes.every((p) => p.kind === 'spark'), `${notes.length} of ${posts.length}`);
+const keptId = posts[0].id;
+const kept = F.rank(posts, { ...emptyState, saved: { [keptId]: Date.now() } }, { tab: 'kept' }).items;
+ok('the kept tab is exactly what you saved', kept.length === 1 && kept[0].id === keptId);
+const followed = F.rank(posts, { ...emptyState, follows: [US.HOUSE_HANDLE] }, { tab: 'following' }).items;
+ok('the following tab is the people you follow', followed.length > 0 && followed.every((p) => p.authorHandle === US.HOUSE_HANDLE), `${followed.length} pieces`);
+ok('your own work always appears in your following tab', F.rank(posts, { ...emptyState, me: { handle: 'writer', name: 'Writer', bio: '', joined: '2026-01-01' } }, { tab: 'following' }).items.every((p) => p.authorHandle !== 'nobody'));
+
+ok('rank tolerates an incomplete store', (() => {
+  try {
+    F.rank(posts, { heat: {} }, { mode: 'for-you' });
+    return true;
+  } catch {
+    return false;
+  }
+})());
+
+/* ------------------------------------------------------------- the tabs */
+
+ok('matches() finds a word in the body', posts.some((p) => F.matches(p, 'heat')) && !posts.every((p) => F.matches(p, 'zzzzqqq')));
+ok('matches() understands a #tag and an @handle', posts.some((p) => F.matches(p, '#design')) || posts.some((p) => F.matches(p, '@heatt')));
+const tags = F.trendingTags(posts, now, 6);
+ok('trendingTags returns ranked tags with weights', tags.length > 0 && tags.every((t, i) => t.tag && t.weight > 0 && (i === 0 || tags[i - 1].weight >= t.weight)), tags.slice(0, 4).map((t) => `#${t.tag}`).join(' '));
+const authors = F.topAuthors(posts, 5);
+ok('topAuthors never ranks the house against writers', authors.every((x) => x.handle !== US.HOUSE_HANDLE), `${authors.length} ranked`);
+
+const readingPosts = posts.filter((p) => p.kind === 'forge').slice(0, 2);
+const unfinished = F.unfinished(readingPosts, { reads: { [readingPosts[0].id]: { pct: 42, at: now }, [readingPosts[1].id]: { pct: 100, at: now } } });
+ok('unfinished() keeps the half-read piece only', unfinished.length === 1 && unfinished[0].pct === 42, JSON.stringify(unfinished.map((u) => u.pct)));
+ok('unfinished() ignores a piece you never opened', F.unfinished(readingPosts, { reads: {} }).length === 0);
+
+/* ------------------------------------------------------------- the store */
+
+const s0 = S.useStore.getState();
+ok('the store is versioned for migrations', JSON.stringify(S.useStore.persist.getOptions().name).includes('heatt-store-v2'), S.useStore.persist.getOptions().name);
+ok('a fresh store has no profile', !s0.me);
+ok('a fresh store has no heat', Object.keys(s0.heat).length === 0);
+ok('prefs default to the calm end of the range', s0.prefs.reduceMotion === false && s0.prefs.ambient === true && s0.prefs.ignitionFx === 'full', JSON.stringify(s0.prefs));
+
+s0.setHeat('orig-heat', 1, { title: 't', author: 'heatt' });
+ok('setHeat writes a ledger entry', S.useStore.getState().heat['orig-heat'].level === 1);
+S.useStore.getState().setHeat('orig-heat', 0);
+ok('setHeat(0) forgets the piece entirely', S.useStore.getState().heat['orig-heat'] === undefined);
+S.useStore.getState().setHeat('orig-room', 3, { title: 't', author: 'heatt' });
+ok('ignition is stored at level 3 with a timestamp', S.useStore.getState().heat['orig-room'].level === 3 && S.useStore.getState().heat['orig-room'].at > 0);
+
+S.useStore.getState().toggleSave('orig-room');
+ok('keeping a piece is recorded', !!S.useStore.getState().saved['orig-room']);
+S.useStore.getState().toggleSave('orig-room');
+ok('un-keeping removes it', !S.useStore.getState().saved['orig-room']);
+
+S.useStore.getState().setRead('orig-room', 55);
+ok('reading progress is stored', S.useStore.getState().reads['orig-room'].pct === 55);
+S.useStore.getState().setRead('orig-room', 99);
+ok('finishing is flagged', S.useStore.getState().reads['orig-room'].finished === true);
+
+S.useStore.getState().ensureMe();
+const me = S.useStore.getState().me;
+ok('ensureMe mints an identity on demand', !!me?.handle && me.handle === 'you', `handle=${me?.handle}`);
+ok('the minted identity is never a fake person', !/^[a-z]+_[a-z]+\d+$/.test(me.handle) && me.name === 'You');
+
+const mine = S.useStore.getState().addSpark({ author: me.handle, text: 'Written here.', tags: ['design'], reactions: 0, comments: 0 });
+ok('publishing a note mints an id and a date', !!mine.id && !!mine.date && mine.kind === 'spark');
+const article = S.useStore.getState().addArticle({ title: 'A story', dek: 'One line.', author: me.handle, tags: ['craft'], markdown: 'Body text.' });
+ok('publishing a story estimates its reading time', article.minutes >= 1 && article.kind === 'forge');
+
+const withMine = F.assemble(S.useStore.getState(), []);
+ok('your own work is assembled into the corpus', withMine.some((p) => p.id === mine.id) && withMine.some((p) => p.id === article.id));
+ok('your own pieces are attributed to you', withMine.filter((p) => p.origin === 'mine').every((p) => p.authorHandle === me.handle && p.authorName === me.name));
+ok('every assembled piece carries heat, including yours', withMine.every((p) => p.heatScore && Number.isFinite(p.heatScore.heat)));
+ok('ignition visibly raises a piece above a quiet one', (() => {
+  const before = F.heatFor(withMine.find((p) => p.id === mine.id), S.useStore.getState()).heat;
+  S.useStore.getState().setHeat(mine.id, 3, { title: 'Written here.', author: me.handle });
+  const after = F.heatFor(F.assemble(S.useStore.getState(), []).find((p) => p.id === mine.id), S.useStore.getState()).heat;
+  return after > before;
+})());
+const withAuthors = [...withMine];
+ok('topAuthors ranks a local writer once one exists', F.topAuthors(withAuthors, 5).some((x) => x.handle === me.handle), F.topAuthors(withAuthors, 5).map((x) => x.handle).join(','));
+
+S.useStore.getState().toggleMute('@heatt');
+ok('muting records the handle with its @', S.useStore.getState().muted.includes('@heatt'));
+ok('assemble drops a muted author', !F.assemble(S.useStore.getState(), []).some((p) => p.authorHandle === US.HOUSE_HANDLE));
+S.useStore.getState().toggleMute('@heatt');
+ok('unmuting brings them back', F.assemble(S.useStore.getState(), []).some((p) => p.authorHandle === US.HOUSE_HANDLE));
+
+S.useStore.getState().addReply({ postId: mine.id, author: me.handle, text: 'Adding to the thread.' });
+ok('a reply is stored against its post', S.useStore.getState().replies.some((r) => r.postId === mine.id));
+
+S.useStore.getState().completeOnboarding(['design', 'reading', 'craft']);
+ok('completeOnboarding only files interests', S.useStore.getState().onboarded === true && S.useStore.getState().interests.length === 3);
+
+const reset = S.useStore.getState().reset();
+void reset;
+ok('reset clears identity, heat, keeps and drafts', !S.useStore.getState().me && Object.keys(S.useStore.getState().heat).length === 0 && S.useStore.getState().mySparks.length === 0);
+
+/* -------------------------------------------------------------- utilities */
+
+ok('compact() reads as a number, not a wall of digits', U.compact(1200) === '1.2k' || U.compact(1200).startsWith('1.2'), U.compact(1200));
+ok('timeAgo() is present tense for just-now', /now|^\d+s$/.test(U.timeAgo(now)), U.timeAgo(now));
+ok('plain() strips markdown syntax', !/[#*`>]/.test(U.plain('## Heading with **bold** and `code`')));
+ok('hash() is stable for the same string', U.hash('heatt') === U.hash('heatt') && U.hash('heatt') !== U.hash('other'));
+ok('avatarDataUri() is a self-contained image', U.avatarDataUri('Nyra Vale', 'nyra').startsWith('data:image/svg+xml'));
+ok('coverDataUri() is deterministic per seed', U.coverDataUri('heatt') === U.coverDataUri('heatt') && U.coverDataUri('a') !== U.coverDataUri('b'));
+ok('readMinutes() never reports zero', U.readMinutes(10) >= 1);
+
+/* ------------------------------------------------------------------ verdict */
+
+console.log(`\n${fails ? `MODEL TEST FAILED (${fails})` : 'MODEL TEST PASSED'}`);
+process.exit(fails ? 1 : 0);

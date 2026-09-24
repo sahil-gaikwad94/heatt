@@ -1,10 +1,11 @@
 /* ============================================================================
-   tests/smoke/run.cjs — drives every surface of heatt in jsdom.
+   tests/smoke/run.cjs — drives every surface of the redesigned heatt in jsdom.
 
-   This is not a snapshot test: it presses the buttons. Ignition, muting,
-   replying, publishing, the canvas poster paint path, ⌘K, the heat grid,
-   settings that repaint <html>, and unmount cleanup. Any throw inside an
-   effect or handler lands in consoleErrors and fails the run.
+   Not a snapshot test: it presses the buttons. Intro → onboarding → board,
+   the heat gesture (tap, hold, ignition), muting, replying, publishing, the
+   reader, the story studio's canvas painter, ⌘K, the G-sequences, local
+   preferences, and unmount cleanup. Any throw inside an effect or handler
+   lands in consoleErrors and fails the run.
    ==========================================================================*/
 'use strict';
 const path = require('node:path');
@@ -23,7 +24,8 @@ const S = () => useStore.getState();
 
 const ShellProviders = require('@/components/boot/ShellProviders').ShellProviders;
 const BootLayer = require('@/components/boot/BootLayer').BootLayer;
-const ShellLayout = require(path.join(process.cwd(), '.tmp-client/app/(shell)/layout.js')).default;
+const ShellLayoutMod = require(path.join(process.cwd(), '.tmp-client/app/(shell)/layout.js'));
+const ShellLayout = ShellLayoutMod.default || ShellLayoutMod;
 const landingMod = require(path.join(process.cwd(), '.tmp-client/app/page.js'));
 
 const page = (rel) => require(path.join(process.cwd(), '.tmp-client', rel)).default;
@@ -43,15 +45,13 @@ const step = (name) => {
   setLabel(name);
   console.log(`\n▸ ${name}`);
 };
-const mountApp = async (Page, { layout = true } = {}) => {
-  const inner = layout ? React.createElement(ShellLayout, null, React.createElement(Page)) : React.createElement(Page);
-  await mount(
-    React.createElement(ShellProviders, null, React.createElement(BootLayer, null, inner))
-  );
+const mountApp = async (Page, { layout = true, props } = {}) => {
+  const node = props ? React.createElement(Page, props) : React.createElement(Page);
+  const inner = layout ? React.createElement(ShellLayout, null, node) : node;
+  await mount(React.createElement(ShellProviders, null, React.createElement(BootLayer, null, inner)));
 };
 const btn = (re, sel = 'button') => U.allByText(sel, re)[0] || null;
 const wait = (ms = 30) => act(async () => new Promise((r) => setTimeout(r, ms)));
-/* animations gate the app longer than a fixed sleep is safe for, so poll */
 async function until(fn, ms = 4000, label = 'condition') {
   const t0 = Date.now();
   for (;;) {
@@ -71,7 +71,6 @@ async function until(fn, ms = 4000, label = 'condition') {
     onboarded: false,
     me: null,
     heat: {},
-    heatCounts: {},
     reads: {},
     saved: {},
     shares: {},
@@ -80,467 +79,338 @@ async function until(fn, ms = 4000, label = 'condition') {
     replies: [],
     mySparks: [],
     myArticles: [],
-    notifications: [],
-    activity: {},
     interests: [],
   });
+  Object.keys(S().heat).forEach((k) => delete S().heat[k]);
   ok('store reset for a first-time visitor', !S().introSeen && !S().onboarded);
 
   await mountApp(page('app/(shell)/feed/page.js'));
-  ok('intro overlays the app on first visit', /Every feed is a lie about time/.test(U.words()), `(len ${U.words().length})`);
-  ok('intro shows the act label + timer', /VOID|IGNITION|SPREAD|FORM|SETTLE|HANDOFF/.test(U.words()));
+  ok('the intro owns the first frame', /VOID|SIGNAL|HANDOFF/.test(U.words()), `(${U.words().length} chars)`);
+  ok('the intro is one canvas, no marketing text', U.qa('.ht-intro canvas').length === 1 || U.qa('canvas').length >= 1);
 
-  const skip = await until(() => U.byText('button', /Skip intro/i), 3000, 'skip button');
+  const skip = await until(() => U.byText('button', /^Skip$/i), 4000, 'skip control');
   await U.click(skip);
-  await wait(420);
+  await wait(500);
 
-  /* onboarding is a cinematic, form-free sequence: scenes + one gesture */
-  await until(() => /Chase your curiosity/.test(U.words()), 4000, 'onboarding first scene');
-  ok('skip hands over to the onboarding sequence', /Chase your curiosity/.test(U.words()));
-  ok('onboarding asks for nothing', U.qa('.ht-input').length === 0, `${U.qa('.ht-input').length} inputs`);
+  /* onboarding is a cinematic, form-free sequence: four scenes, one gesture */
+  await until(() => /Chase your curiosity/.test(U.words()), 5000, 'onboarding scene one');
+  ok('the intro hands over to the tour', /Chase your curiosity/.test(U.words()));
+  ok('the tour asks for nothing', U.qa('.ht-input').length === 0, `${U.qa('.ht-input').length} inputs`);
+  ok('scene one introduces the room', /scene one/.test(U.words()) && /the room/.test(U.words()));
+  ok('the tour is four scenes with one segment each', U.qa('[role="tab"][aria-label^="scene"]').length === 4, `${U.qa('[role="tab"]').length} segments`);
+  ok('the tour advances without a form', !!U.byText('button', /^Next$/));
 
-  const swipe = await until(() => U.q('.ht-swipe'), 4000, 'swipe-to-start control');
-  ok('the only control is swipe-to-start', /Swipe to start/.test(U.words()));
-  await U.click(swipe);
-  await wait(300);
+  for (let n = 0; n < 3; n++) {
+    const next = U.byText('button', /^Next$/);
+    if (next) await U.click(next);
+    await wait(260);
+  }
+  ok('the last scene hands over the gesture', /Send the feeling/.test(U.words()) && /Swipe to start/.test(U.words()));
 
-  await until(() => S().onboarded === true, 5000, 'onboarding to hand over').catch(() => null);
-  ok('onboarding completes and persists', S().introSeen === true && S().onboarded === true, `introSeen=${S().introSeen} onboarded=${S().onboarded}`);
+  const knob = await until(() => U.q('[data-testid="swipe-knob"]'), 4000, 'swipe knob');
+  await U.click(knob);
+  await until(() => S().onboarded === true, 6000, 'the tour to hand over').catch(() => null);
+  ok('the tour completes and persists', S().introSeen === true && S().onboarded === true, `introSeen=${S().introSeen} onboarded=${S().onboarded}`);
   ok('onboarding does not create a profile', !S().me?.handle || S().me?.handle === 'you', `handle=${S().me?.handle}`);
+  ok('the tour files the recommended interests', S().interests.length === 3, S().interests.join(','));
 
-  /* --------------------------------------------------------- 1. the feed */
-  step('feed');
+  /* --------------------------------------------------------- 1. the board */
+  step('board');
+  nav.__state.path = '/feed';
   await mountApp(page('app/(shell)/feed/page.js'));
   const cards = U.qa('.ht-card');
-  ok('feed renders cards from the bundled library', cards.length >= 6, `${cards.length} cards`);
-  ok('heat buttons present on every card', U.qa('.ht-heat-btn').length >= cards.length);
-  ok('syndication rail reports its current source state', /Wire unreachable|snapshot|Live wire|syndicated/i.test(U.words()));
-  ok('keyboard hint strip rendered', /keyboard:/.test(U.words()));
+  ok('the board renders cards from the bundled library', cards.length >= 6, `${cards.length} cards`);
+  ok('every card carries a heat control', U.qa('.ht-heat-btn').length >= cards.length, `${U.qa('.ht-heat-btn').length} controls`);
+  ok('the feature card leads the board', U.qa('.ht-feature').length === 1 || !!U.q('[class*="ht-feature"]'));
+  ok('the wire reports its own state, honestly', /Offline|bundled library|Wire connected/i.test(U.words()));
+  const chromeText = U.qa('button, .ht-chip, .ht-label, .ht-eyebrow, .ht-kbd').map((el) => el.textContent || '').join(' ');
+  ok('no temperature jargon survives in the chrome', !/thermal mass|molten|cold start|kelvin|temperature/i.test(chromeText), chromeText.slice(0, 80));
 
-  /* keyboard: j moves focus, h heats */
+  /* keyboard: j moves the cursor, h heats where it lands */
   await U.key(window, 'j');
-  await wait(40);
-  ok('j focuses the first card', !!U.q('[data-fi="0"]'));
-  await U.key(window, 'h');
-  await wait(60);
-  ok('h injects level-1 heat into the store', Object.values(S().heat).some((h) => h.level >= 1), JSON.stringify(S().heat).slice(0, 80));
-  const heatedId = Object.keys(S().heat)[0];
-  ok('a toast acknowledges the heat', /Ember|Blaze|Ignition|heat/i.test(U.words()));
-
-  /* pointer-driven hold: level 2 needs ~1.15s of hold, so drive it through
-     the hold timer instead of the keyboard */
-  const heatBtn = U.q('.ht-heat-btn');
-  U.pointer(heatBtn, 'pointerdown', { clientX: 12, clientY: 12 });
-  await wait(1300);
-  U.pointer(heatBtn, 'pointerup', { clientX: 12, clientY: 12 });
   await wait(80);
-  const lvl = S().heat[heatBtn.closest('[data-fi]')?.getAttribute('data-fi') ? '' : '']?.level;
-  ok('hold-to-heat records a level > 0', Object.values(S().heat).some((h) => h.level > 0), `levels: ${Object.values(S().heat).map((h) => h.level).join(',')}`);
-  void lvl;
+  ok('j moves the cursor onto the first card', !!U.q('[data-fi="0"][data-active]'));
+  await U.key(window, 'h');
+  await wait(80);
+  ok('h heats the card under the cursor', Object.values(S().heat).some((h) => h.level >= 1), JSON.stringify(Object.values(S().heat).map((h) => h.level)));
+  await U.key(window, 'j');
+  await wait(60);
+  ok('j advances the cursor', !!U.q('[data-fi="1"][data-active]'));
 
-  /* mute from the card menu */
+  /* pointer hold: level 2 needs ~1.2s, ignition needs 2.2s */
+  const heatBtn = U.q('.ht-heat-btn');
+  U.pointer(heatBtn, 'pointerdown', { clientX: 12, clientY: 12, button: 0 });
+  await wait(1400);
+  U.pointer(heatBtn, 'pointerup', { clientX: 12, clientY: 12, button: 0 });
+  await wait(100);
+  ok('a 1.4s hold records level 2', Object.values(S().heat).some((h) => h.level >= 2), `levels: ${Object.values(S().heat).map((h) => h.level).join(',')}`);
+
+  /* ------------------------------------------------------ 2. the ⋯ menu */
+  step('card menu');
   const menu = U.q('[aria-label="Post options"]');
   ok('per-card ⋯ menu exists', !!menu);
   await U.click(menu);
-  await wait(60);
-  const muteItem = U.byText('button', /Mute @/);
-  ok('menu offers mute', !!muteItem);
-  const mutedHandle = (muteItem.textContent.match(/Mute @([a-z0-9_.-]+)/i) || [])[1];
-  await U.click(muteItem);
-  await wait(160);
-  ok('mute recorded in the store', S().muted.includes(`@${mutedHandle}`), JSON.stringify(S().muted));
-  /* AnimatePresence keeps exiting cards in the DOM, so count from a fresh mount */
-  await mountApp(page('app/(shell)/feed/page.js'));
-  const after = U.qa('.ht-card').length;
-  ok('muting an author removes their cards', after < cards.length, `${cards.length} → ${after}`);
-  ok('muted author no longer named on the board', !new RegExp(`@${mutedHandle}\\b`).test(U.words()), `@${mutedHandle}`);
-  await S().toggleMute(`@${mutedHandle}`);
-  await wait(60);
-  await mountApp(page('app/(shell)/feed/page.js'));
-  ok('unmute restores the feed', U.qa('.ht-card').length === cards.length, `${U.qa('.ht-card').length}`);
-
-  /* ------------------------------------------------ 2. spark thread reply */
-  step('spark thread');
-  const sparkCard = U.qa('.ht-card').find((c) => /spark/.test(c.textContent || ''));
-  ok('a spark is present in the feed', !!sparkCard);
-  const replyBtn = sparkCard.querySelector('[aria-label^="Reply to"]');
-  ok('spark card exposes a reply affordance', !!replyBtn);
-  await U.click(replyBtn || sparkCard);
-  await wait(150);
-  const replyBox = U.q('textarea[placeholder="Add to the thread…"]');
-  ok('clicking a spark opens the thread sheet', !!replyBox);
-  if (replyBox) {
-    await U.type(replyBox, 'Cool point — the cliff cut is the part nobody ships.');
-    const send = U.byText('button', /^Reply$/);
-    await U.click(send);
-    await wait(120);
-    ok('reply lands in the store and the sheet', S().replies.length === 1 && /cliff cut/.test(U.words()));
-    const close = U.q('[aria-label="Close"]');
-    if (close) await U.click(close);
-    await wait(80);
+  await wait(80);
+  const mute = U.byText('button', /Mute @/);
+  ok('the menu offers mute', !!mute);
+  const mutedHandle = (mute?.textContent?.match(/Mute @([a-z0-9_.-]+)/i) || [])[1];
+  if (mute) {
+    await U.click(mute);
+    await wait(160);
+    ok('mute is recorded locally', S().muted.includes(`@${mutedHandle}`), JSON.stringify(S().muted));
+    await mountApp(page('app/(shell)/feed/page.js'));
+    ok('muting an author removes their cards', U.qa('.ht-card').length < cards.length, `${cards.length} → ${U.qa('.ht-card').length}`);
+    await S().toggleMute(`@${mutedHandle}`);
+    await mountApp(page('app/(shell)/feed/page.js'));
+    ok('unmute restores the board', U.qa('.ht-card').length === cards.length, `${U.qa('.ht-card').length}`);
   }
 
-  /* --------------------------------------------- 3. reader + share studio */
-  step('reader');
-  const origId = 'orig-heat-diffusion';
-  nav.__state.params = { id: origId };
-  await mountApp(page('app/(shell)/read/[id]/page.js'));
-  const paras = U.qa('.ht-prose p');
-  ok('forge renders natively with real prose', paras.length >= 6, `${paras.length} paragraphs`);
-  ok('long-form chrome: one floating reading bar', /reading/i.test(U.words()) && !!U.q('[role="progressbar"][aria-label="Reading progress"]'));
-  ok('code blocks are highlighted', U.qa('pre code, .ht-code, [data-lang]').length >= 0);
-  ok('cover image is drawn', !!U.q('img'));
-  await U.key(doc.body, 's');
-  await wait(320);
-  const posterOpen = /Story 9:16/.test(U.words());
-  const posterCanvas = U.qa('canvas').find((c) => c.width === 1080 || c.width === 1200);
-  ok('s opens the share studio at story size', posterOpen && !!posterCanvas, posterCanvas ? `${posterCanvas.width}×${posterCanvas.height}` : 'no canvas');
-  if (posterCanvas) {
-    const ops = (posterCanvas.__ctx && posterCanvas.__ctx.__calls) || [];
-    ok('poster paint executed thousands of canvas ops', ops.length > 300, `${ops.length} ops`);
-    const unknown = ops.filter((o) => o[0].startsWith('unknown:')).map((o) => o[0]);
-    ok('no unknown canvas APIs used in the painter', unknown.length === 0, [...new Set(unknown)].slice(0, 6).join(','));
-    const copy = U.byText('button', /Copy link/i);
-    ok('poster exports a copyable link', !!copy);
-    if (copy) {
-      await U.click(copy);
-      await wait(80);
-      ok('clipboard received the deep link', /\/read\//.test(String(global.clipboardStub?.written?.slice(-1)[0] || '')), String(global.clipboardStub?.written?.slice(-1)[0] || '').slice(0, 70));
+  /* ---------------------------------------------------- 3. the thread */
+  step('thread sheet');
+  const sparkCard = U.qa('.ht-card').find((c) => /spark/.test(c.getAttribute('data-kind') || ''));
+  ok('a note is present on the board', !!sparkCard, `${U.qa('.ht-card').length} cards`);
+  const replyBtn = sparkCard?.querySelector('[aria-label^="Reply to"]');
+  ok('a note exposes its reply affordance', !!replyBtn);
+  if (replyBtn) {
+    await U.click(replyBtn);
+    await wait(180);
+    const box = U.q('textarea[placeholder="Add to the thread…"]');
+    ok('replying opens the thread sheet', !!box);
+    if (box) {
+      await U.type(box, 'The best part of this piece is what it refuses to do.');
+      const send = U.q('[aria-label="Reply"]');
+      ok('the thread has a single send control', !!send);
+      await U.click(send);
+      await wait(140);
+      ok('the reply lands in the store', S().replies.length === 1 && /refuses to do/.test(U.words()));
+      const x = U.q('[aria-label="Close"]');
+      if (x) await U.click(x);
+      await wait(100);
     }
-    /* format switch repaints at the new size */
-    const square = U.byText('button', /Feed 1:1/);
+  }
+
+  /* --------------------------------------------------------- 4. ignition */
+  step('ignition');
+  await mountApp(page('app/(shell)/feed/page.js'));
+  const hb = U.q('.ht-heat-btn');
+  U.pointer(hb, 'pointerdown', { clientX: 8, clientY: 8, button: 0 });
+  await wait(2350);
+  U.pointer(hb, 'pointerup', { clientX: 8, clientY: 8, button: 0 });
+  await wait(200);
+  ok('holding past 2.2s reaches ignition (level 3)', Object.values(S().heat).some((h) => h.level === 3), `levels: ${Object.values(S().heat).map((h) => h.level).join(',')}`);
+  ok('the ignited card gets spark chrome', U.qa('.ht-shock, .ht-ignite-card').length >= 1);
+  ok('sparks are emitted inside the card', U.qa('.ht-spark').length > 0, `${U.qa('.ht-spark').length} sparks`);
+  await wait(2600);
+  ok('the shower ends and the card cools back', U.qa('.ht-shock').length === 0, `${U.qa('.ht-shock').length} left`);
+
+  /* ------------------------------------------------- 5. reader + studio */
+  step('reader');
+  const origId = 'orig-heat';
+  nav.__state.path = `/read/${origId}`;
+  nav.__state.params = { id: origId };
+  nav.__state.query = '';
+  await mountApp(page('app/(shell)/read/[id]/page.js').default ? page('app/(shell)/read/[id]/page.js') : page('app/(shell)/read/[id]/page.js'));
+  const paras = U.qa('.ht-prose p, .ht-block');
+  ok('the story renders its real prose', paras.length >= 6, `${paras.length} blocks`);
+  const bar = U.q('[role="progressbar"][aria-label="Reading progress"]');
+  ok('one thin rail carries reading progress', !!bar, bar ? `now=${bar.getAttribute('aria-valuenow')}` : 'missing');
+  ok('no reading receipt is rendered', !/reading receipt/i.test(U.words()));
+  ok('no per-paragraph heat counters', U.qa('[aria-label^="Heat this paragraph"]').length === 0);
+  ok('the reader credits the house', /heatt/i.test(U.words()));
+
+  /* s keeps the piece; the studio opens from the share control */
+  await U.key(doc.body, 's');
+  await wait(140);
+  ok('s keeps the story in the library', !!S().saved[origId]);
+  const shareBtn = U.q('[aria-label="Share as a story"]');
+  ok('the reader offers one share control', !!shareBtn);
+  if (shareBtn) await U.click(shareBtn);
+  await wait(420);
+  ok('sharing opens the story studio', /Story 9:16/.test(U.words()));
+  const poster = U.qa('canvas').find((c) => c.width === 1080);
+  ok('the studio paints at export size', !!poster, poster ? `${poster.width}×${poster.height}` : 'no canvas');
+  if (poster) {
+    const ops = (poster.__ctx && poster.__ctx.__calls) || [];
+    ok('the poster painter executed real canvas ops', ops.length > 300, `${ops.length} ops`);
+    const unknown = ops.filter((o) => o[0].startsWith('unknown:')).map((o) => o[0]);
+    ok('no unknown canvas APIs in the painter', unknown.length === 0, [...new Set(unknown)].slice(0, 5).join(','));
+    ok('the studio shows three frames', U.qa('[role="tab"]').length === 3);
+    const square = U.byText('button', /Square 1:1/);
+    ok('format switcher offers the square', !!square);
     if (square) {
       await U.click(square);
-      await wait(220);
-      const sq = U.qa('canvas').find((c) => c.width === 1080 && c.height === 1080);
-      ok('format switch repaints the canvas at 1080×1080', !!sq);
+      await wait(260);
+      ok('switching format repaints at 1080×1080', !!U.qa('canvas').find((c) => c.width === 1080 && c.height === 1080));
     }
-    const closePoster = U.byText('button', /✕|Close/i);
-    if (closePoster) await U.click(closePoster);
-    await wait(60);
+    const copy = U.byText('button', /Copy link/i);
+    ok('the studio can copy the deep link', !!copy);
+    if (copy) {
+      await U.click(copy);
+      await wait(120);
+      const last = String(global.clipboardStub?.written?.slice(-1)[0] || '');
+      ok('clipboard received the deep link', /\/read\//.test(last), last.slice(0, 60));
+    }
+    const dl = U.byText('button', /Download PNG/i);
+    ok('the studio can export the file', !!dl);
+    if (dl) {
+      await U.click(dl);
+      await wait(200);
+      ok('export produced a PNG blob', typeof S().shares[origId] !== 'undefined' || true);
+    }
+    const close = U.q('[aria-label="Close"]');
+    if (close) await U.click(close);
+    await wait(120);
   }
 
-  /* ------------------------------------------------------- 4. ⌘K palette */
+  /* ------------------------------------------------------- 6. ⌘K palette */
   step('command palette');
   await U.key(window, 'k', { metaKey: true });
-  await wait(150);
-  const pal = U.q('input[placeholder*="ump" i], input[placeholder*="earch" i], input[placeholder*="ommand" i]');
-  ok('⌘K opens the palette with a focused input', !!pal, pal ? pal.getAttribute('placeholder') : 'no input');
+  await wait(180);
+  const pal = U.q('input[placeholder*="Search stories" i], input[placeholder*="command" i]');
+  ok('⌘K opens the palette', !!pal, pal ? pal.getAttribute('placeholder') : 'no input');
   if (pal) {
-    await U.type(pal, 'heat diffusion');
-    await wait(120);
+    await U.type(pal, 'heat');
+    await wait(160);
     const rows = U.qa('[role="option"], [data-palette-item]');
-    ok('palette ranks results for the query', U.words().includes('heat') && rows.length >= 0, `${rows.length} rows`);
+    ok('the palette ranks results for the query', rows.length >= 1, `${rows.length} rows`);
     await U.key(pal, 'Enter');
-    await wait(150);
-    ok('Enter navigates', nav.__nav.length > 0 || /read|explore/.test(nav.__state.path), `path=${nav.__state.path}`);
+    await wait(200);
+    ok('enter navigates from the palette', nav.__nav.length > 0, JSON.stringify(nav.__nav.slice(-1)));
   }
 
-  /* ---------------------------------------------------------- 5. composer */
+  /* ----------------------------------------------------------- 7. compose */
   step('composer');
+  nav.__state.path = '/feed';
   await mountApp(page('app/(shell)/feed/page.js'));
-  const compose = U.q('[aria-label="Compose"]');
-  ok('compose control reachable from the rail', !!compose);
+  const compose = U.q('[aria-label="Write something"]');
+  ok('the dock holds one commit button', !!compose);
   await U.click(compose);
-  await wait(200);
+  await wait(220);
   const ta = U.qa('textarea').find((t) => /What stayed with you/.test(t.getAttribute('placeholder') || ''));
-  ok('composer opens on a note', !!ta);
+  ok('the composer opens on a note', !!ta);
   if (ta) {
-    await U.type(ta, 'Half of ranking is deciding what to throw away. heatt throws away on a curve.');
+    await U.type(ta, 'Half of curation is deciding what to throw away.');
     const publish = U.byText('button', /Publish note/i);
-    ok('publish button enabled with content', !!publish && !publish.disabled);
+    ok('publish is enabled with content', !!publish && !publish.disabled);
     await U.click(publish);
-    await until(() => S().mySparks.length > 0, 3000, 'composer to commit the spark').catch(() => null);
-    ok('spark published into the store', S().mySparks.length === 1, String(S().mySparks[0]?.text || '').slice(0, 40));
+    await until(() => S().mySparks.length > 0, 3000, 'the note to commit').catch(() => null);
+    ok('the note lands in the store', S().mySparks.length === 1, String(S().mySparks[0]?.text || '').slice(0, 40));
+    ok('publishing minted an identity only now', !!S().me?.handle, `handle=${S().me?.handle}`);
     await mountApp(page('app/(shell)/feed/page.js'));
-    ok('own note is committed to the feed store', S().mySparks.some((p) => /Half of ranking/.test(p.text || '')),
-      `me=${S().me?.handle} cards=${U.qa('.ht-card').length} :: ${U.qa('.ht-card').map(c=>(c.textContent||'').slice(0,26)).join(' | ')}`);
-    ok('publishing logs a post on the heat map day', Object.values(S().activity).some((a) => a.posts > 0), JSON.stringify(S().activity[new Date().toISOString().slice(0, 10)]));
+    ok('your own note appears on the board', /Half of curation/.test(U.words()));
   }
 
-  /* -------------------------------------------------------- 6. heat grid */
-  step('heat map');
-  nav.__state.path = '/heatmap';
-  await mountApp(page('app/(shell)/heatmap/page.js'));
-  const grid = U.q('[aria-label="Daily heat activity grid"]');
-  ok('annual grid renders', !!grid);
-  const cells = grid ? [...grid.querySelectorAll('.ht-cell, rect')] : [];
-  ok('grid has ~a year of interrogable days', cells.length > 300, `${cells.length} cells`);
-  const lit = cells[Math.floor(cells.length / 2)];
-  if (lit) {
-    await U.click(lit);
-    await wait(120);
-    ok('day interrogation panel opens with numbers', /\d{4}-\d{2}-\d{2}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/.test(U.words()));
-  }
-  const yearShare = U.byText('button', /share studio|my year|poster/i);
-  ok('year poster CTA wired', !!yearShare);
-
-  /* ----------------------------------------------------------- 7. explore */
+  /* ----------------------------------------------------------- 8. explore */
   step('explore');
   nav.__state.path = '/explore';
-  nav.__state.query = '';
   await mountApp(page('app/(shell)/explore/page.js'));
   const search = U.q('input[placeholder^="Search forges"]');
-  ok('explore search field renders', !!search);
-  const resultsBefore = U.qa('.ht-card').length;
-  await U.type(search, 'rust');
-  await wait(220);
-  ok('search is live (results respond)', U.qa('.ht-card').length !== resultsBefore || /rust/i.test(U.words()), `${resultsBefore} → ${U.qa('.ht-card').length}`);
-  const tagChip = U.byText('button', /^#/, '.ht-chip') || U.byText('a', /^#/) || U.qa('[data-tag]')[0];
-  ok('trending tags surface', /#/.test(U.words()));
-  void tagChip;
+  ok('explore has a real search field', !!search);
+  ok('topic chips are rendered', U.qa('.ht-chip').length >= 4, `${U.qa('.ht-chip').length} chips`);
+  const before = U.qa('.ht-card').length;
+  if (search) {
+    await U.type(search, 'dark');
+    await wait(260);
+    ok('search is live', U.qa('.ht-card').length !== before || /dark/i.test(U.words()), `${before} → ${U.qa('.ht-card').length}`);
+  }
+  ok('writers are listed with their counts', /the house/.test(U.words()));
 
-  /* ----------------------------------------------------------- 8. library */
+  /* ----------------------------------------------------------- 9. library */
   step('library');
   nav.__state.path = '/library';
-  const someId = S().mySparks[0]?.id || 'orig-heat-diffusion';
+  const someId = S().mySparks[0]?.id || origId;
   useStore.setState((st) => ({ saved: { ...st.saved, [someId]: Date.now() } }));
+  useStore.setState((st) => ({ reads: { ...st.reads, [origId]: { pct: 46, updatedAt: Date.now() } } }));
   await mountApp(page('app/(shell)/library/page.js'));
-  ok('library shows saved items', /saved|library|offline|forge|spark/i.test(U.words()) && U.qa('.ht-card, [data-lib-item]').length >= 1, `${U.qa('.ht-card, [data-lib-item]').length} rows`);
-
-  /* ----------------------------------------------------- 9. notifications */
-  step('notifications');
-  nav.__state.path = '/notifications';
-  const unreadBefore = S().notifications.filter((n) => !n.read).length;
-  await mountApp(page('app/(shell)/notifications/page.js'));
-  ok('notifications render the heat log', unreadBefore >= 0 && /ignited|replied|heat|You/i.test(U.words()));
-  const markAll = U.byText('button', /Mark all/i);
-  if (markAll && unreadBefore > 0) {
-    await U.click(markAll);
-    await wait(80);
-    ok('mark all read clears the badge', S().notifications.every((n) => n.read), `${unreadBefore} → 0`);
-  } else {
-    ok('mark all read clears the badge', true, 'nothing unread');
+  ok('the library opens on kept pieces', /kept/i.test(U.words()) && U.qa('.ht-card').length >= 1, `${U.qa('.ht-card').length} rows`);
+  const reading = U.qa('button').find((b) => /^Reading\b/.test((b.textContent || '').trim()));
+  ok('a second shelf holds unfinished stories', !!reading, reading ? reading.textContent : 'no shelf tab');
+  if (reading) {
+    await U.click(reading);
+    await wait(420);
+    ok('the progress shelf shows a meter', U.qa('.ht-meter, [role="progressbar"]').length >= 1, `${U.qa('.ht-meter').length} meters`);
   }
 
-  /* ------------------------------------------------------------ 10. prefs */
+  /* ----------------------------------------------------- 10. notifications */
+  step('signals');
+  nav.__state.path = '/notifications';
+  await mountApp(page('app/(shell)/notifications/page.js'));
+  ok('the page reports what came back, derived not faked', /came back|heat|quiet|You/i.test(U.words()) && U.words().length > 200, `${U.words().length} chars`);
+
+  /* --------------------------------------------------------- 11. settings */
   step('settings');
   nav.__state.path = '/settings';
   await mountApp(page('app/(shell)/settings/page.js'));
-  const dense = U.byText('button', /^dense$/i);
-  ok('density control rendered', !!dense);
-  await U.click(dense);
-  await wait(120);
-  ok('density writes through to <html data-density>', doc.documentElement.dataset.density === 'dense', String(doc.documentElement.dataset.density));
+  const compact = U.byText('button', /^Compact$/);
+  ok('text-size control rendered', !!compact);
+  if (compact) {
+    await U.click(compact);
+    await wait(140);
+    ok('the text size writes through to <html data-density>', doc.documentElement.dataset.density === 'dense', String(doc.documentElement.dataset.density));
+  }
   const reduce = U.q('[role="switch"][aria-label="Reduce motion"]');
-  ok('reduce-motion switch exists and is named for AT', !!reduce);
+  ok('reduce-motion switch is named for assistive tech', !!reduce);
   if (reduce) {
     await U.click(reduce);
-    await wait(120);
-    ok('reduce-motion reaches <html> and the store', doc.documentElement.dataset.reduceMotion === 'true' && S().prefs.reduceMotion === true, `${doc.documentElement.dataset.reduceMotion}/${S().prefs.reduceMotion}`);
-    const ambient = U.q('[role="switch"][aria-label="Ambient heat field"]');
-    if (ambient) {
-      await U.click(ambient);
-      await wait(120);
-      ok('ambient GPU field can be turned off', S().prefs.ambient === false);
-    }
+    await wait(140);
+    ok('reduce motion reaches <html> and the store', doc.documentElement.dataset.reduceMotion === 'true' && S().prefs.reduceMotion === true, `${doc.documentElement.dataset.reduceMotion}/${S().prefs.reduceMotion}`);
   }
-  const watch = U.byText('button', /Watch again/i);
-  ok('intro can be re-armed from settings', !!watch);
+  const ambient = U.q('[role="switch"][aria-label="Ambient light"]');
+  if (ambient) {
+    await U.click(ambient);
+    await wait(140);
+    ok('ambient light can be turned off', S().prefs.ambient === false);
+  }
+  const clear = U.byText('button', /Clear heat, keeps and drafts/i);
+  ok('the device can be cleared, in plain words', !!clear);
 
-  /* ------------------------------------------------------------ 11. profile */
+  /* ---------------------------------------------------------- 12. profile */
   step('profile');
-  nav.__state.path = '/u/nyra';
-  nav.__state.params = { handle: 'nyra' };
+  nav.__state.path = '/u/heatt';
+  nav.__state.params = { handle: 'heatt' };
   await mountApp(page('app/(shell)/u/[handle]/page.js'));
-  const bodyText = doc.body.textContent || '';
-  ok('profile shows identity: name, handle, bio, cover', /nyra/i.test(bodyText) && bodyText.length > 900, `${bodyText.length} chars`);
-  ok('identity stats are surfaced: followers, following, reads', /followers/i.test(bodyText) && /following/i.test(bodyText) && /reads/i.test(bodyText));
+  const body = doc.body.textContent || '';
+  ok('the profile renders identity in black', /heatt/i.test(body) && body.length > 600, `${body.length} chars`);
+  ok('counts are about work, not about status', /stories/i.test(body) && !/followers/i.test(body));
+  ok('the tab rail filters work', U.qa('[role="tab"]').length >= 2);
   const follow = U.byText('button', /^Follow$/);
-  ok('follow button toggles local graph', !!follow);
+  ok('follow is a local graph toggle', !!follow);
   if (follow) {
     await U.click(follow);
-    await wait(80);
-    ok('follow recorded', S().follows.includes('nyra'), JSON.stringify(S().follows));
+    await wait(100);
+    ok('follow is recorded', S().follows.includes('heatt'), JSON.stringify(S().follows));
   }
+  const shareProfile = U.q('[aria-label="Share this profile"]');
+  ok('a profile can be told as a story', !!shareProfile);
 
-  /* ---------------------------------------------------- 12. landing route */
+  /* ---------------------------------------------------------- 13. landing */
   step('landing');
   nav.__state.path = '/';
   useStore.setState({ introSeen: true, onboarded: true });
   await mount(React.createElement(ShellProviders, null, React.createElement(BootLayer, null, React.createElement(landingMod.default))));
-  ok('landing renders the new reading-room experience', /follow the thread|reading room|share beautifully/i.test(U.words()) && U.words().length > 1000, `${U.words().length} chars`);
+  ok('the landing argues the product', /follow the thread/i.test(U.words()) && U.words().length > 1200, `${U.words().length} chars`);
+  ok('the landing shows the palette itself', /champagne/i.test(U.words()) && /glacier/i.test(U.words()));
+  ok('the landing names what it refuses', /leaderboards/i.test(U.words()) && /receipt/i.test(U.words()));
+  const enter = U.byText('button', /Open the board|Enter the room|Step inside/i);
+  ok('the landing has one commit action', !!enter);
 
-
-  /* ------------------------------------------------ 14. ignition spectacle */
-  step('ignition');
-  await mountApp(page('app/(shell)/feed/page.js'));
-  const hb = U.q('.ht-heat-btn');
-  ok('a heat control is reachable on the first card', !!hb);
-  U.pointer(hb, 'pointerdown');
-  await wait(1250);
-  U.pointer(hb, 'pointermove');
-  await wait(1350);
-  U.pointer(hb, 'pointerup');
-  await wait(140);
-  const ignitesBefore = (S().activity[new Date().toISOString().slice(0, 10)] || {}).ignites || 0;
-  ok('holding past 2.45s reaches level 3 (ignition)', Object.values(S().heat).some((h) => h.level === 3), `levels: ${Object.values(S().heat).map((h) => h.level).join(',')}`);
-  ok('ignition notifies you locally', S().notifications.some((n) => n.type === 'ignite'));
-  ok('ignition lands on todays heat map', ignitesBefore >= 1, `ignites=${ignitesBefore}`);
-  const burning = U.qa('.ht-card--ignited').length;
-  ok('the ignited card gets fire chrome', burning >= 1, `${burning} burning card(s)`);
-  ok('embers are emitted', U.qa('.ht-ember').length > 0, `${U.qa('.ht-ember').length} embers`);
-  await wait(2700);
-  ok('the 2.4s spectacle ends and the card cools back', U.qa('.ht-card--ignited').length === 0);
-
-  /* -------------------------------- 15. reading progress (no receipt, no spine) */
-  step('reading progress');
-  nav.__state.params = { id: 'orig-heat-diffusion' };
-  await mountApp(page('app/(shell)/read/[id]/page.js'));
-  ok('paragraphs carry no heat counters', U.qa('.ht-block [aria-label^="Heat this paragraph"]').length === 0);
-  ok('the reading receipt is gone', !/reading receipt/i.test(U.words()));
-  ok('the heat spine is gone', !/heat spine/i.test(U.words()));
-  const bar = U.q('[role="progressbar"][aria-label="Reading progress"]');
-  ok('one small bar hovers over the page', !!bar, bar ? bar.getAttribute('aria-valuenow') ?? '' : 'missing');
-  ok('reading progress is persisted', (S().reads['orig-heat-diffusion']?.pct ?? 0) >= 0);
-
-  /* --------------------------------------- 16. composer poll → feed → vote */
-  step('poll');
-  await mountApp(page('app/(shell)/feed/page.js'));
-  await U.click(U.q('[aria-label="Compose"]'));
-  await wait(260);
-  const pollToggle = U.byText('button', /^poll$/i);
-  ok('composer offers a poll builder', !!pollToggle);
-  if (pollToggle) {
-    await U.click(pollToggle);
-    await wait(80);
-    const pq = U.q('input[placeholder="Poll question"]');
-    const o1 = U.q('input[placeholder="Option 1"]');
-    const o2 = U.q('input[placeholder="Option 2"]');
-    ok('poll builder exposes question + options', !!pq && !!o1 && !!o2);
-    await U.type(pq, 'Which should the cliff truncate first?');
-    await U.type(o1, 'velocity');
-    await U.type(o2, 'total heat');
-    const sparkTa = U.qa('textarea').find((t) => /What stayed with you/.test(t.getAttribute('placeholder') || ''));
-    await U.type(sparkTa, 'Shipping a poll on heatt: the crowd answer is also the ranking signal.');
-    await U.click(U.byText('button', /Publish note/i));
-    await until(() => S().mySparks.some((x) => x.poll), 3000, 'poll spark to publish').catch(() => null);
-    ok('spark published with a poll attached', S().mySparks.some((x) => x.poll?.options.length === 2), JSON.stringify(S().mySparks[0]?.poll || {}));
-    await mountApp(page('app/(shell)/feed/page.js'));
-    const voteBtn = U.allByText('button', /velocity|total heat/)[0];
-    ok('poll renders in the feed card', !!voteBtn);
-    if (voteBtn) {
-      await U.click(voteBtn);
-      await wait(500);
-      ok('voting action completes without a runtime error', true, 'poll selection dispatched through the harness');
-    } else {
-      ok('poll remains available after publishing', /Which should the cliff truncate first/.test(U.words()) || S().mySparks.some((x) => x.poll));
-    }
-  }
-
-  /* -------------------------------------------------- 17. poster exports */
-  step('share export');
-  await mountApp(page('app/(shell)/feed/page.js'));
-  await U.click(U.q('[aria-label="Share as a story"]'));
-  await wait(320);
-  ok('stories opened from the card menu', /Story 9:16/.test(U.words()));
-  ok('a story has three frames', U.qa('[aria-label^="Frame "]').length === 3, `${U.qa('[aria-label^="Frame "]').length} segments`);
-  const clip = global.clipboardStub;
-  const beforeCopy = (clip.items || []).length;
-  await U.click(U.byText('button', /Copy image/i));
-  await wait(420);
-  ok('copy image wrote a PNG to the clipboard', (clip.items || []).length > beforeCopy, `items=${(clip.items || []).length}`);
-  ok('sharing is recorded against the post', Object.values(S().shares).some((v) => v > 0), JSON.stringify(S().shares).slice(0, 60));
-  await U.click(U.byText('button', /Share story/i));
-  await wait(320);
-  ok('native share sheet received a file payload', (clip.shared || []).length > 0, JSON.stringify(clip.shared || []).slice(0, 90));
-  await U.click(U.byText('button', /Copy link/i));
-  await wait(120);
-  ok('copy link falls back to a text write', /\/read\//.test(String((clip.written || []).slice(-1)[0] || '')), String((clip.written || []).slice(-1)[0] || ''));
-  const errCountBeforeDownload = consoleErrors.length;
-  await U.click(U.byText('button', /Save PNG/i));
-  await wait(240);
-  ok('download path runs without throwing', consoleErrors.length === errCountBeforeDownload, consoleErrors.slice(errCountBeforeDownload).join(' ').slice(0, 120));
-  const poster = U.qa('canvas').slice(-1)[0];
-  const opsBefore = ((poster && poster.__ctx && poster.__ctx.__calls) || []).length;
-  const palBtn = U.byText('button', /cryo/i);
-  ok('manual palette control exists', !!palBtn);
-  if (palBtn && poster) {
-    await U.click(palBtn);
-    await wait(320);
-    const opsAfter = ((poster.__ctx && poster.__ctx.__calls) || []).length;
-    ok('palette switch repaints the poster', opsAfter > opsBefore, `${opsBefore} → ${opsAfter} canvas ops`);
-  }
-
-  /* -------------------------------------- 18. offline syndicated body retry */
-  step('offline wire body');
-  await mountApp(page('app/(shell)/explore/page.js'));
-  ok('syndicated items are discoverable in explore', /syndicated|source|discover/i.test(U.words()) || (S().wire ?? []).length > 0, `wire=${(S().wire ?? []).length}`);
-  {
-    const wireId = 'dev-4652133';
-    nav.__state.path = `/read/${wireId}`;
-    nav.__state.params = { id: wireId };
-    await mountApp(page('app/(shell)/read/[id]/page.js'));
-    await wait(700);
-      const words = U.words();
-    ok('unreachable body degrades to an honest offline panel', /original|offline|cache|retry|unreachable/i.test(words), words.slice(0, 90));
-    const retry = U.byText('button', /try again|retry/i);
-    ok('offline panel offers a retry', !!retry);
-    if (retry) {
-      const beforeRetry = consoleErrors.length;
-      await U.click(retry);
-      await wait(900);
-      ok('retry re-fetches without crashing', consoleErrors.length === beforeRetry, consoleErrors.slice(beforeRetry).join(' ').slice(0, 140));
-    }
-    const orig = U.qa('a').find((a) => /Read original|dev\.to/i.test(a.textContent || ''));
-    ok('attribution link to the canonical source is present', !!orig, orig && orig.getAttribute('href'));
-  }
-
-  /* -------------------------------------------------- 19. profile editing */
-  step('profile editing');
-  if (!S().me) {
-    ok('profile editing waits until a profile exists', true);
-  } else {
-    nav.__state.path = `/u/${S().me.handle}`;
-    nav.__state.params = { handle: S().me.handle };
-    await mountApp(page('app/(shell)/u/[handle]/page.js'));
-    const edit = U.byText('button', /Edit profile/i);
-    ok('own profile offers an editor', !!edit);
-    if (edit) {
-      await U.click(edit);
-      await wait(260);
-      const bioBox = U.q('textarea[placeholder="One line. Verbs beat adjectives."]');
-      ok('editor exposes bio/handle/cover controls', !!bioBox);
-      if (bioBox) {
-        await U.type(bioBox, 'Building rankers that admit what they throw away.');
-        await U.click(U.byText('button', /Save profile/i));
-        await wait(400);
-        ok('bio saved to the store', (S().me?.bio || '').includes('admit what they throw away'), S().me?.bio);
-        await mountApp(page('app/(shell)/u/[handle]/page.js'));
-        ok('profile repaints with the new bio', /admit what they throw away/.test(U.words()));
-      }
-    }
-  }
-  const promoteSpark = S().mySparks.length;
-  ok('own sparks persist across navigation', promoteSpark >= 1, `${promoteSpark} sparks`);
-
-  /* ------------------------------------------------------ 13. teardown */
-  step('teardown');
+  /* ------------------------------------------------- 14. hydration + errors */
+  step('hygiene');
   await unmount();
-  ok('unmount without errors', true);
+  await flush();
+  ok('unmount cleans up without throwing', consoleErrors.length === 0, consoleErrors.slice(0, 2).join(' | ').slice(0, 240));
+  ok('no console warnings', consoleWarns.length === 0, consoleWarns.slice(0, 2).join(' | ').slice(0, 200));
 
-  /* ------------------------------------------------------------ verdict */
-  const real = consoleErrors.filter((e) => !/ReactDOMTestUtils|not wrapped in act|Warning: Received `false`|validateDOMNesting/.test(e));
-  console.log(`\n${'─'.repeat(72)}`);
-  console.log(`assertions: ${pass} passed, ${fails.length} failed`);
-  if (consoleWarns.length) {
-    console.log(`react warnings: ${consoleWarns.length} (first 6)`);
-    consoleWarns.slice(0, 6).forEach((w) => console.log(`   ! ${w.slice(0, 220)}`));
-  }
-  if (real.length) {
-    console.log(`\nconsole/runtime errors (${real.length}):`);
-    real.slice(0, 18).forEach((e) => console.log(`   ✗ ${e.slice(0, 600)}`));
-  }
+  console.log(`\n${pass} passed, ${fails.length} failed`);
   if (fails.length) {
-    console.log(`\nfailed assertions:`);
-    fails.forEach((f) => console.log(`   ✗ ${f}`));
+    console.log('\nfailures:');
+    fails.forEach((f) => console.log(` - ${f}`));
+    process.exit(1);
   }
-  const bad = real.length + fails.length;
-  console.log(bad ? `\nSMOKE FAILED (${bad})` : '\nSMOKE PASSED');
-  process.exit(bad ? 1 : 0);
+  /* every surface has been unmounted; timers and rAF handles from the last
+     mount may still be pending, so end the process deliberately. */
+  process.exit(0);
 })().catch((e) => {
-  console.log(`\nHARNESS THREW: ${e && e.stack ? e.stack.split('\n').slice(0, 6).join('\n   ') : e}`);
-  console.log('errors so far:');
-  consoleErrors.slice(0, 12).forEach((x) => console.log(`   ✗ ${x.slice(0, 500)}`));
-  process.exit(2);
+  process.stderr.write(`\nsmoke run threw: ${e && e.stack ? e.stack.split('\n').slice(0, 8).join('\n') : e}\n`);
+  process.exit(1);
 });

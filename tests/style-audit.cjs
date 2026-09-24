@@ -163,21 +163,21 @@ function extractCompiledClasses(cssText) {
   useStore.setState({
     introSeen: true,
     onboarded: true,
-    me: { handle: 'auditor', name: 'Style Auditor', bio: 'Checking that the CSS exists.', avatar: null, tags: [], followers: 12, following: 3, thermalMass: 1.1 },
-    heat: { 'sp-01': { level: 2, at: Date.now() } },
-    saved: { 'orig-heat-diffusion': Date.now() },
-    reads: { 'orig-heat-diffusion': { pct: 62, at: Date.now() } },
-    follows: ['nyra'],
-    notifications: [{ id: 'n1', type: 'ignite', actor: 'nyra', text: 'ignited your spark', at: Date.now() - 3600e3, read: false }],
-    activity: { [new Date().toISOString().slice(0, 10)]: { reads: 3, heats: 5, ignites: 2, posts: 1, minutes: 12 } },
+    me: { handle: 'auditor', name: 'Style Auditor', bio: 'Checking that the CSS exists.', joined: '2026-01-04', traits: ['design', 'reading'] },
+    heat: { 'orig-room': { level: 2, at: Date.now() } },
+    saved: { 'orig-heat': Date.now() },
+    reads: { 'orig-heat': { pct: 62, at: Date.now() } },
+    follows: ['heatt'],
+    replies: [{ id: 'r1', postId: 'orig-room', author: 'auditor', text: 'A reply.', at: Date.now(), heat: 0 }],
   });
 
   /* ---------------------------------------------------- every app surface */
   await visit('feed', 'app/(shell)/feed/page.js', {
     path: '/feed',
     async after() {
-      const temp = U.q('[aria-label="Toggle the heat trace"]') || U.q('.ht-card [aria-label*="trace" i]');
-      if (temp) await U.click(temp);
+      const chips = U.byText('button', /^#/);
+      if (chips) await U.click(chips);
+      await wait(200);
       const menu = U.q('[aria-label="Post options"]');
       if (menu) await U.click(menu);
       await wait(120);
@@ -200,12 +200,12 @@ function extractCompiledClasses(cssText) {
   });
 
   await visit('reader', 'app/(shell)/read/[id]/page.js', {
-    path: '/read/orig-heat-diffusion',
-    params: { id: 'orig-heat-diffusion' },
+    path: '/read/orig-heat',
+    params: { id: 'orig-heat' },
     async after() {
-      const ctrl = U.q('[aria-label="Reading controls"]');
+      const ctrl = U.q('[aria-label="Reading settings"]');
       if (ctrl) await U.click(ctrl);
-      await wait(120);
+      await wait(200);
     },
   });
 
@@ -221,14 +221,6 @@ function extractCompiledClasses(cssText) {
   await visit('library', 'app/(shell)/library/page.js', { path: '/library' });
   await visit('notifications', 'app/(shell)/notifications/page.js', { path: '/notifications' });
   await visit('settings', 'app/(shell)/settings/page.js', { path: '/settings' });
-  await visit('heatmap', 'app/(shell)/heatmap/page.js', {
-    path: '/heatmap',
-    async after() {
-      const grid = U.q('[aria-label="Daily heat activity grid"]');
-      if (grid) await U.click(grid.querySelector('rect') || grid);
-      await wait(120);
-    },
-  });
   await visit('profile', 'app/(shell)/u/[handle]/page.js', {
     path: '/u/auditor',
     params: { handle: 'auditor' },
@@ -241,8 +233,8 @@ function extractCompiledClasses(cssText) {
     },
   });
   await visit('other profile', 'app/(shell)/u/[handle]/page.js', {
-    path: '/u/nyra',
-    params: { handle: 'nyra' },
+    path: '/u/heatt',
+    params: { handle: 'heatt' },
     async after() {
       const follow = U.byText('button', /^Follow$/);
       if (follow) await U.click(follow);
@@ -263,29 +255,35 @@ function extractCompiledClasses(cssText) {
       await wait(100);
 
       surface = 'composer';
-      const compose = U.q('[aria-label="Compose"]');
+      const compose = U.q('[aria-label="Write something"]');
       if (compose) {
         await U.click(compose);
-        await wait(220);
-        const poll = U.byText('button', /^poll$/i);
-        if (poll) await U.click(poll);
-        await wait(120);
+        await wait(260);
+        const story = U.byText('button', /^Story$/);
+        if (story) await U.click(story);
+        await wait(200);
+        const preview = U.byText('button', /^Preview$/);
+        if (preview) await U.click(preview);
+        await wait(200);
         harvest();
-        const close = U.byText('button', /✕|Close|Discard/i);
+        const close = U.q('[aria-label="Close composer"]');
         if (close) await U.click(close);
-        await wait(120);
+        await wait(160);
       }
 
       surface = 'share studio';
-      const share = U.q('[aria-label="Make a share poster"]');
+      const share = U.q('[aria-label="Share as a story"]');
       if (share) {
         await U.click(share);
-        await wait(320);
+        await wait(420);
         harvest();
-        const fmt = U.byText('button', /Link 16:9/i);
+        const fmt = U.byText('button', /Square 1:1/i);
         if (fmt) await U.click(fmt);
-        await wait(200);
+        await wait(260);
         harvest();
+        const closeShare = U.q('[aria-label="Close"]');
+        if (closeShare) await U.click(closeShare);
+        await wait(160);
       }
 
       surface = 'thread sheet';
@@ -304,13 +302,17 @@ function extractCompiledClasses(cssText) {
   await mount(React.createElement(ShellProviders, null, React.createElement(BootLayer, null, React.createElement('div', null, 'app'))));
   await flush(4);
   harvest();
-  for (let i = 0; i < 5; i++) {
-    const next = btn(/Continue|Ignite feed/);
+  for (let i = 0; i < 3; i++) {
+    const next = btn(/^Next$/);
     if (!next || next.disabled) break;
     await U.click(next);
-    await wait(220);
+    await wait(260);
     harvest();
   }
+  const knob = U.q('[data-testid="swipe-knob"]');
+  if (knob) await U.click(knob);
+  await wait(300);
+  harvest();
 
   surface = 'intro';
   useStore.setState({ introSeen: false, onboarded: false });
@@ -357,7 +359,11 @@ function extractCompiledClasses(cssText) {
     }
   }
 
-  const keyframeRefs = [...globals.matchAll(/animation:\s*([a-zA-Z][a-zA-Z0-9-]*)/g)].map((m) => m[1]);
+  /* `animation: none` is a real reset, not a reference to a keyframe */
+  const KEYWORD = new Set(['none', 'inherit', 'initial', 'revert', 'unset', 'auto']);
+  const keyframeRefs = [...globals.matchAll(/animation:\s*([a-zA-Z][a-zA-Z0-9-]*)/g)]
+    .map((m) => m[1])
+    .filter((k) => !KEYWORD.has(k));
   const keyframesDef = new Set([...globals.matchAll(/@keyframes\s+([a-zA-Z0-9-]+)/g)].map((m) => m[1]));
   const missingKeyframes = [...new Set(keyframeRefs)].filter((k) => !keyframesDef.has(k) && !twConfig.includes(`${k}:`));
 

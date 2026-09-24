@@ -2,7 +2,7 @@
   "name": "heatt",
   "version": "1.0.0",
   "private": true,
-  "description": "heatt \u2014 a next-generation microblogging + long-form hybrid platform with heat-driven engagement.",
+  "description": "heatt — a next-generation microblogging + long-form hybrid platform with heat-driven engagement.",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",

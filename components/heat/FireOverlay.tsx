@@ -1,30 +1,33 @@
 'use client';
 /* ============================================================================
-   components/heat/FireOverlay — the 2.4s ignition.
+   components/heat/Ignition — what happens when a piece reaches level 3.
 
-   Real flame simulation, cheap enough to run per-card: a 1/3-resolution
-   offscreen buffer with a 1D height field of temperature that (1) cools,
-   (2) diffuses sideways, (3) is driven by turbulence noise and (4) upscales
-   with a CSS blur so the low-res grid reads as soft fire instead of blocks.
-   Ends on its own — fire that loops is a screensaver.
+   Two thousand milliseconds, once, and then nothing. A narrow band of light
+   climbs from the bottom edge of the card (a low-resolution 1D field of
+   turbulence, upscaled with a CSS blur so it reads as glow rather than
+   blocks), a hairline of champagne travels the border, and it is over.
+
+   The design rule this exists to serve: movement should be rare, big, and
+   never repeat. There is no idle fire anywhere in the product.
    ==========================================================================*/
 
 import * as React from 'react';
+import { cls } from '@/lib/util';
 
-export type FireProps = {
+export type IgnitionProps = {
   active: boolean;
-  /** ms; spec default 2400 */
+  /** ms */
   duration?: number;
-  /** 'full' burns the card bottom + border, 'subtle' is border-only */
+  /** 'full' lights the bottom band, 'subtle' is border only */
   variant?: 'full' | 'subtle';
   onDone?: () => void;
   className?: string;
 };
 
-const FW = 96; // sim width
-const FH = 40; // sim height
+const W = 88;
+const H = 26;
 
-export function FireOverlay({ active, duration = 2400, variant = 'full', onDone, className }: FireProps) {
+export function FireOverlay({ active, duration = 2100, variant = 'full', onDone, className }: IgnitionProps) {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const doneRef = React.useRef(onDone);
   doneRef.current = onDone;
@@ -39,186 +42,102 @@ export function FireOverlay({ active, duration = 2400, variant = 'full', onDone,
 
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
+    canvas.width = W;
+    canvas.height = H;
 
-    const dpr = 1; // intentionally low-res; CSS upsamples + blurs
-    canvas.width = FW * dpr;
-    canvas.height = FH * dpr;
-
-    const img = ctx.createImageData(FW, FH);
-    const buf = new Float32Array(FW * FH);
-    const prev = new Float32Array(FW * FH);
-
+    const img = ctx.createImageData(W, H);
+    const field = new Float32Array(W * H);
+    const prev = new Float32Array(W * H);
     const t0 = performance.now();
     let raf = 0;
-    let frame = 0;
 
-    const decay = 1 - 0.034; // heat lost per frame at the top
-    const spread = 0.14; // lateral diffusion — makes tongues, not bars
+    const paint = (t: number) => {
+      /* envelope: ramp up fast, hold, fall away — one arc, no loop */
+      const p = Math.min(1, t / duration);
+      const env = p < 0.14 ? p / 0.14 : p > 0.62 ? Math.max(0, 1 - (p - 0.62) / 0.38) : 1;
 
-    const step = (now: number) => {
-      raf = requestAnimationFrame(step);
-      const el = now - t0;
-      const life = 1 - Math.min(1, el / duration);
-      // ignition curve: snap up, hold, then die down with a final flare
-      const env = Math.min(1, el / 190) * (0.35 + 0.65 * Math.pow(life, 0.72)) + (life < 0.12 ? life * 4.2 : 0);
-      frame++;
-
-      // --- 1. source row: turbulent heat injected along the bottom edge ---
-      const y = FH - 1;
-      for (let x = 0; x < FW; x++) {
-        const n =
-          Math.sin((x * 0.19 + frame * 0.11) * 1.7) * 0.5 +
-          Math.sin((x * 0.045 - frame * 0.052) * 3.1) * 0.34 +
-          Math.sin((x * 0.71 + frame * 0.21)) * 0.12 +
-          (Math.random() - 0.5) * 0.5;
-        // gusts travel along the base so flames lean
-        const gust = 0.55 + 0.45 * Math.sin(frame * 0.045 + x * 0.02);
-        buf[y * FW + x] = Math.max(0, (0.52 + n * 0.5) * gust * env);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = y * W + x;
+          prev[i] = field[i];
+          field[i] *= 0.965;
+        }
       }
-
-      // --- 2. cool + rise + diffuse -------------------------------------
-      for (let row = FH - 2; row >= 0; row--) {
-        for (let x = 0; x < FW; x++) {
-          const i = row * FW + x;
-          const below = prev[(row + 1) * FW + x];
-          const l = prev[i - 1] ?? 0;
-          const r = prev[i + 1] ?? 0;
-          const dx = (l - r) * 0.035; // flame bends toward cooler air
-          const src = buf[i + FW + (dx > 0 ? 1 : dx < 0 ? -1 : 0)] ?? below;
-          buf[i] = Math.max(0, (below * decay + src * 0.16) * (1 - 0.02) + (l + r) * spread * 0.5 - below * spread);
-          buf[i] *= 0.985;
+      /* turbulence injected at the bottom row, warm→white from bottom up */
+      const speed = 0.9 + Math.sin(t / 260) * 0.25;
+      for (let x = 0; x < W; x++) {
+        const base = 0.55 + 0.45 * Math.sin((x / W) * Math.PI);
+        const noise = 0.5 + 0.5 * Math.sin(x * 0.7 + t * 0.006 * speed);
+        field[(H - 1) * W + x] = Math.min(1.4, base * noise * 1.15 + Math.random() * 0.22);
+      }
+      /* lateral diffusion + upward advection */
+      for (let y = 0; y < H - 1; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = y * W + x;
+          const below = field[(y + 1) * W + x];
+          const l = field[y * W + Math.max(0, x - 1)];
+          const r = field[y * W + Math.min(W - 1, x + 1)];
+          field[i] = field[i] * 0.72 + below * 0.22 + (l + r) * 0.03;
         }
       }
 
-      // swap
-      prev.set(buf);
-
-      // --- 3. palette: black → ember → flame → incandescent --------------
-      const d = img.data;
-      for (let i = 0; i < FW * FH; i++) {
-        const v = Math.min(1, buf[i] * 1.45);
-        let r = 0,
-          g = 0,
-          b = 0,
-          a = 0;
-        if (v > 0.02) {
-          if (v < 0.28) {
-            const k = v / 0.28;
-            r = 22 * k;
-            g = 86 * k;
-            b = 34 * k;
-            a = 255 * k * 0.72;
-          } else if (v < 0.62) {
-            const k = (v - 0.28) / 0.34;
-            r = 22 + 38 * k;
-            g = 86 + 84 * k;
-            b = 34 + 16 * k;
-            a = 255 * (0.7 + 0.3 * k);
-          } else if (v < 0.86) {
-            const k = (v - 0.62) / 0.24;
-            r = 60 + 120 * k;
-            g = 170 + 80 * k;
-            b = 50 + 30 * k;
-            a = 255;
-          } else {
-            const k = (v - 0.86) / 0.14;
-            r = 180 + 67 * k;
-            g = 250 + 5 * k;
-            b = 80 + 148 * k;
-            a = 255;
-          }
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = y * W + x;
+          const v = Math.min(1, field[i] * env);
+          const o = i * 4;
+          /* champagne → warm white at the hottest cores */
+          img.data[o] = 236 + v * 19;
+          img.data[o + 1] = 211 + v * 40;
+          img.data[o + 2] = 164 + v * 90;
+          img.data[o + 3] = Math.round(232 * Math.pow(v, 1.35));
         }
-        const o = i * 4;
-        d[o] = r;
-        d[o + 1] = g;
-        d[o + 2] = b;
-        d[o + 3] = a;
       }
       ctx.putImageData(img, 0, 0);
 
-      if (el >= duration) {
-        cancelAnimationFrame(raf);
-        ctx.clearRect(0, 0, FW, FH);
-        doneRef.current?.();
-      }
+      if (t < duration) raf = requestAnimationFrame(() => paint(performance.now() - t0));
+      else doneRef.current?.();
     };
 
-    if (reduced || variant === 'subtle') {
-      // still honour the moment, without the particle work
-      canvas.style.opacity = '0.45';
-      const id = setTimeout(() => doneRef.current?.(), duration);
-      return () => clearTimeout(id);
+    if (reduced) {
+      const t = window.setTimeout(() => doneRef.current?.(), 420);
+      return () => window.clearTimeout(t);
     }
-
-    raf = requestAnimationFrame(step);
-    return () => {
-      cancelAnimationFrame(raf);
-      const id = window.setTimeout(() => doneRef.current?.(), duration + 60);
-      return () => clearTimeout(id);
-    };
-  }, [active, duration, variant]);
+    raf = requestAnimationFrame(() => paint(0));
+    return () => cancelAnimationFrame(raf);
+  }, [active, duration]);
 
   if (!active) return null;
 
   return (
-    <>
-      <canvas
-        ref={canvasRef}
-        aria-hidden
-        className={className}
-        style={{
-          position: 'absolute',
-          left: '-4%',
-          bottom: '-6%',
-          width: '108%',
-          height: '74%',
-          pointerEvents: 'none',
-          zIndex: 40,
-          filter: 'blur(7px) saturate(1.2)',
-          mixBlendMode: 'screen',
-          opacity: 0.8,
-          imageRendering: 'auto',
-        }}
-      />
+    <span aria-hidden className={cls('pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]', className)}>
       <span
-        aria-hidden
-        style={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-          zIndex: 39,
-          background: 'radial-gradient(90% 55% at 50% 112%, rgba(255,180,84,.22), transparent 68%)',
-          mixBlendMode: 'screen',
-          animation: 'ht-fire-bloom 2.4s cubic-bezier(.2,.9,.2,1) forwards',
-        }}
+        className="absolute inset-0 rounded-[inherit]"
+        style={{ boxShadow: '0 0 0 1px rgba(232,211,164,.55), 0 22px 60px -24px rgba(232,211,164,.5)' }}
       />
-      <style>{`@keyframes ht-fire-bloom{0%{opacity:0}10%{opacity:1}70%{opacity:.85}100%{opacity:0}}`}</style>
-    </>
+      <span className="ht-shock absolute inset-0 rounded-[inherit]" />
+      {variant === 'full' && (
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-x-0 bottom-0 h-[46%] w-full"
+          style={{ filter: 'blur(14px) saturate(140%)', mixBlendMode: 'screen', opacity: 0.9 }}
+        />
+      )}
+    </span>
   );
 }
 
-/** Rising ember trail used on heated (not ignited) cards + avatars. */
-export function EmberTrail({ active, count = 10 }: { active: boolean; count?: number }) {
-  if (!active) return null;
-  return (
-    <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: 20 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <span
-          key={i}
-          className="ht-ember"
-          style={
-            {
-              left: `${6 + (i * 89) % 88}%`,
-              bottom: '-4px',
-              ['--dx' as string]: `${((i * 37) % 30) - 15}px`,
-              ['--dy' as string]: `${-70 - ((i * 53) % 90)}px`,
-              ['--d' as string]: `${2 + ((i * 17) % 14) / 10}s`,
-              animationDelay: `${((i * 29) % 20) / 10}s`,
-              animationIterationCount: '3',
-            } as React.CSSProperties
-          }
-        />
-      ))}
-    </span>
-  );
+/** Dust that lifts off a card the moment it ignites. Created imperatively. */
+export function burstSparks(host: HTMLElement, origin: { x: number; y: number }, count = 12) {
+  if (typeof document === 'undefined') return;
+  if (document.documentElement.dataset.reduceMotion === 'true') return;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('span');
+    el.className = 'ht-spark';
+    el.style.cssText = `left:${origin.x}px;top:${origin.y}px;--dx:${(Math.random() - 0.5) * 120}px;animation-delay:${(
+      Math.random() * 0.3
+    ).toFixed(2)}s;width:${2 + Math.random() * 3}px;height:${2 + Math.random() * 3}px`;
+    host.appendChild(el);
+    window.setTimeout(() => el.remove(), 2200);
+  }
 }

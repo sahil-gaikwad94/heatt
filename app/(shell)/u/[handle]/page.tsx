@@ -1,348 +1,285 @@
 'use client';
 /* ============================================================================
-   /u/[handle] — the profile.
+   /u/[handle] — a profile.
 
-   Structure follows the reference layout, inverted into obsidian and rebuilt
-   with real craft:
+   Structure borrowed from the reference card, rebuilt in black:
 
-     · a floating glass bar that densifies as you scroll
-     · a full-bleed cover that parallaxes and loses focus behind the portrait
-     · a centered portrait inside a conic amber→ice ring, with brushed-metal
-       badges drifting around it on a gyroscope (not cartoon stickers)
-     · name, then ONE quiet inline stat row, then bio, then trait pills
+     · a floating bar that densifies as you scroll, with the name resolving in
+     · a full-bleed cover that parallaxes and cools as the content rises
+     · the portrait inside a champagne→glacier conic ring, badges drifting
+       around it (they are real counts, not stickers)
+     · name, one divided spec row, bio, traits
      · the body of work as a masonry board behind pill tabs
-     · a translucent floating dock for navigation (shared with the shell)
+     · your unfinished pieces if it is your own profile
 
-   The reference is a light, playful card; this is the same skeleton in a
-   premium dark register — metal instead of stickers, glow instead of colour,
-   and no scoreboard anywhere.
+   No scoreboard anywhere — and nobody fabricated to fill the grid.
    ==========================================================================*/
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
 import { useApp } from '@/lib/app';
-import { useStore, streakOf } from '@/lib/store';
-import { getUser } from '@/lib/seed/users';
+import { useStore } from '@/lib/store';
+import { getUser, HOUSE_HANDLE, HOUSE_COVER } from '@/lib/seed/users';
 import { avatarDataUri, cls, compact, coverDataUri, prettyDate, timeAgo } from '@/lib/util';
-import { HeatmapCard } from '@/components/heat/Heatmap';
+import { Empty, Stat } from '@/components/ui/primitives';
 import { ProfileEditor } from '@/components/profile/ProfileEditor';
-import { heatFor } from '@/lib/feed';
+import { TopBar } from '@/components/shell/Shell';
+import { CountUp, Tilt, useInViewSafe } from '@/components/ui/motion';
 import { tileIn } from '@/lib/motion';
-import { CountUp, FloatingBadge, Tilt, useInViewSafe } from '@/components/ui/motion';
+import type { Post } from '@/lib/feed';
 
-type Tab = 'all' | 'forges' | 'sparks';
+type Tab = 'all' | 'stories' | 'notes';
 const TABS: { key: Tab; label: string }[] = [
   { key: 'all', label: 'Everything' },
-  { key: 'forges', label: 'Stories' },
-  { key: 'sparks', label: 'Notes' },
+  { key: 'stories', label: 'Stories' },
+  { key: 'notes', label: 'Notes' },
 ];
 
 export default function ProfilePage() {
   const params = useParams<{ handle: string }>();
   const app = useApp();
   const s = useStore();
-  const handle = decodeURIComponent(params?.handle ?? s.me?.handle ?? 'you').replace(/^@/, '');
+  const handle = decodeURIComponent(params?.handle ?? 'you').replace(/^@/, '');
   const isMe = handle === (s.me?.handle ?? 'you') || handle === 'you';
   const user = isMe && s.me ? s.me : getUser(handle);
   const [editing, setEditing] = React.useState(false);
   const [tab, setTab] = React.useState<Tab>('all');
-  const [coverOk, setCoverOk] = React.useState(true);
   const { scrollY } = useScroll();
 
-  /* The cover behaves like a camera: it drifts, opens up and cools off as the
-     content rises over it. Transform-only, so it stays on the compositor. */
-  const coverY = useTransform(scrollY, [0, 300], [0, 90]);
-  const coverScale = useTransform(scrollY, [0, 300], [1.06, 1.22]);
-  const coverOpacity = useTransform(scrollY, [0, 260], [1, 0.35]);
-  const barDense = useTransform(scrollY, [0, 90], [0, 1]);
-  const barBg = useTransform(barDense, (v) => `rgba(5,5,5,${v * 0.82})`);
-  const barBlur = useTransform(barDense, (v) => `blur(${v * 22}px) saturate(${100 + v * 50}%)`);
+  /* The cover behaves like a camera: it drifts, opens and cools as content
+     rises over it. Transform-only, so it stays on the compositor. */
+  const coverY = useTransform(scrollY, [0, 320], [0, 86]);
+  const coverScale = useTransform(scrollY, [0, 320], [1.05, 1.2]);
+  const coverOpacity = useTransform(scrollY, [0, 280], [1, 0.32]);
+  const barDense = useTransform(scrollY, [0, 96], [0, 1]);
+  const barBg = useTransform(barDense, (v) => `rgba(6,7,10,${(v * 0.82).toFixed(3)})`);
 
-  const posts = React.useMemo(() => {
-    const mine = app.posts
-      .filter((p) => p.authorHandle === handle)
-      .map((p) => ({ ...p, heat: p.heat ?? heatFor(p, s as never) }));
-    /* a syndicated author has no local posts: synthesise their library from
-       the wire so their profile is real rather than a blank wall. */
-    if (mine.length === 0) {
-      const wire = app.wire.filter((w) => w.handle === handle);
-      return wire.map((w) => {
-        const p = {
-          id: w.id,
-          kind: 'forge' as const,
-          origin: 'wire' as const,
-          authorHandle: w.handle,
-          authorName: w.author,
-          authorAvatar: w.avatar,
-          date: w.date,
-          tags: w.tags,
-          reactions: w.reactions,
-          comments: w.comments,
-          title: w.title,
-          dek: w.dek,
-          cover: w.cover,
-          minutes: w.minutes,
-          canonical: w.canonical,
-          path: w.path,
-        };
-        return { ...p, heat: heatFor(p as never, s as never) };
-      });
-    }
-    return mine.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [app.posts, handle, s, app.wire]);
+  const posts = React.useMemo<Post[]>(
+    () =>
+      app.posts
+        .filter((p) => p.authorHandle === handle)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [app.posts, handle]
+  );
 
-  const filtered = posts.filter((p) => (tab === 'all' ? true : p.kind === (tab === 'sparks' ? 'spark' : 'forge')));
   const forges = posts.filter((p) => p.kind === 'forge');
-  const sparks = posts.filter((p) => p.kind === 'spark');
-  const followers = user.followers + (isMe ? 1 : 0);
-  const streak = streakOf(s.activity);
-  const reads = Object.keys(s.reads).length;
-  const cover = user.cover ?? (typeof window !== 'undefined' ? coverDataUri(handle) : undefined);
-  const coverArt = cover;
-  const displayName = isMe && s.me ? s.me.name : user.name;
+  const notes = posts.filter((p) => p.kind === 'spark');
+  const filtered = tab === 'all' ? posts : tab === 'stories' ? forges : notes;
+  const isHouse = handle === HOUSE_HANDLE;
+  const cover = user.cover ?? (isHouse ? HOUSE_COVER : coverDataUri(handle));
+  const displayName = user.name;
 
   return (
-    <div className="mx-auto w-full max-w-[880px] pb-28 md:pb-14">
-      {/* ------------------------------------------------------------- bar */}
+    <div className="mx-auto w-full max-w-[900px] pb-32">
+      {/* -------------------------------------------------------------- bar */}
       <motion.div
-        className="sticky top-0 z-30 -mx-4 flex h-[56px] items-center gap-2 px-4 sm:-mx-6 sm:px-6"
-        style={{ background: barBg, backdropFilter: barBlur, WebkitBackdropFilter: barBlur }}
+        className="sticky top-0 z-30 flex h-[56px] items-center gap-2 px-4"
+        style={{ background: barBg, backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)' }}
       >
-        <button onClick={() => app.go('/feed')} className="ht-icon-btn" aria-label="Back to feed">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <button onClick={() => app.go('/feed')} className="ht-icon-btn" aria-label="Back to the board">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <motion.span
-          className="ht-title flex-1 text-center text-[16px] text-white"
-          style={{ opacity: barDense }}
-        >
+        <motion.span className="ht-title flex-1 truncate text-center text-[15px] text-ink" style={{ opacity: barDense }}>
           {displayName}
         </motion.span>
-        <button
-          onClick={() => app.setShare(`profile:${handle}`)}
-          className="ht-icon-btn"
-          aria-label="Share this profile"
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="5" cy="12" r="1.6" />
-            <circle cx="12" cy="12" r="1.6" />
-            <circle cx="19" cy="12" r="1.6" />
+        <button onClick={() => app.setShare(`profile:${handle}`)} className="ht-icon-btn" aria-label="Share this profile">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 15V4m0 0L8.5 7.5M12 4l3.5 3.5M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5" />
           </svg>
         </button>
       </motion.div>
 
       {/* ------------------------------------------------------------ cover */}
-      <div className="relative -mx-4 -mt-[56px] sm:-mx-6">
-        <div data-profile-cover className="profile-cover relative h-[286px] overflow-hidden">
-          {coverArt && coverOk ? (
-            <motion.img
-              src={coverArt}
-              alt=""
-              onError={() => setCoverOk(false)}
-              className="h-full w-full object-cover"
-              style={{ y: coverY, scale: coverScale, opacity: coverOpacity }}
-            />
-          ) : (
-            <div className="h-full w-full" style={{ background: 'linear-gradient(150deg,#161616,#000)' }} />
-          )}
-          {/* the scrim stack: darken the top for the bar, and dissolve the
-              bottom edge into the room so the portrait sits *in* the image */}
-          <span aria-hidden className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,.14) 34%,rgba(0,0,0,.55) 72%,var(--ht-void) 100%)' }} />
-          <span aria-hidden className="absolute inset-0" style={{ background: 'radial-gradient(80% 60% at 50% 96%, rgba(255,180,84,.16), transparent 64%)' }} />
-          <span aria-hidden className="absolute inset-x-0 bottom-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,rgba(255,180,84,.5),transparent)' }} />
-        </div>
+      <div className="relative -mt-[56px] h-[250px] overflow-hidden">
+        <motion.img
+          src={cover}
+          alt=""
+          className="h-full w-full object-cover"
+          style={{ y: coverY, scale: coverScale, opacity: coverOpacity }}
+        />
+        <span
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(70% 60% at 22% 0%, rgba(232,211,164,.18), transparent 62%), radial-gradient(60% 70% at 100% 30%, rgba(107,162,255,.16), transparent 64%), linear-gradient(180deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,.15) 34%, rgba(0,0,0,.6) 74%, #000 100%)',
+          }}
+        />
+        <span aria-hidden className="absolute inset-x-0 bottom-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,rgba(232,211,164,.45),transparent)' }} />
       </div>
 
-      <div className="relative -mt-[104px] px-4 text-center sm:px-6">
-        {/* ------------------------------------------------- portrait + badges */}
-        <div className="relative mx-auto grid h-[140px] w-[140px] place-items-center">
-          <span aria-hidden className="absolute h-[196px] w-[196px] rounded-full blur-3xl" style={{ background: 'radial-gradient(circle,rgba(255,180,84,.3),transparent 68%)' }} />
-          {/* an orbit tick that turns slowly — thermal mass, not a spinner */}
+      <div className="relative -mt-[74px] px-4 text-center sm:px-6">
+        {/* --------------------------------------------------------- portrait */}
+        <div className="relative mx-auto grid h-[132px] w-[132px] place-items-center">
+          <span aria-hidden className="absolute h-[186px] w-[186px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(232,211,164,.26), transparent 68%)', filter: 'blur(26px)' }} />
           <motion.span
             aria-hidden
-            className="absolute h-[176px] w-[176px] rounded-full"
+            className="absolute h-[162px] w-[162px] rounded-full"
             style={{
-              background:
-                'conic-gradient(from 0deg, transparent 0 84%, rgba(255,180,84,.55) 92%, transparent 100%)',
+              background: 'conic-gradient(from 0deg, transparent 0 82%, rgba(232,211,164,.6) 92%, transparent 100%)',
               mask: 'radial-gradient(closest-side, transparent calc(100% - 1.5px), #000 calc(100% - 1px))',
               WebkitMask: 'radial-gradient(closest-side, transparent calc(100% - 1.5px), #000 calc(100% - 1px))',
             }}
             animate={{ rotate: 360 }}
-            transition={{ duration: 26, repeat: Infinity, ease: 'linear' }}
+            transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
           />
-          <span className="profile-avatar ht-avatar-ring grid place-items-center">
+          <span className="ht-avatar-ring grid place-items-center" data-calm={user.verified ? undefined : 'true'}>
             <img
-              src={user.avatar ?? avatarDataUri(displayName, user.handle)}
+              src={user.avatar ?? avatarDataUri(displayName, handle)}
               alt={displayName}
-              onError={(e) => ((e.target as HTMLImageElement).src = avatarDataUri(displayName, user.handle))}
-              className="relative h-[128px] w-[128px] rounded-full object-cover"
+              onError={(e) => ((e.target as HTMLImageElement).src = avatarDataUri(displayName, handle))}
+              className="relative h-[118px] w-[118px] rounded-full object-cover"
               style={{ boxShadow: '0 26px 60px -24px rgba(0,0,0,1)' }}
             />
           </span>
 
-          <FloatingBadge
-            label={`${streak.current}-day reading rhythm`}
-            tone={streak.current > 0 ? 'hot' : 'metal'}
-            depth={1.15}
-            delay={0}
-            size={46}
-            className="-left-[42px] top-0"
-          >
-            <FlameGlyph />
-          </FloatingBadge>
-          <FloatingBadge label={`${forges.length} stories`} depth={0.8} delay={0.9} size={42} className="-right-[44px] top-[44px]">
-            <QuillGlyph />
-          </FloatingBadge>
-          <FloatingBadge label={`${sparks.length} notes`} tone="cold" depth={0.6} delay={1.6} size={38} className="-bottom-1 right-1">
-            <SparkGlyph />
-          </FloatingBadge>
+          <Badge label={`${forges.length} stories`} className="-left-[38px] top-[6px]" delay={0}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M20 3c-6 0-11 4-13 10l-3 8 8-3c6-2 10-7 8-15ZM7 13l4 4" />
+            </svg>
+          </Badge>
+          <Badge label={`${notes.length} notes`} className="-right-[40px] top-[44px]" delay={0.8} tone="cool">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 3v5M12 16v5M3 12h5M16 12h5M6.5 6.5l3 3M14.5 14.5l3 3M17.5 6.5l-3 3M9.5 14.5l-3 3" />
+            </svg>
+          </Badge>
+          {isMe && (
+            <Badge label="kept pieces" className="-bottom-1 right-1" delay={1.5}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-3.8L5.5 20.5v-16a1 1 0 0 1 1-1Z" />
+              </svg>
+            </Badge>
+          )}
         </div>
 
-        {/* --------------------------------------------------------- identity */}
-        <h1 className="ht-title mt-6 flex items-center justify-center gap-2 text-[clamp(1.7rem,1.2rem+1.6vw,2.3rem)] leading-none text-white">
-          {displayName}
-          {user.verified && (
-            <span
-              className="grid h-[19px] w-[19px] place-items-center rounded-full text-[10px] font-black text-[#1A0E02]"
-              style={{ background: 'linear-gradient(140deg,var(--ht-flare),var(--ht-jade))', boxShadow: '0 0 16px -2px rgba(255,180,84,.7)' }}
-              title="Verified"
-            >
-              ✓
+        {/* ---------------------------------------------------------- identity */}
+        <h1 className="ht-display mt-5 text-[clamp(1.7rem,1.4rem+1.8vw,2.5rem)] text-ink">{displayName}</h1>
+        <p className="mt-1.5 text-[13px] text-ink-faint">
+          @{handle}
+          {user.org ? ` · ${user.org}` : ''}
+          {user.location ? ` · ${user.location}` : ''}
+        </p>
+        {user.bio && <p className="mx-auto mt-4 max-w-[52ch] text-[14px] leading-relaxed text-ink-dim">{user.bio}</p>}
+
+        {/* ------------------------------------------------------------ stats */}
+        <div className="ht-stats mx-auto mt-6 max-w-[460px]">
+          <Stat k="stories" v={forges.length} />
+          <Stat k="notes" v={notes.length} />
+          <Stat k="kept" v={isMe ? Object.keys(s.saved).length : forges.length + notes.length} />
+          <div className="ht-stat">
+            <span className="ht-stat-v">
+              <CountUp value={0} format={() => (user.joined ? prettyDate(user.joined).split(',')[0] : '—')} />
             </span>
-          )}
-        </h1>
-
-        <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2 text-[12.5px] text-ink-dim">
-          <span className="rounded-full border border-white/[.09] bg-white/[.03] px-2.5 py-1 font-medium">@{user.handle}</span>
-          {user.org && (
-            <span className="rounded-full border border-white/[.09] bg-white/[.03] px-2.5 py-1 font-medium">{user.org}</span>
-          )}
-          {user.location && <span className="text-ink-mute">{user.location}</span>}
-          <span aria-hidden className="h-1 w-1 rounded-full bg-ink-faint" />
-          <span className="text-ink-mute">joined {prettyDate(user.joined)}</span>
+            <span className="ht-stat-k">since</span>
+          </div>
         </div>
 
-        <p className="mx-auto mt-4 max-w-[56ch] text-[14px] leading-relaxed text-ink-dim">{user.bio}</p>
-
-        {/* ------------------------------------------------------- stat row --
-            One row, numbers as the hero, labels as whispers. Nothing ranks
-            this person against anyone else. */}
-        <div className="mx-auto mt-5 flex max-w-[420px] items-stretch justify-center gap-1 rounded-[20px] border border-white/[.07] bg-white/[.02] p-1.5 backdrop-blur-sm">
-          <Stat k="Followers" v={followers} />
-          <span aria-hidden className="my-2 w-px bg-white/[.07]" />
-          <Stat k="Following" v={user.following} />
-          <span aria-hidden className="my-2 w-px bg-white/[.07]" />
-          <Stat k="Reads" v={reads} />
-        </div>
-
-        {/* trait pills — the accent, used sparingly, on things that are true */}
-        {(user.traits ?? []).length > 0 && (
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {(user.traits ?? []).map((tg) => (
-              <button
-                key={tg}
-                onClick={() => app.go(`/explore?tag=${encodeURIComponent(tg)}`)}
-                className="ht-chip ht-chip--heat !normal-case !tracking-normal"
-              >
-                <span aria-hidden className="h-1 w-1 rounded-full bg-ember-300 shadow-[0_0_8px_#FFB454]" />
-                {tg}
+        {user.traits && user.traits.length > 0 && (
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {user.traits.map((t) => (
+              <button key={t} onClick={() => app.go(`/explore?q=${encodeURIComponent(t)}`)} className="ht-chip">
+                #{t}
               </button>
             ))}
           </div>
         )}
 
-        {/* --------------------------------------------------------- actions */}
-        <div className="mt-5 flex items-center justify-center gap-2">
-          {!isMe && (
-            <button
-              onClick={() => app.toggleFollow(user.handle)}
-              className={cls('ht-btn !px-7', app.follows.includes(user.handle) ? '!px-5' : 'ht-btn--heat')}
-            >
-              {app.follows.includes(user.handle) ? 'Following ✓' : 'Follow'}
-            </button>
-          )}
-          {isMe && (
-            <button onClick={() => setEditing(true)} className="ht-btn ht-btn--heat !px-6">
-              Edit profile
-            </button>
-          )}
-          <button
-            onClick={() => app.setShare(`profile:${handle}`)}
-            className="ht-btn ht-btn--glass !px-5"
-          >
-            Share
-          </button>
-          {!isMe && (
-            <button onClick={() => app.setComposer(true)} className="ht-icon-btn" aria-label="Write a reply spark">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M4 6h16M4 12h10M4 18h7" />
-              </svg>
-            </button>
+        {user.sourceUrl && (
+          <a href={user.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-[12px] text-ember-300 hover:text-ember-200">
+            Syndicated from Dev.to ↗
+          </a>
+        )}
+
+        {/* ---------------------------------------------------------- actions */}
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+          {isMe ? (
+            <>
+              <button onClick={() => setEditing(true)} className="ht-btn ht-btn--heat">
+                Edit profile
+              </button>
+              <button onClick={() => app.setComposer(true)} className="ht-btn ht-btn--quiet">
+                Write something
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => app.toggleFollow(user.handle)}
+                className={cls('ht-btn', app.follows.includes(user.handle) ? 'ht-btn--quiet' : 'ht-btn--heat')}
+                aria-pressed={app.follows.includes(user.handle)}
+              >
+                {app.follows.includes(user.handle) ? 'Following' : 'Follow'}
+              </button>
+              <button
+                onClick={() => app.setComposer(true, { quote: `@${user.handle} ` })}
+                className="ht-btn ht-btn--quiet"
+              >
+                Write a reply
+              </button>
+            </>
           )}
         </div>
 
-        {isMe && (
-          <div className="mt-8 text-left">
-            <HeatmapCard handle={handle} onOpen={() => app.go('/heatmap')} />
-          </div>
-        )}
-
-        {/* ------------------------------------------------------- the work */}
-        <div className="mt-9 text-left">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+        {/* --------------------------------------------------------- the work */}
+        <div className="mt-12 text-left">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="ht-eyebrow">{isMe ? 'your studio' : 'their studio'}</p>
-              <h2 className="ht-title mt-1.5 text-[22px] text-white">
-                {isMe ? 'Your writing' : `Writing by ${user.name.split(' ')[0]}`}
+              <span className="ht-eyebrow">{isMe ? 'your studio' : 'their studio'}</span>
+              <h2 className="ht-display mt-2.5 text-[clamp(1.4rem,1.2rem+1.3vw,2rem)]">
+                {isMe ? 'What you have written' : `Writing by ${displayName.split(' ')[0]}`}
               </h2>
-              <p className="mt-1.5 text-[12.5px] text-ink-mute">
-                {posts.length} {posts.length === 1 ? 'piece' : 'pieces'} · stories, notes, and ideas
+              <p className="mt-1.5 text-[12.5px] text-ink-faint">
+                {posts.length} {posts.length === 1 ? 'piece' : 'pieces'} · newest first
               </p>
             </div>
-            <div
-              className="ht-tabrail max-w-full"
-              role="tablist"
-              aria-label="Filter work"
-            >
-              {TABS.map((x) => (
-                <button
-                  key={x.key}
-                  role="tab"
-                  aria-selected={tab === x.key}
-                  onClick={() => setTab(x.key)}
-                  className="ht-tab"
-                >
-                  {x.label}
-                  <span className="ml-1.5 opacity-60">
-                    {x.key === 'all' ? posts.length : x.key === 'forges' ? forges.length : sparks.length}
-                  </span>
-                </button>
-              ))}
+            <div className="ht-tabrail" role="tablist" aria-label="Filter work">
+              {TABS.map((t) => {
+                const active = tab === t.key;
+                const count = t.key === 'all' ? posts.length : t.key === 'stories' ? forges.length : notes.length;
+                return (
+                  <button key={t.key} role="tab" aria-selected={active} onClick={() => setTab(t.key)} className="ht-tab">
+                    {active && (
+                      <motion.span layoutId="profile-tab" className="absolute inset-0 rounded-full bg-white/[.08]" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />
+                    )}
+                    <span className="relative">
+                      {t.label} <span className="ht-ink-4">{count}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {!isMe && posts.length === 0 && (
-            <div className="ht-panel mt-5 p-8 text-center text-[13.5px] text-ink-mute">
-              Nothing published from this handle yet. Follow and their next piece lands in your board.
+          {filtered.length === 0 ? (
+            <div className="mt-6">
+              <Empty
+                title={isMe ? 'Nothing published yet' : `${displayName} has not published here`}
+                body={
+                  isMe
+                    ? 'Notes and stories you publish land on this board, newest first. Nothing is ranked against anyone.'
+                    : 'Follow to see their next piece in your board.'
+                }
+                action={
+                  isMe ? (
+                    <button onClick={() => app.setComposer(true)} className="ht-btn ht-btn--heat">
+                      Write the first one
+                    </button>
+                  ) : null
+                }
+              />
             </div>
-          )}
-
-          {filtered.length > 0 && (
-            <div className="ht-masonry mt-5">
+          ) : (
+            <div className="ht-masonry mt-6">
               <AnimatePresence mode="popLayout">
                 {filtered.map((p, i) => (
-                  <Tile key={p.id} post={p as never} index={i} onOpen={() => app.openPost(String(p.id))} />
+                  <Tile key={p.id} post={p} index={i} onOpen={() => app.openPost(String(p.id))} />
                 ))}
               </AnimatePresence>
             </div>
-          )}
-
-          {filtered.length > 0 && (
-            <p className="py-8 text-center text-[12px] text-ink-faint">
-              {filtered.length} {filtered.length === 1 ? 'piece' : 'pieces'} · newest first
-            </p>
           )}
         </div>
       </div>
@@ -354,23 +291,38 @@ export default function ProfilePage() {
 
 /* ------------------------------------------------------------------ parts */
 
-function Stat({ k, v, suffix = '' }: { k: string; v: number; suffix?: string }) {
+function Badge({
+  label,
+  children,
+  className,
+  delay = 0,
+  tone = 'hot',
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+  tone?: 'hot' | 'cool';
+}) {
   return (
-    <div className="ht-stat flex-1">
-      <span className="ht-stat-v">
-        <CountUp value={v} format={(n) => compact(Math.round(n)) + suffix} />
-      </span>
-      <span className="ht-stat-k">{k}</span>
-    </div>
+    <motion.span
+      title={label}
+      aria-label={label}
+      className={cls('ht-badge h-[40px] w-[40px]', className)}
+      data-tone={tone === 'hot' ? 'hot' : undefined}
+      initial={{ opacity: 0, scale: 0.7 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.35 + delay, type: 'spring', stiffness: 300, damping: 22 }}
+      style={{ animation: `ht-float 9s ease-in-out ${delay}s infinite` }}
+    >
+      {children}
+    </motion.span>
   );
 }
 
-/* A tile: image or typographic cover, kind chip, title, quiet meta row.
-   Hover lifts it 2px and opens the image — the same gesture as the card. */
-function Tile({ post, onOpen, index }: { post: any; onOpen: () => void; index: number }) {
-  const hasCover = !!post.cover;
+function Tile({ post, onOpen, index }: { post: Post; onOpen: () => void; index: number }) {
   const { ref, seen } = useInViewSafe<HTMLDivElement>('-6% 0px -4% 0px');
-
+  const hasCover = !!post.cover;
   return (
     <motion.div
       ref={ref}
@@ -379,41 +331,40 @@ function Tile({ post, onOpen, index }: { post: any; onOpen: () => void; index: n
       initial="hidden"
       animate={seen ? 'show' : 'hidden'}
       exit="exit"
-      transition={{ delay: Math.min(0.24, (index % 6) * 0.045) }}
+      transition={{ delay: Math.min(0.2, (index % 6) * 0.04) }}
     >
       <Tilt intensity={4} lift={3}>
-        <button onClick={onOpen} className="ht-tile group block w-full text-left">
+        <button onClick={onOpen} className="ht-tile text-left" aria-label={post.title ?? 'Open note'}>
           <span className={cls('relative block overflow-hidden', hasCover ? 'aspect-[4/5]' : 'aspect-[4/3.2]')}>
             {hasCover ? (
-              <img src={post.cover} alt="" className="h-full w-full object-cover" />
+              <img src={post.cover} alt="" loading="lazy" />
             ) : (
               <span
-                className="grid h-full w-full place-items-center p-4 text-[13.5px] font-semibold leading-snug text-ink-dim"
+                className="grid h-full w-full place-items-center p-4 text-[13px] font-medium leading-snug text-ink-2"
                 style={{
                   background:
-                    'radial-gradient(120% 100% at 20% 0%, rgba(255,180,84,.16), transparent 60%), radial-gradient(100% 90% at 90% 100%, rgba(99,216,245,.1), transparent 60%), linear-gradient(160deg,#151515,#050505)',
+                    'radial-gradient(120% 100% at 20% 0%, rgba(232,211,164,.14), transparent 60%), radial-gradient(100% 90% at 90% 100%, rgba(107,162,255,.12), transparent 60%), linear-gradient(160deg,#12141a,#08090c)',
                 }}
               >
                 {post.text?.slice(0, 110)}
               </span>
             )}
-            <span aria-hidden className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.06) 38%,rgba(0,0,0,.86))' }} />
-            <span className="absolute left-3 top-3 rounded-full border border-white/[.14] bg-black/45 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white/90 backdrop-blur-md">
-              {post.kind === 'forge' ? `${post.minutes ?? 6} min` : 'spark'}
+            <span aria-hidden className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.05) 36%,rgba(0,0,0,.88))' }} />
+            <span className="absolute left-3 top-3 rounded-full border border-line-2 bg-black/45 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white/90 backdrop-blur-md">
+              {post.kind === 'forge' ? `${post.minutes ?? 6} min` : 'note'}
             </span>
-            {post.heat?.heat > 55 && (
-              <span className="absolute right-3 top-3 rounded-full border border-ember-400/40 bg-black/50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-ember-100 backdrop-blur-md">
-                hot
+            {post.heatScore && post.heatScore.heat >= 60 && (
+              <span className="absolute right-3 top-3 rounded-full border border-[rgba(232,211,164,.45)] bg-black/50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#F7EAD0] backdrop-blur-md">
+                {post.heatScore.heat}°
               </span>
             )}
-            <span className="absolute inset-x-3 bottom-3 line-clamp-3 text-[13.5px] font-bold leading-snug text-white">
-              {post.title ?? post.text?.slice(0, 90)}
-            </span>
+            {post.title && (
+              <span className="absolute inset-x-3 bottom-3 line-clamp-3 text-[13.5px] font-semibold leading-snug text-white">{post.title}</span>
+            )}
           </span>
-          <span className="mt-2.5 flex items-center gap-1.5 px-0.5 text-[11.5px] text-ink-faint">
-            <span className="truncate">@{post.authorHandle}</span>
-            <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-ink-faint" />
-            <span className="shrink-0">{timeAgo(post.date)}</span>
+          <span className="flex items-center gap-2 px-1 py-2.5 text-[11.5px] text-ink-faint">
+            <span className="truncate">{timeAgo(post.date)} ago</span>
+            {post.origin === 'wire' && <span className="ht-chip !h-[20px] !px-2 !text-[10px]">Dev.to</span>}
           </span>
         </button>
       </Tilt>
@@ -421,25 +372,3 @@ function Tile({ post, onOpen, index }: { post: any; onOpen: () => void; index: n
   );
 }
 
-/* Badge glyphs, drawn rather than emoji — they sit in brushed metal dials. */
-function FlameGlyph() {
-  return (
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 3c1.6 3.4.3 5-1.2 6.6C9.2 11.3 7.6 12.8 7.6 15.4A4.6 4.6 0 0 0 12 20a4.6 4.6 0 0 0 4.6-4.6c0-2-1-3.6-2.6-5.2 1.7 1.8 2.5 3.9 2.5 6" />
-    </svg>
-  );
-}
-function QuillGlyph() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M20 3c-6 0-11 4-13 10l-3 8 8-3c6-2 10-7 8-15ZM7 13l4 4" />
-    </svg>
-  );
-}
-function SparkGlyph() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 3v5M12 16v5M3 12h5M16 12h5M6.5 6.5l3 3M14.5 14.5l3 3M17.5 6.5l-3 3M9.5 14.5l-3 3" />
-    </svg>
-  );
-}

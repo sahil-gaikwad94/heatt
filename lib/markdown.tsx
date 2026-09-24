@@ -73,16 +73,15 @@ function textOf(n: Node): string {
 /* -------------------------------------------------------------------------- */
 
 export type RenderOpts = {
-  /** called with the top-level block index for click-to-heat anchoring */
+  /** called with the top-level block index, for scroll anchoring */
   onBlockRef?: (index: number, el: HTMLElement | null) => void;
-  /** per-block crowd heat 0..1 for the waveform glow */
-  blockHeat?: (index: number) => number;
-  /** internal dev.to path router */
-  onInternalLink?: (path: string) => void;
+  /** internal links stay in the app */
+  onInternalLink?: (href: string) => void;
+  /** compact mode drops outbound-link decoration */
   compact?: boolean;
 };
 
-const INTERNAL_HOSTS = ['dev.to'];
+const INTERNAL_HOSTS = ['heatt.app'];
 
 /** Render-scope options. remark's AST walk is synchronous, so one module-level
  *  reference is safe and keeps the recursive helpers free of prop threading. */
@@ -92,28 +91,13 @@ export function Markdown({ doc, opts = {} }: { doc: ParsedDoc; opts?: RenderOpts
   OPTS = opts;
   const out: React.ReactNode[] = [];
   let i = 0;
-
-  const block = (node: Node, key: number) => {
-    const heat = opts.blockHeat?.(key) ?? 0;
-    const style = heat > 0.02 ? ({ ['--bh' as string]: heat } as React.CSSProperties) : undefined;
-    const cls =
-      'ht-block' + (heat > 0.15 ? ' ht-block--warm' : '') + (heat > 0.5 ? ' ht-block--hot' : '');
-    return (
-      <div
-        key={`b${key}`}
-        data-block={key}
-        className={cls}
-        style={style}
-        ref={(el) => opts.onBlockRef?.(key, el)}
-      >
-        {render(node, key)}
-      </div>
-    );
-  };
-
   for (const child of doc.root.children ?? []) {
     if (child.type === 'yaml' || child.type === 'definition') continue;
-    out.push(block(child, i));
+    out.push(
+      <div key={`b${i}`} data-block={i} className="ht-block" ref={(el) => opts.onBlockRef?.(i, el)}>
+        {render(child, i)}
+      </div>
+    );
     i++;
   }
   return <>{out}</>;
@@ -317,7 +301,7 @@ export function CodeBlock({ lang, code, caption }: { lang: string; code: string;
       <pre className={wrap ? 'ht-pre-wrap' : ''}>
         <code className={`language-${lang}`}>
           {lines.map((l, i) => (
-            <span key={i} className="ht-line">
+            <span key={i} className="ht-cline">
               <span className="ht-lineno">{i + 1}</span>
               <span className="ht-linetext">{l || ' '}</span>
               {'\n'}
