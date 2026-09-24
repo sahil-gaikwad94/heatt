@@ -76,6 +76,19 @@ if (missingArt.length) {
   ok(`all ${artRefs.length} /art/* references resolve to real files (${artFiles.length} files in public/art)`);
 }
 
+// The icon is the first thing anyone sees: it must be the room's palette,
+// never the warm one the redesign retired.
+try {
+  const icon = fs.readFileSync(path.join(PUBLIC, 'icon.svg'), 'utf8');
+  const warm = /#FF[0-9A-F]{4}|#F{0,1}[89A-F][0-9A-F]{3}/i.test(icon) && /FF2D12|FF8A1F|ff6|f97316/i.test(icon);
+  if (!/E8D3A4/i.test(icon)) fail('icon.svg lost the champagne mark');
+  else ok('icon.svg carries the champagne mark');
+  if (warm) fail('icon.svg still uses the retired ember palette');
+  else ok('icon.svg has no ember/orange in it');
+} catch {
+  fail('icon.svg missing');
+}
+
 // Check icon.svg and manifest exist
 if (fs.existsSync(path.join(PUBLIC, 'icon.svg'))) ok('public/icon.svg exists');
 else fail('public/icon.svg missing — PWA and favicon will 404');

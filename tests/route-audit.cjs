@@ -189,6 +189,13 @@ async function startServer() {
       ok('a failed upstream is never cached', /no-store/.test(cc) && !/s-maxage/.test(cc), cc);
       ok('a failed upstream says when to retry', !!feed.headers.get('retry-after'), feed.headers.get('retry-after') || '');
     }
+    /* the offline shell: present, and safely narrow */
+    section('/sw.js');
+    const sw = await fetch(`${BASE}/sw.js`, { redirect: 'manual' });
+    const swSrc = await sw.text();
+    ok('the service worker is served', sw.status === 200 && /javascript/i.test(sw.headers.get('content-type') || ''), String(sw.status));
+    ok('it never caches HTML or the API', !/cache\.put\([^)]*(html|\/api)/i.test(swSrc) && /method !== 'GET'/.test(swSrc));
+    ok('it keeps a bounded cache', /MAX_ENTRIES/.test(swSrc));
   } finally {
     stop();
   }
