@@ -53,6 +53,11 @@ export type Ctx = {
   toast: (text: string, tone?: Toast['tone'], icon?: React.ReactNode, action?: Toast['action']) => void;
   /** keep or unkeep, with an undo on the toast */
   toggleKeep: (id: string) => void;
+  /** take your own piece back — reversible from the toast */
+  deletePost: (id: string) => void;
+  deleteReply: (id: string) => void;
+  /** is this piece yours to delete? */
+  isMine: (id: string) => boolean;
   toasts: Toast[];
   dismissToast: (id: number) => void;
 
@@ -330,6 +335,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [posts, router]
   );
 
+  const isMine = React.useCallback(
+    (id: string) => {
+      const store = useStore.getState();
+      return (
+        store.mySparks.some((x) => x.id === id) ||
+        store.myArticles.some((x) => x.id === id) ||
+        (!!store.me && posts.some((p) => p.id === id && p.authorHandle === store.me?.handle))
+      );
+    },
+    [posts]
+  );
+
+  const deletePost = React.useCallback(
+    (id: string) => {
+      const store = useStore.getState();
+      const spark = store.removeSpark(id);
+      const article = spark ? undefined : store.removeArticle(id);
+      if (!spark && !article) return;
+      toast(article ? 'Story deleted' : 'Note deleted', 'plain', undefined, {
+        label: 'Undo',
+        run: () => {
+          if (spark) useStore.getState().restoreSpark(spark);
+          if (article) useStore.getState().restoreArticle(article);
+        },
+      });
+      /* a deleted story should not stay open in the reader */
+      if (typeof window !== 'undefined' && window.location.pathname === `/read/${encodeURIComponent(id)}`) {
+        push('/feed');
+      }
+    },
+    [toast, push]
+  );
+
+  const deleteReply = React.useCallback(
+    (id: string) => {
+      const reply = useStore.getState().removeReply(id);
+      if (!reply) return;
+      toast('Reply deleted', 'plain', undefined, {
+        label: 'Undo',
+        run: () => useStore.getState().restoreReply(reply),
+      });
+    },
+    [toast]
+  );
+
+
   const heatOf = React.useCallback((id: string) => s.heat[id]?.level ?? 0, [s.heat]);
   const countOf = React.useCallback(
     (p: Post) => ({
@@ -363,6 +414,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setHeat,
     toast,
     toggleKeep,
+    deletePost,
+    deleteReply,
+    isMine,
     toasts,
     dismissToast,
     composerOpen,

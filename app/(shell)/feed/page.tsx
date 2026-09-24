@@ -29,6 +29,18 @@ export default function FeedPage() {
   /* coming back from a story should land where you were reading */
   useScrollMemory('board');
 
+  /* a note's permalink (/n/<id>) arrives here as ?note=<id>: open its thread
+     and clean the address, so a shared note lands on the conversation */
+  React.useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('note');
+    if (!id) return;
+    if (app.posts.some((p) => p.id === id)) app.setThread(id);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('note');
+    window.history.replaceState(null, '', url.pathname + (url.search || ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.posts]);
+
   const items = app.ranked;
   const lead = items.find((p) => p.kind === 'forge' && p.cover) ?? items[0];
   /* the feature slot only exists on the mixed board */

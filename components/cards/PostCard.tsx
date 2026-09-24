@@ -433,7 +433,10 @@ export function CardMenu({ post }: { post: Post }) {
   const app = useApp();
   const [open, setOpen] = React.useState(false);
   const muted = useStore((s) => s.muted.includes(`@${post.authorHandle}`));
-  const saved = useStore((s) => !!s.saved[post.id]);
+  const saved = useStore((s) => s.saved[post.id]);
+  const me = useStore((s) => s.me);
+  /* your own writing gets a different menu: it can be taken back */
+  const mine = !!me && post.authorHandle === me.handle;
 
   return (
     <div className="relative shrink-0">
@@ -482,18 +485,32 @@ export function CardMenu({ post }: { post: Post }) {
                   Open original ↗
                 </MenuRow>
               )}
+              {mine ? (
+                <MenuRow
+                  danger
+                  onClick={() => {
+                    app.deletePost(post.id);
+                    setOpen(false);
+                  }}
+                >
+                  Delete {post.kind === 'forge' ? 'story' : 'note'}
+                </MenuRow>
+              ) : (
+                <MenuRow
+                  onClick={() => {
+                    useStore.getState().toggleMute(`@${post.authorHandle}`);
+                    app.toast(muted ? `Unmuted @${post.authorHandle}` : `Muted @${post.authorHandle}`, muted ? 'heat' : 'cool');
+                    setOpen(false);
+                  }}
+                >
+                  {muted ? `Unmute @${post.authorHandle}` : `Mute @${post.authorHandle}`}
+                </MenuRow>
+              )}
               <MenuRow
                 onClick={() => {
-                  useStore.getState().toggleMute(`@${post.authorHandle}`);
-                  app.toast(muted ? `Unmuted @${post.authorHandle}` : `Muted @${post.authorHandle}`, muted ? 'heat' : 'cool');
-                  setOpen(false);
-                }}
-              >
-                {muted ? `Unmute @${post.authorHandle}` : `Mute @${post.authorHandle}`}
-              </MenuRow>
-              <MenuRow
-                onClick={() => {
-                  navigator.clipboard?.writeText(`${location.origin}/read/${post.id}`);
+                  /* a story lives at /read/…, a note at /n/… — both open the piece */
+                  const path = post.kind === 'forge' ? `/read/${post.id}` : `/n/${post.id}`;
+                  navigator.clipboard?.writeText(`${location.origin}${path}`);
                   app.toast('Link copied', 'plain');
                   setOpen(false);
                 }}
@@ -508,12 +525,24 @@ export function CardMenu({ post }: { post: Post }) {
   );
 }
 
-function MenuRow({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+function MenuRow({
+  children,
+  onClick,
+  danger,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  /** destructive rows are marked in colour — one of the two places red is allowed */
+  danger?: boolean;
+}) {
   return (
     <button
       role="menuitem"
       onClick={onClick}
-      className="block w-full rounded-[var(--r-sm)] px-3 py-2 text-left text-[13px] text-ink-2 transition-colors hover:bg-white/[.06] hover:text-ink"
+      className={cls(
+        'block w-full rounded-[var(--r-sm)] px-3 py-2 text-left text-[13px] transition-colors hover:bg-white/[.06]',
+        danger ? 'text-[var(--neg)] hover:text-[var(--neg)]' : 'text-ink-2 hover:text-ink'
+      )}
     >
       {children}
     </button>

@@ -635,6 +635,91 @@ async function until(fn, ms = 4000, label = 'condition') {
     }
   }
 
+  step('your own writing can be taken back');
+  nav.__state.path = '/feed';
+  await mountApp(page('app/(shell)/feed/page.js'));
+  await wait(240);
+  /* publishing twice earlier in this run is the setup for this step */
+  S().addSpark({ author: S().me?.handle ?? 'you', text: 'A second note, published so it can be deleted.', tags: ['meta'] });
+  await wait(120);
+  const mineBefore = S().mySparks.length;
+  ok('the notes you published are on the board', mineBefore === 2, `${mineBefore} own notes`);
+  const myCard = U.qa('.ht-card').find((c) => S().mySparks.some((x) => (c.textContent || '').includes(x.text.slice(0, 24))));
+  ok('your own card is rendered', !!myCard);
+  if (myCard) {
+    const opts = myCard.querySelector('[aria-label="Post options"]');
+    await U.click(opts);
+    await wait(220);
+    const del = U.byText('button', /^Delete note$/);
+    ok('your own card offers delete, not mute', !!del && !/Mute @you/.test(U.words()));
+    if (del) {
+      await U.click(del);
+      await wait(260);
+      ok('deleting removes it from the store', S().mySparks.length === mineBefore - 1, `${mineBefore} → ${S().mySparks.length}`);
+      const undo = U.byText('button', /^Undo$/);
+      ok('deleting offers an undo', !!undo);
+      if (undo) {
+        await U.click(undo);
+        await wait(260);
+        ok('undo puts the note back', S().mySparks.length === mineBefore, `${S().mySparks.length}`);
+      }
+    }
+  }
+
+  /* a reply you wrote can be taken back too */
+  const noteCard = U.qa('.ht-card').find((c) => /spark/.test(c.getAttribute('data-kind') || ''));
+  const myReplyBtn = noteCard ? noteCard.querySelector('[aria-label^="Reply to"]') : null;
+  ok('a note on the board exposes its reply control', !!myReplyBtn);
+  if (myReplyBtn) {
+    await U.click(myReplyBtn);
+    await wait(240);
+    const box = U.q('textarea[placeholder="Add to the thread…"]');
+    if (box) {
+      await U.type(box, 'A reply I am going to take back.');
+      await U.click(U.q('[aria-label="Reply"]'));
+      await wait(240);
+      const repliesNow = S().replies.length;
+      const kill = U.q('[aria-label="Delete your reply"]');
+      ok('your own reply offers a delete', !!kill);
+      if (kill) {
+        await U.click(kill);
+        await wait(240);
+        ok('the reply is gone', S().replies.length === repliesNow - 1, `${repliesNow} → ${S().replies.length}`);
+        const undo2 = U.byText('button', /^Undo$/);
+        if (undo2) {
+          await U.click(undo2);
+          await wait(240);
+          ok('and the undo brings it back', S().replies.length === repliesNow, `${S().replies.length}`);
+        }
+      }
+    }
+    const x = U.q('[aria-label="Close"]');
+    if (x) await U.click(x);
+    await wait(160);
+  }
+
+  step('a note has an address');
+  const shareable = S().mySparks[0];
+  if (shareable) {
+    window.history.replaceState(null, '', `/feed?note=${encodeURIComponent(shareable.id)}`);
+    nav.__state.path = '/feed';
+    await mountApp(page('app/(shell)/feed/page.js'));
+    await wait(420);
+    ok('a shared note link opens its thread', !!U.q('textarea[placeholder="Add to the thread…"]'));
+    ok('and the address is tidied afterwards', !/note=/.test(window.location.search), window.location.search);
+    const closeSheet = U.q('[aria-label="Close"]');
+    if (closeSheet) await U.click(closeSheet);
+    await wait(200);
+  }
+
+  step('two tabs, one person');
+  const raw = JSON.parse(window.localStorage.getItem('heatt-store-v2'));
+  raw.state = { ...raw.state, follows: ['heatt', 'wirewriter'] };
+  window.localStorage.setItem('heatt-store-v2', JSON.stringify(raw));
+  window.dispatchEvent(new window.StorageEvent('storage', { key: 'heatt-store-v2' }));
+  await wait(320);
+  ok('a change made in another tab arrives here', S().follows.includes('wirewriter'), JSON.stringify(S().follows));
+
   step('the board keeps your place');
   await unmount();
   window.localStorage.removeItem('heatt-wire-v1');

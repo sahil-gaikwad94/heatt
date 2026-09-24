@@ -76,6 +76,13 @@ export type State = {
   toggleMute: (entry: string) => void;
   isMuted: (entry: string) => boolean;
   addReply: (r: Omit<Reply, 'id' | 'at' | 'heat'>) => void;
+  /** your own writing can be taken back — restore puts the exact piece back */
+  removeReply: (id: string) => Reply | undefined;
+  restoreReply: (r: Reply) => void;
+  removeSpark: (id: string) => Spark | undefined;
+  restoreSpark: (s: Spark) => void;
+  removeArticle: (id: string) => LocalArticle | undefined;
+  restoreArticle: (a: LocalArticle) => void;
   addSpark: (s: Omit<Spark, 'id' | 'date' | 'kind'>) => Spark;
   addArticle: (a: Omit<LocalArticle, 'id' | 'date' | 'kind' | 'minutes'>) => LocalArticle;
   setWire: (items: unknown[]) => void;
@@ -197,6 +204,49 @@ export const useStore = create<State>()(
 
       addReply: (r) => set({ replies: [...get().replies, { ...r, id: uid('re'), at: Date.now(), heat: 0 }] }),
 
+      removeReply: (id) => {
+        const reply = get().replies.find((r) => r.id === id);
+        if (reply) set({ replies: get().replies.filter((r) => r.id !== id) });
+        return reply;
+      },
+      restoreReply: (r) =>
+        set({ replies: [...get().replies, r].sort((a, b) => a.at - b.at) }),
+
+      removeSpark: (id) => {
+        const spark = get().mySparks.find((x) => x.id === id);
+        if (spark) {
+          set({ mySparks: get().mySparks.filter((x) => x.id !== id) });
+          /* a piece that is gone should not leave heat or a reading position behind */
+          const { heat, saved, reads } = get();
+          const nHeat = { ...heat };
+          const nSaved = { ...saved };
+          const nReads = { ...reads };
+          delete nHeat[id];
+          delete nSaved[id];
+          delete nReads[id];
+          set({ heat: nHeat, saved: nSaved, reads: nReads });
+        }
+        return spark;
+      },
+      restoreSpark: (spark) => set({ mySparks: [spark, ...get().mySparks] }),
+
+      removeArticle: (id) => {
+        const art = get().myArticles.find((x) => x.id === id);
+        if (art) {
+          set({ myArticles: get().myArticles.filter((x) => x.id !== id) });
+          const { heat, saved, reads } = get();
+          const nHeat = { ...heat };
+          const nSaved = { ...saved };
+          const nReads = { ...reads };
+          delete nHeat[id];
+          delete nSaved[id];
+          delete nReads[id];
+          set({ heat: nHeat, saved: nSaved, reads: nReads });
+        }
+        return art;
+      },
+      restoreArticle: (art) => set({ myArticles: [art, ...get().myArticles] }),
+
       addSpark: (s) => {
         const spark: Spark = { ...s, id: uid('sp'), kind: 'spark', date: new Date().toISOString() };
         set({ mySparks: [spark, ...get().mySparks] });
@@ -261,4 +311,17 @@ export const useStore = create<State>()(
 
 export function heatLevelOf(s: State, id: string): HeatLevel {
   return s.heat[id]?.level ?? 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Two tabs of heatt in the same browser are the same person. When one of them
+   writes, the others rehydrate — otherwise a keep made in one tab is invisible
+   in the one you are actually reading.                                                 */
+const STORE_KEY = 'heatt-store-v2';
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', (e) => {
+    if (e.key !== null && e.key !== STORE_KEY) return;
+    void useStore.persist.rehydrate();
+  });
 }

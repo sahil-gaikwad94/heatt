@@ -118,9 +118,23 @@ export function ThreadSheet() {
                   >
                     <Avatar name={s.me?.name ?? 'You'} handle={r.author} src={s.me?.avatar} size={30} />
                     <div className="min-w-0 flex-1 rounded-[var(--r-md)] border border-line bg-white/[.02] px-3.5 py-3">
-                      <p className="text-[11.5px] text-ink-faint">
-                        @{r.author} · {timeAgo(r.at)} ago
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="min-w-0 flex-1 truncate text-[11.5px] text-ink-faint">
+                          @{r.author} · {timeAgo(r.at)} ago
+                        </p>
+                        {r.author === (s.me?.handle ?? 'you') && (
+                          <button
+                            onClick={() => app.deleteReply(r.id)}
+                            className="ht-icon-btn !h-6 !w-6 shrink-0"
+                            aria-label="Delete your reply"
+                            title="Delete your reply"
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+                              <path d="M6 6l12 12M18 6L6 18" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                       <RichText text={r.text} className="mt-1.5 text-[13.5px] leading-relaxed text-ink-2" />
                     </div>
                   </motion.div>
