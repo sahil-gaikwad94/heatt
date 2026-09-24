@@ -22,7 +22,7 @@ import type { ArticleBlock } from '@/lib/types';
 import { Avatar } from '@/components/ui/primitives';
 import { HeatButton } from '@/components/heat/HeatButton';
 import { FireOverlay } from '@/components/heat/FireOverlay';
-import { cls, compact, prettyDate, timeAgo } from '@/lib/util';
+import { cls, compact, coverFallback, prettyDate, timeAgo } from '@/lib/util';
 import { fetchBody } from '@/lib/syndicate';
 import { EASE_OUT } from '@/lib/motion';
 import type { Post } from '@/lib/feed';
@@ -269,7 +269,7 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
 
             {post.cover && (
               <figure className="mt-7 overflow-hidden rounded-[var(--r-lg)] border border-line">
-                <img src={post.cover} alt="" className="w-full object-cover" />
+                <img src={post.cover} alt="" loading="lazy" decoding="async" onError={coverFallback(post.id)} className="w-full object-cover" />
               </figure>
             )}
           </header>

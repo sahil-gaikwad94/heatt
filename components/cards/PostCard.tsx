@@ -22,7 +22,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
-import { cls, compact, plain, timeAgo } from '@/lib/util';
+import { cls, compact, coverFallback, plain, timeAgo } from '@/lib/util';
 import { Avatar, Chip } from '@/components/ui/primitives';
 import { HeatButton } from '@/components/heat/HeatButton';
 import { FireOverlay, burstFrom } from '@/components/heat/FireOverlay';
@@ -220,6 +220,8 @@ function FeatureBody({
           src={post.cover}
           alt=""
           loading="lazy"
+          decoding="async"
+          onError={coverFallback(post.id)}
           initial={{ scale: 1.055, opacity: 0.55 }}
           whileInView={{ scale: 1, opacity: 1 }}
           viewport={{ once: true, margin: '-8% 0px' }}

@@ -104,27 +104,41 @@ export function avatarDataUri(name: string, handle = name): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-/** Procedural cover: an ember/iris mesh gradient, deterministic per seed. */
+/** Procedural cover: a glacier-and-champagne mesh, deterministic per seed. */
 export function coverDataUri(seed: string): string {
   const h = hash(seed);
+  const glacier = [210, 218, 226, 236];
   const blobs = Array.from({ length: 5 }, (_, i) => {
     const x = (hash(`${seed}x${i}`) % 1000) / 10;
     const y = (hash(`${seed}y${i}`) % 1000) / 10;
-    const r = 22 + ((hash(`${seed}r${i}`) % 420) / 10);
-    const hue = i % 3 === 2 ? 238 + ((h >> i) % 18) : 12 + ((h >> i) % 30);
-    const light = 22 + ((i * 9) % 26);
-    return `<circle cx="${x}%" cy="${y}%" r="${r}%" fill="hsl(${hue} 82% ${light}%)" opacity=".78"/>`;
+    const r = 24 + ((hash(`${seed}r${i}`) % 400) / 10);
+    /* one warm note per cover — champagne, never ember */
+    const warm = i === 4;
+    const hue = warm ? 40 + ((h >> i) % 8) : glacier[i % glacier.length] + (((h >> i) % 7) - 3);
+    const sat = warm ? 44 : 72 + ((h >> (i + 3)) % 20);
+    const light = warm ? 56 : 22 + ((i * 7) % 22);
+    return `<circle cx="${x}%" cy="${y}%" r="${r}%" fill="hsl(${hue}, ${sat}%, ${light}%)" opacity="${warm ? '.28' : '.8'}"/>`;
   }).join('');
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
 <defs><filter id="bl"><feGaussianBlur stdDeviation="72"/></filter>
 <linearGradient id="v" x1="0" x2="0" y1="0" y2="1">
-<stop offset="0" stop-color="#08080A" stop-opacity=".08"/><stop offset="1" stop-color="#000000" stop-opacity=".94"/>
+<stop offset="0" stop-color="#06070A" stop-opacity=".08"/><stop offset="1" stop-color="#000000" stop-opacity=".94"/>
 </linearGradient></defs>
-<rect width="1200" height="420" fill="#0B0B0E"/>
+<rect width="1200" height="420" fill="#0B0D12"/>
 <g filter="url(#bl)">${blobs}</g>
 <rect width="1200" height="420" fill="url(#v)"/>
 </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+/** Point a broken cover at its procedural twin instead of a broken-image glyph. */
+export function coverFallback(seed: string) {
+  return (e: { currentTarget: HTMLImageElement }) => {
+    const img = e.currentTarget;
+    if (!img || img.dataset.fallback) return;
+    img.dataset.fallback = '1';
+    img.src = coverDataUri(seed);
+  };
 }
 
 export function userAvatar(u?: Pick<User, 'name' | 'handle'> & { avatar?: string }): string {

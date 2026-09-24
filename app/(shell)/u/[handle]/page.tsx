@@ -22,7 +22,7 @@ import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
 import { getUser, HOUSE_HANDLE, HOUSE_COVER } from '@/lib/seed/users';
-import {avatarDataUri, cls, compact, coverDataUri, prettyDate, timeAgo, plain } from '@/lib/util';
+import {avatarDataUri, cls, compact, coverDataUri, coverFallback, prettyDate, timeAgo, plain } from '@/lib/util';
 import { Empty, Stat } from '@/components/ui/primitives';
 import { ProfileEditor } from '@/components/profile/ProfileEditor';
 import { TopBar } from '@/components/shell/Shell';
@@ -97,6 +97,7 @@ export default function ProfilePage() {
       <div className="relative -mt-[56px] h-[250px] overflow-hidden">
         <motion.img
           src={cover}
+          onError={coverFallback(handle)}
           alt=""
           className="h-full w-full object-cover"
           style={{ y: coverY, scale: coverScale, opacity: coverOpacity }}
@@ -337,7 +338,7 @@ function Tile({ post, onOpen, index }: { post: Post; onOpen: () => void; index: 
         <button onClick={onOpen} className="ht-tile text-left" aria-label={post.title ?? 'Open note'}>
           <span className={cls('relative block overflow-hidden', hasCover ? 'aspect-[4/5]' : 'aspect-[4/3.2]')}>
             {hasCover ? (
-              <img src={post.cover} alt="" loading="lazy" />
+              <img src={post.cover} alt="" loading="lazy" decoding="async" onError={coverFallback(post.id)} />
             ) : (
               <span
                 className="grid h-full w-full place-items-center p-4 text-[13px] font-medium leading-snug text-ink-2"

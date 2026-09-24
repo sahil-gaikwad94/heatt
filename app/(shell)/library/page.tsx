@@ -16,7 +16,7 @@ import { PostCard } from '@/components/cards/PostCard';
 import { Empty, Meter, Avatar } from '@/components/ui/primitives';
 import { PageHead, TopBar } from '@/components/shell/Shell';
 import { EASE_OUT } from '@/lib/motion';
-import { plain, timeAgo } from '@/lib/util';
+import { coverFallback, plain, timeAgo } from '@/lib/util';
 
 type Shelf = 'kept' | 'reading';
 
@@ -131,7 +131,7 @@ export default function LibraryPage() {
                   >
                     <div className="flex items-center gap-3">
                       {post.cover ? (
-                        <img src={post.cover} alt="" className="h-[46px] w-[46px] shrink-0 rounded-[var(--r-xs)] object-cover" />
+                        <img src={post.cover} alt="" loading="lazy" decoding="async" onError={coverFallback(post.id)} className="h-[46px] w-[46px] shrink-0 rounded-[var(--r-xs)] object-cover" />
                       ) : (
                         <Avatar name={post.authorName} handle={post.authorHandle} src={post.authorAvatar} size={46} />
                       )}
