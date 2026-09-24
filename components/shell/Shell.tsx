@@ -316,6 +316,21 @@ export function ReferenceHeader() {
   );
 }
 
+export function EditorialDock() {
+  const app = useApp();
+  const path = usePathnameSafe();
+  const items = [['/feed', 'Today', '◒'], ['/explore', 'Discover', '⌕'], ['/library', 'Collected', '□'], ['/notifications', 'Signals', '◌']] as const;
+  return (
+    <aside className="editorial-dock">
+      <div className="editorial-dock__eyebrow">YOUR ROOM</div>
+      <nav>{items.map(([href, label, icon]) => { const active = path === href || path.startsWith(`${href}/`); return <Link key={href} href={href} className={cls('editorial-dock__item', active && 'is-active')}><span>{icon}</span><b>{label}</b><i>{active ? 'now' : ''}</i></Link>; })}</nav>
+      <div className="editorial-dock__rule" />
+      <Link href={`/u/${app.me?.handle ?? 'you'}`} className={cls('editorial-dock__profile', path.startsWith('/u/') && 'is-active')}><span className="editorial-dock__avatar">{(app.me?.name ?? 'G').slice(0, 1)}</span><span><b>{app.me?.name ?? 'Guest'}</b><small>your profile</small></span><strong>↗</strong></Link>
+      <button onClick={() => app.setComposer(true)} className="editorial-dock__write">Write something <span>＋</span></button>
+    </aside>
+  );
+}
+
 export function MobileTabs() {
   const app = useApp();
   const path = usePathnameSafe();

@@ -34,8 +34,8 @@ import { CountUp, FloatingBadge, Tilt, useInViewSafe } from '@/components/ui/mot
 type Tab = 'all' | 'forges' | 'sparks';
 const TABS: { key: Tab; label: string }[] = [
   { key: 'all', label: 'Everything' },
-  { key: 'forges', label: 'Forges' },
-  { key: 'sparks', label: 'Sparks' },
+  { key: 'forges', label: 'Stories' },
+  { key: 'sparks', label: 'Notes' },
 ];
 
 export default function ProfilePage() {
@@ -183,7 +183,7 @@ export default function ProfilePage() {
           </span>
 
           <FloatingBadge
-            label={`${streak.current}-day streak`}
+            label={`${streak.current}-day reading rhythm`}
             tone={streak.current > 0 ? 'hot' : 'metal'}
             depth={1.15}
             delay={0}
@@ -192,10 +192,10 @@ export default function ProfilePage() {
           >
             <FlameGlyph />
           </FloatingBadge>
-          <FloatingBadge label={`${forges.length} long-form pieces`} depth={0.8} delay={0.9} size={42} className="-right-[44px] top-[44px]">
+          <FloatingBadge label={`${forges.length} stories`} depth={0.8} delay={0.9} size={42} className="-right-[44px] top-[44px]">
             <QuillGlyph />
           </FloatingBadge>
-          <FloatingBadge label={`${sparks.length} sparks`} tone="cold" depth={0.6} delay={1.6} size={38} className="-bottom-1 right-1">
+          <FloatingBadge label={`${sparks.length} notes`} tone="cold" depth={0.6} delay={1.6} size={38} className="-bottom-1 right-1">
             <SparkGlyph />
           </FloatingBadge>
         </div>
