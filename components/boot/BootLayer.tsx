@@ -22,6 +22,7 @@ const Onboarding = dynamic(() => import('@/components/onboarding/Onboarding').th
 const ShareStudio = dynamic(() => import('@/components/share/ShareStudio').then((m) => m.ShareStudio), { ssr: false });
 const Composer = dynamic(() => import('@/components/compose/Composer').then((m) => m.Composer), { ssr: false });
 const CommandPalette = dynamic(() => import('@/components/palette/CommandPalette').then((m) => m.CommandPalette), { ssr: false });
+const Shortcuts = dynamic(() => import('@/components/shell/Shortcuts').then((m) => m.Shortcuts), { ssr: false });
 
 export function BootLayer({ children }: { children: React.ReactNode }) {
   const app = useApp();
@@ -50,7 +51,8 @@ export function BootLayer({ children }: { children: React.ReactNode }) {
     setPhase(!introSeen ? 'intro' : !onboarded ? 'onboard' : 'app');
   }, [hydrated, introSeen, onboarded]);
 
-  /* global shortcuts: ⌘K palette, / search, g-then-a-letter to jump */
+  /* global shortcuts: ⌘K palette, / search, g-then-a-letter to jump,
+     ? for the sheet, n to write */
   const lastG = React.useRef(0);
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -65,15 +67,12 @@ export function BootLayer({ children }: { children: React.ReactNode }) {
       if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
 
       const k = e.key.toLowerCase();
-      if (k === '/') {
-        e.preventDefault();
-        app.setPalette(true);
-        return;
-      }
-      if (k === 'g') {
-        lastG.current = Date.now();
-        return;
-      }
+
+      /* while something is open, single letters belong to it */
+      const overlay = app.paletteOpen || app.composerOpen || !!app.shareId || !!app.threadId || app.shortcutsOpen;
+      if (overlay) return;
+
+      /* a letter that arrived within the g-sequence window belongs to it */
       if (Date.now() - lastG.current < 900) {
         const dest: Record<string, string> = {
           f: '/feed',
@@ -87,8 +86,26 @@ export function BootLayer({ children }: { children: React.ReactNode }) {
         if (href) {
           lastG.current = 0;
           app.go(href);
+          return;
         }
       }
+
+      if (k === '?') {
+        e.preventDefault();
+        app.setShortcuts(true);
+        return;
+      }
+      if (k === '/') {
+        e.preventDefault();
+        app.setPalette(true);
+        return;
+      }
+      if (k === 'n') {
+        e.preventDefault();
+        app.setComposer(true);
+        return;
+      }
+      if (k === 'g') lastG.current = Date.now();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -137,6 +154,7 @@ export function BootLayer({ children }: { children: React.ReactNode }) {
       <ShareStudio />
       <Composer />
       <CommandPalette />
+      <Shortcuts />
       <Toast items={app.toasts} dismiss={app.dismissToast} />
     </>
   );

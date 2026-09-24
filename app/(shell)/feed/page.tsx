@@ -19,11 +19,15 @@ import { BoardControls, TopBar, WireStatus, PageHead } from '@/components/shell/
 import { trendingTags } from '@/lib/feed';
 import { compact, plain } from '@/lib/util';
 import { EASE_OUT } from '@/lib/motion';
+import { useScrollMemory } from '@/lib/scroll';
 
 export default function FeedPage() {
   const app = useApp();
   const s = useStore();
   const [tagsOpen, setTagsOpen] = React.useState(false);
+
+  /* coming back from a story should land where you were reading */
+  useScrollMemory('board');
 
   const items = app.ranked;
   const lead = items.find((p) => p.kind === 'forge' && p.cover) ?? items[0];
@@ -140,6 +144,34 @@ export default function FeedPage() {
                 ))}
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* new stories are held until they are asked for — the board never
+            rearranges itself under someone who is reading it */}
+        <AnimatePresence>
+          {app.newCount > 0 && (
+            <motion.button
+              key="new-stories"
+              initial={{ opacity: 0, y: -10, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: -8, height: 0 }}
+              transition={{ duration: 0.42, ease: EASE_OUT }}
+              onClick={() => app.adoptNew()}
+              className="mb-4 flex w-full items-center gap-3 overflow-hidden text-left"
+              aria-label={`Show ${app.newCount} new ${app.newCount === 1 ? 'story' : 'stories'}`}
+            >
+              <span className="ht-newstrip">
+                <span className="ht-newstrip__dot" aria-hidden />
+                {app.newCount} new {app.newCount === 1 ? 'story' : 'stories'} on the wire
+                <span className="ht-newstrip__go">
+                  show
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M12 5v14M6 13l6 6 6-6" />
+                  </svg>
+                </span>
+              </span>
+            </motion.button>
           )}
         </AnimatePresence>
 

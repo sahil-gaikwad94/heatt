@@ -182,6 +182,30 @@ html[data-density='dense'] {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Controls answer immediately on touch: no double-tap-zoom delay, and a
+   long press on a control never turns into a text selection or a callout. */
+button,
+a,
+[role='button'],
+[role='tab'],
+summary,
+label {
+  touch-action: manipulation;
+}
+button,
+[role='button'],
+[role='tab'],
+.ht-heat-btn,
+.ht-round,
+.ht-dock-item,
+.ht-tab,
+.ht-chip,
+.ht-wordmark {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 body {
   background: var(--void);
   color: var(--ink);
@@ -1802,6 +1826,47 @@ button.ht-stat:hover {
 .ht-intro__skip:hover {
   color: var(--ink);
   border-color: var(--line-3);
+}
+
+/* ------------------------------------------------- new-on-the-wire strip */
+
+.ht-newstrip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--acc-line);
+  background: linear-gradient(180deg, rgba(107, 162, 255, 0.09), rgba(107, 162, 255, 0.04));
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);
+}
+.ht-newstrip:hover {
+  border-color: rgba(107, 162, 255, 0.42);
+  color: var(--ink);
+}
+.ht-newstrip__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--acc-500);
+  box-shadow: 0 0 10px rgba(107, 162, 255, 0.85);
+  flex: none;
+}
+.ht-newstrip__go {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--acc-500);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* ============================ onboarding ================================ */

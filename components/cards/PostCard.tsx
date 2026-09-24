@@ -116,6 +116,8 @@ export function PostCard({
             <img
               src={post.media[0].url}
               alt={post.media[0].alt}
+              width={1200}
+              height={750}
               className="aspect-[16/10] w-full object-cover transition-transform duration-[900ms] hover:scale-[1.03]"
               loading="lazy"
               decoding="async"
@@ -219,7 +221,9 @@ function FeatureBody({
         <motion.img
           src={post.cover}
           alt=""
-          loading="lazy"
+          width={1200}
+          height={675}
+          fetchPriority="high"
           decoding="async"
           onError={coverFallback(post.id)}
           initial={{ scale: 1.055, opacity: 0.55 }}

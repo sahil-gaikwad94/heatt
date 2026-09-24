@@ -64,7 +64,7 @@ export function ReadingDock() {
       >
         <div className="ht-reading-pill pointer-events-auto">
           {post.cover ? (
-            <img src={post.cover} alt="" loading="lazy" decoding="async" onError={coverFallback(post.id)} className="ht-reading-pill__art" />
+            <img src={post.cover} alt="" width={64} height={64} loading="lazy" decoding="async" onError={coverFallback(post.id)} className="ht-reading-pill__art" />
           ) : (
             <span className="ht-reading-pill__art grid place-items-center">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden>

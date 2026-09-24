@@ -514,7 +514,95 @@ async function until(fn, ms = 4000, label = 'condition') {
   consoleErrors.length = 0;
   consoleWarns.length = 0;
 
-  /* ------------------------------------------------- 15. hydration + errors */
+  /* --------------------------------------------- 15. the wire, and the keys */
+  step('a wire that never moves under you');
+  nav.__state.path = '/feed';
+  await mountApp(page('app/(shell)/feed/page.js'));
+  const cardsBefore = U.qa('.ht-card').length;
+  const arriving = {
+    id: 'dev-9999999',
+    kind: 'forge',
+    title: 'A story that arrived while you were reading',
+    dek: 'It waits until you ask for it.',
+    author: 'Wire Writer',
+    handle: 'wirewriter',
+    tags: ['design'],
+    date: new Date().toISOString(),
+    minutes: 4,
+    reactions: 12,
+    comments: 3,
+    canonical: 'https://dev.to/wirewriter/a-story',
+    path: '/wirewriter/a-story',
+    board: 'design',
+    source: 'foreman',
+  };
+  window.localStorage.setItem('heatt-wire-v1', JSON.stringify({ items: [arriving], live: true, at: Date.now() }));
+  window.dispatchEvent(new window.Event('online'));
+  await wait(400);
+  const strip = U.q('.ht-newstrip');
+  ok('a background refresh holds new stories instead of reordering', !!strip, strip ? strip.textContent : 'no strip');
+  ok('the board itself did not move', U.qa('.ht-card').length === cardsBefore, `${cardsBefore} → ${U.qa('.ht-card').length}`);
+  if (strip) {
+    await U.click(strip);
+    await wait(300);
+    ok('asking for them puts them on the board', U.qa('.ht-card').length === cardsBefore + 1, `${U.qa('.ht-card').length} cards`);
+    await wait(700); /* the strip slides out rather than vanishing */
+    ok('the strip goes away once it has been used', !U.q('.ht-newstrip'));
+  }
+
+  step('keyboard, documented');
+  await mountApp(page('app/(shell)/feed/page.js'));
+  await U.key(window, '?');
+  await wait(320);
+  ok('? opens the shortcut sheet', /Everything here is also a tap away/i.test(U.words()));
+  ok('the sheet documents the board keys', /Heat the story under the cursor/i.test(U.words()));
+  const gotIt = U.byText('button', /Got it/i);
+  if (gotIt) {
+    await U.click(gotIt);
+    await wait(700); /* the sheet animates out */
+    ok('the sheet closes', !/Everything here is also a tap away/i.test(U.words()));
+  }
+  nav.__nav.length = 0;
+  await U.key(window, 'n');
+  await wait(300);
+  ok('n opens the composer', !!U.q('[aria-label="Note body"]'), 'note body');
+  const closeAgain = U.q('[aria-label="Close composer"]');
+  if (closeAgain) await U.click(closeAgain);
+  await wait(200);
+  nav.__nav.length = 0;
+  await U.key(window, 'g');
+  await U.key(window, 'n');
+  await wait(200);
+  ok('g then n still reaches Signals', JSON.stringify(nav.__nav).includes('notifications'), JSON.stringify(nav.__nav.slice(-1)));
+
+  step('the board keeps your place');
+  await unmount();
+  window.localStorage.removeItem('heatt-wire-v1');
+  try {
+    window.sessionStorage.removeItem('heatt-scroll-v1');
+  } catch {/* fine */}
+  nav.__state.path = '/feed';
+  await mountApp(page('app/(shell)/feed/page.js'));
+  /* jsdom has no layout, so give the page a height to scroll inside */
+  const docEl = doc.documentElement;
+  Object.defineProperty(docEl, 'scrollHeight', { configurable: true, get: () => 5200 });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => 800 });
+  Object.defineProperty(window, 'scrollY', { configurable: true, get: () => 2400 });
+  window.dispatchEvent(new window.Event('scroll'));
+  await wait(420);
+  const book = JSON.parse(window.sessionStorage.getItem('heatt-scroll-v1') || '{}');
+  ok('scrolling the board is remembered per tab', book.board === 2400, JSON.stringify(book));
+
+  let scrolledTo = null;
+  window.scrollTo = (opts) => {
+    scrolledTo = typeof opts === 'number' ? opts : opts?.top ?? null;
+  };
+  Object.defineProperty(window, 'scrollY', { configurable: true, get: () => 0 });
+  await mountApp(page('app/(shell)/feed/page.js'));
+  await until(() => scrolledTo !== null, 2500, 'the board to put itself back').catch(() => null);
+  ok('coming back lands where you were reading', scrolledTo === 2400, String(scrolledTo));
+
+  /* ------------------------------------------------- 16. hydration + errors */
   step('hygiene');
   await unmount();
   await flush();

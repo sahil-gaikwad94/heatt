@@ -123,6 +123,18 @@ export default function SettingsPage() {
           </div>
         </Section>
 
+        {/* -------------------------------------------------------- keyboard */}
+        <Section title="Keyboard" hint="everything works by tapping; this is for the rest of us">
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={() => app.setShortcuts(true)} className="ht-btn ht-btn--quiet">
+              Open the shortcut sheet
+            </button>
+            <span className="flex items-center gap-1.5 text-[12px] text-ink-4">
+              or press <kbd className="ht-kbd">?</kbd> anywhere
+            </span>
+          </div>
+        </Section>
+
         {/* ---------------------------------------------------------- local */}
         <Section title="This device" hint="heatt stores everything locally">
           <div className="flex flex-wrap items-center gap-3">

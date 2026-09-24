@@ -24,6 +24,11 @@ export type Ctx = {
   live: boolean;
   loading: boolean;
   refresh: (force?: boolean) => void;
+  /** stories fetched in the background but not yet shown — the board never
+      reorders under a reader; they arrive when the pill is tapped */
+  pending: WireItem[];
+  newCount: number;
+  adoptNew: () => void;
   ranked: Post[];
   tab: Tab;
   setTab: (t: Tab) => void;
@@ -51,6 +56,11 @@ export type Ctx = {
 
   paletteOpen: boolean;
   setPalette: (v: boolean) => void;
+
+  shortcutsOpen: boolean;
+  setShortcuts: (v: boolean) => void;
+
+  online: boolean;
 
   threadId: string | null;
   setThread: (id: string | null) => void;
@@ -94,7 +104,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const s = useStore();
   const [wire, setWire] = React.useState<WireItem[]>([]);
+  const [held, setHeld] = React.useState<WireItem[]>([]);
   const [live, setLive] = React.useState(false);
+  const [online, setOnline] = React.useState(true);
   const [loading, setLoading] = React.useState(true);
   const [tab, setTab] = React.useState<Tab>('all');
   const [mode, setMode] = React.useState<RankMode>('for-you');
@@ -121,6 +133,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [composerSeed, setComposerSeed] = React.useState<Ctx['composerSeed']>({});
   const [shareId, setShareId] = React.useState<string | null>(null);
   const [paletteOpen, setPalette] = React.useState(false);
+  const [shortcutsOpen, setShortcuts] = React.useState(false);
   const [threadId, setThread] = React.useState<string | null>(null);
   const [ready, setReady] = React.useState(false);
 
@@ -143,18 +156,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [s.prefs]);
 
   /* --------------------------------------------------------- syndication */
-  const refresh = React.useCallback(async (force = false) => {
+  const wireIds = React.useRef<Set<string>>(new Set());
+
+  /**
+   * `adopt` swaps what the board is showing. Background refreshes never do:
+   * new stories are held until the reader asks for them, so the list under
+   * the cursor cannot move while they are reading it.
+   */
+  const refresh = React.useCallback(async (adopt = false) => {
     setLoading(true);
-    const res = await loadWire(force);
-    setWire(res.items);
+    const res = await loadWire(adopt);
+    const known = wireIds.current;
+    const fresh = res.items.filter((x) => !known.has(x.id));
+    if (adopt || known.size === 0) {
+      wireIds.current = new Set(res.items.map((x) => x.id));
+      setWire(res.items);
+      setHeld([]);
+    } else if (fresh.length) {
+      setHeld(fresh);
+    }
     setLive(res.live);
     setLoading(false);
   }, []);
 
   React.useEffect(() => {
-    void refresh(false);
+    void refresh(true);
     const id = window.setInterval(() => void refresh(false), 5 * 60 * 1000);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ------------------------------------------------------- connectivity */
+  React.useEffect(() => {
+    const up = () => {
+      setOnline(true);
+      toast('Back online — checking the wire', 'plain');
+      void refresh(false);
+    };
+    const down = () => {
+      setOnline(false);
+      toast('Offline — your library, keeps and drafts still work', 'plain');
+    };
+    setOnline(typeof navigator === 'undefined' ? true : navigator.onLine !== false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => {
+      window.removeEventListener('online', up);
+      window.removeEventListener('offline', down);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -165,6 +214,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000);
   }, []);
   const dismissToast = React.useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+
+  const adoptNew = React.useCallback(() => {
+    setWire((cur) => {
+      const seen = new Set(cur.map((x) => x.id));
+      const merged = [...held, ...cur];
+      wireIds.current = new Set(merged.map((x) => x.id));
+      return merged.filter((x, i) => merged.findIndex((y) => y.id === x.id) === i);
+    });
+    setHeld([]);
+    toast('Showing the newest stories', 'plain');
+  }, [held, toast]);
+
 
   /* ------------------------------------------------------------ ranking */
   const posts = React.useMemo(
@@ -261,6 +322,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     live,
     loading,
     refresh,
+    pending: held,
+    newCount: held.length,
+    adoptNew,
     ranked,
     tab,
     setTab,
@@ -285,6 +349,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setShare: setShareId,
     paletteOpen,
     setPalette,
+    shortcutsOpen,
+    setShortcuts,
+    online,
     threadId,
     setThread,
     go,
