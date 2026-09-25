@@ -222,6 +222,9 @@ export function ShareStudio() {
 
         // Visual Artwork Header
         const artH = fmt === 'story' ? 520 : fmt === 'feed' ? 440 : 360;
+        // Visual Artwork Header
+        const artH = fmt === 'story' ? 520 : fmt === 'feed' ? 440 : 360;
+        let imageDrawn = false;
         if (data.cover) {
           try {
             const img = await load(data.cover);
@@ -234,19 +237,25 @@ export function ShareStudio() {
             ctx.lineWidth = 1.5;
             round(ctx, innerCardX, curY, innerCardW, artH, 24);
             ctx.stroke();
+            imageDrawn = true;
           } catch {
-            /* cover fallback */
+            imageDrawn = false;
           }
-        } else {
+        }
+        if (!imageDrawn) {
           ctx.save();
           round(ctx, innerCardX, curY, innerCardW, artH, 24);
           const g = ctx.createLinearGradient(innerCardX, curY, innerCardX + innerCardW, curY + artH);
-          g.addColorStop(0, hexA(t.a, 0.45));
-          g.addColorStop(0.55, hexA(t.b, 0.35));
-          g.addColorStop(1, hexA(t.c, 0.2));
+          g.addColorStop(0, hexA(t.a, 0.5));
+          g.addColorStop(0.55, hexA(t.b, 0.38));
+          g.addColorStop(1, hexA(t.c, 0.22));
           ctx.fillStyle = g;
           ctx.fill();
           ctx.restore();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+          ctx.lineWidth = 1.5;
+          round(ctx, innerCardX, curY, innerCardW, artH, 24);
+          ctx.stroke();
         }
 
         // Heat pill badge on artwork

@@ -44,6 +44,7 @@ export function CommandPalette() {
     const base: Row[] = [
       { id: 'go-feed', label: 'Board', hint: 'what is burning', kind: 'go', run: () => app.go('/feed') },
       { id: 'go-explore', label: 'Explore', hint: 'search and topics', kind: 'go', run: () => app.go('/explore') },
+      { id: 'go-messages', label: 'Messages', hint: 'direct chat', kind: 'go', run: () => app.go('/messages') },
       { id: 'go-library', label: 'Library', hint: `${Object.keys(s.saved).length} kept`, kind: 'go', run: () => app.go('/library') },
       { id: 'go-me', label: 'Your profile', kind: 'go', run: () => app.go(`/u/${s.me?.handle ?? 'you'}`) },
       { id: 'go-settings', label: 'Settings', kind: 'go', run: () => app.go('/settings') },

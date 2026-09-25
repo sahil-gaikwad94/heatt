@@ -223,13 +223,25 @@ function WriterRow({ handle, tag }: { handle: string; tag: string }) {
         </span>
       </div>
       {handle !== "you" && (
-        <button
-          onClick={() => app.toggleFollow(handle)}
-          className={cls('ht-chip shrink-0', following && 'ht-chip--heat')}
-          aria-pressed={following}
-        >
-          {following ? 'Following' : 'Follow'}
-        </button>
+        <>
+          <button
+            onClick={() => app.toggleFollow(handle)}
+            className={cls('ht-chip shrink-0', following && 'ht-chip--heat')}
+            aria-pressed={following}
+          >
+            {following ? 'Following' : 'Follow'}
+          </button>
+          <Link
+            href={`/messages?user=${encodeURIComponent(handle)}`}
+            className="ht-icon-btn !h-8 !w-8 shrink-0 text-ink-3 hover:text-[var(--acc)]"
+            aria-label={`Message ${name}`}
+            title={`Message ${name}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </Link>
+        </>
       )}
       <Link href={`/u/${handle}`} className="ht-round ht-round--dark ht-round--sm" aria-label={`Open ${name}`}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
