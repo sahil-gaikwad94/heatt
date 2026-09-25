@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 rm -rf .tmp-client
 if [ ! -f "./node_modules/.bin/tsc" ]; then
-  npx tsc -p tsconfig.smoke.json
+  npx -p typescript tsc -p tsconfig.smoke.json
 else
   ./node_modules/.bin/tsc -p tsconfig.smoke.json
 fi
