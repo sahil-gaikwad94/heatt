@@ -222,8 +222,6 @@ export function ShareStudio() {
 
         // Visual Artwork Header
         const artH = fmt === 'story' ? 520 : fmt === 'feed' ? 440 : 360;
-        // Visual Artwork Header
-        const artH = fmt === 'story' ? 520 : fmt === 'feed' ? 440 : 360;
         let imageDrawn = false;
         if (data.cover) {
           try {
