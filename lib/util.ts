@@ -20,13 +20,12 @@ export function timeAgo(iso: string | number, now = Date.now()): string {
 }
 
 export function prettyDate(iso: string | number): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function compact(n: number): string {
   if (!Number.isFinite(n)) return '0';
-  if (n < 1000) return String(n);
+  if (n < 1000) return String(Math.round(n));
   if (n < 1_000_000) return `${(n / 1000).toFixed(n < 100_000 ? 1 : 0)}K`.replace('.0K', 'K');
   return `${(n / 1_000_000).toFixed(1)}M`;
 }
@@ -38,7 +37,7 @@ export const HEAT_VERB: Record<HeatLevel, string> = {
   3: 'ignited',
 };
 
-/** Deterministic 0..2^32 hash */
+/** Deterministic 32-bit hash */
 export function hash(str: string): number {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) {
@@ -49,8 +48,7 @@ export function hash(str: string): number {
 }
 
 export function rand01(str: string, salt = 0): number {
-  const h = hash(`${salt}:${str}`);
-  return (h % 100000) / 100000;
+  return (hash(`${salt}:${str}`) % 100000) / 100000;
 }
 
 export function initialsOf(name: string): string {
@@ -60,70 +58,87 @@ export function initialsOf(name: string): string {
   return (parts[0][0] + parts[1][0]).toLowerCase();
 }
 
+/* The three hue families the app is allowed to generate identities from:
+   ember (16-44°), iris (232-256°) and a rare gold (40°). No green. */
+function identityHue(h: number) {
+  const fam = h % 7;
+  if (fam === 0) return 40 + (h % 10); // gold
+  if (fam === 1 || fam === 2) return 236 + (h % 18); // iris
+  return 14 + (h % 26); // ember
+}
+
 /**
- * Procedural heat avatar: a deterministic molten gradient + initials, encoded
- * as an inline SVG. Guarantees the app never shows a broken avatar — including
- * offline, and for syndicated authors whose CDN image fails.
+ * Procedural identity avatar — a deterministic ember/iris gradient with the
+ * writer's initials, encoded as an inline SVG. Guarantees the app never shows
+ * a broken avatar, even for a syndicated author whose CDN image fails.
  */
 export function avatarDataUri(name: string, handle = name): string {
   const h = hash(handle);
-  const c = ((h >> 16) % 90) + 12;
-  /* Three hue families, all warm-metal or cold-metal: molten amber, ice steel,
-     and a rare plasma violet. Green is deliberately absent — the app has no
-     green anywhere, so a generated identity must not smuggle one in. */
-  const fam = h % 6;
-  const hue = fam === 0 ? 194 + (h % 20) : fam === 1 ? 258 + (h % 18) : 20 + (h % 24);
-  const bg = `hsl(${hue} 28% ${4 + (h % 4)}%)`;
-  const g1 = `hsl(${hue + 8} 74% ${48 + (h % 14)}%)`;
-  const g2 = `hsl(${hue - 14} 66% ${32 + (c % 12)}%)`;
+  const hue = identityHue(h);
+  const bg = `hsl(${hue} 24% ${5 + (h % 3)}%)`;
+  const g1 = `hsl(${hue + 6} 78% ${50 + (h % 12)}%)`;
+  const g2 = `hsl(${hue - 12} 62% ${30 + ((h >> 3) % 10)}%)`;
   const rot = (h >> 5) % 360;
   const initials = initialsOf(name);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
 <defs>
 <linearGradient id="g" gradientTransform="rotate(${rot} .5 .5)">
-<stop offset="0" stop-color="${g1}"/><stop offset=".55" stop-color="${g2}"/><stop offset="1" stop-color="#1A0E02"/>
+<stop offset="0" stop-color="${g1}"/><stop offset=".58" stop-color="${g2}"/><stop offset="1" stop-color="#120703"/>
 </linearGradient>
-<radialGradient id="r" cx=".5" cy=".15" r=".9">
-<stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+<radialGradient id="r" cx=".5" cy=".12" r=".9">
+<stop offset="0" stop-color="#fff" stop-opacity=".42"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
 </radialGradient>
-<filter id="b"><feGaussianBlur stdDeviation="14"/></filter>
+<filter id="b"><feGaussianBlur stdDeviation="15"/></filter>
 </defs>
 <rect width="160" height="160" fill="${bg}"/>
-<g filter="url(#b)" opacity=".92"><circle cx="${30 + (h % 90)}" cy="${120 + (c % 30)}" r="46" fill="${g1}" opacity=".75"/></g>
-<rect width="160" height="160" fill="url(#g)" opacity=".55"/>
+<g filter="url(#b)" opacity=".9"><circle cx="${26 + (h % 96)}" cy="${116 + ((h >> 4) % 34)}" r="48" fill="${g1}" opacity=".7"/></g>
+<rect width="160" height="160" fill="url(#g)" opacity=".62"/>
 <rect width="160" height="160" fill="url(#r)"/>
 <text x="80" y="80" text-anchor="middle" dominant-baseline="central"
- font-family="Inter,system-ui,sans-serif" font-size="62" font-weight="700"
- letter-spacing="-3" fill="#1A0E02" opacity=".92">${initials}</text>
+ font-family="Inter,system-ui,sans-serif" font-size="60" font-weight="700"
+ letter-spacing="-3" fill="#180a02" opacity=".9">${initials}</text>
 <text x="80" y="80" text-anchor="middle" dominant-baseline="central"
- font-family="Inter,system-ui,sans-serif" font-size="62" font-weight="700"
- letter-spacing="-3" fill="#fff" opacity=".16" transform="translate(0 -2)">${initials}</text>
+ font-family="Inter,system-ui,sans-serif" font-size="60" font-weight="700"
+ letter-spacing="-3" fill="#fff" opacity=".18" transform="translate(0 -2)">${initials}</text>
 </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-/** Procedural cover: molten mesh gradient, deterministic per handle/id. */
+/** Procedural cover: a glacier-and-champagne mesh, deterministic per seed. */
 export function coverDataUri(seed: string): string {
   const h = hash(seed);
+  const glacier = [210, 218, 226, 236];
   const blobs = Array.from({ length: 5 }, (_, i) => {
     const x = (hash(`${seed}x${i}`) % 1000) / 10;
     const y = (hash(`${seed}y${i}`) % 1000) / 10;
     const r = 24 + ((hash(`${seed}r${i}`) % 400) / 10);
-    /* molten amber for most blobs, ice cyan for the rest — the same two-tone
-       thermal system the profile covers use. */
-    const hue = i % 3 === 2 ? 190 + ((h >> i) % 22) : 16 + ((h >> i) % 32);
-    return `<circle cx="${x}%" cy="${y}%" r="${r}%" fill="hsl(${hue} 86% ${14 + (i * 7) % 28}%)" opacity=".82"/>`;
+    /* one warm note per cover — champagne, never ember */
+    const warm = i === 4;
+    const hue = warm ? 40 + ((h >> i) % 8) : glacier[i % glacier.length] + (((h >> i) % 7) - 3);
+    const sat = warm ? 44 : 72 + ((h >> (i + 3)) % 20);
+    const light = warm ? 56 : 22 + ((i * 7) % 22);
+    return `<circle cx="${x}%" cy="${y}%" r="${r}%" fill="hsl(${hue}, ${sat}%, ${light}%)" opacity="${warm ? '.28' : '.8'}"/>`;
   }).join('');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
-<defs><filter id="bl"><feGaussianBlur stdDeviation="70"/></filter>
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+<defs><filter id="bl"><feGaussianBlur stdDeviation="72"/></filter>
 <linearGradient id="v" x1="0" x2="0" y1="0" y2="1">
-<stop offset="0" stop-color="#050505" stop-opacity=".1"/><stop offset="1" stop-color="#000000" stop-opacity=".95"/>
+<stop offset="0" stop-color="#06070A" stop-opacity=".08"/><stop offset="1" stop-color="#000000" stop-opacity=".94"/>
 </linearGradient></defs>
-<rect width="1200" height="400" fill="#0a0a0a"/>
+<rect width="1200" height="420" fill="#0B0D12"/>
 <g filter="url(#bl)">${blobs}</g>
-<rect width="1200" height="400" fill="url(#v)"/>
+<rect width="1200" height="420" fill="url(#v)"/>
 </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+/** Point a broken cover at its procedural twin instead of a broken-image glyph. */
+export function coverFallback(seed: string) {
+  return (e: { currentTarget: HTMLImageElement }) => {
+    const img = e.currentTarget;
+    if (!img || img.dataset.fallback) return;
+    img.dataset.fallback = '1';
+    img.src = coverDataUri(seed);
+  };
 }
 
 export function userAvatar(u?: Pick<User, 'name' | 'handle'> & { avatar?: string }): string {
@@ -164,4 +179,12 @@ export function slugify(s: string) {
     .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 60);
+}
+
+/** first sentence-ish chunk, used for story posters and previews */
+export function leadSentence(text: string, max = 180) {
+  const clean = plain(text);
+  const cut = clean.slice(0, max);
+  const stop = cut.lastIndexOf('. ');
+  return (stop > 60 ? cut.slice(0, stop + 1) : cut).trim();
 }

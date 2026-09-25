@@ -8,22 +8,27 @@ import { BootLayer } from '@/components/boot/BootLayer';
 import { ShellProviders } from '@/components/boot/ShellProviders';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://heatt.app'),
+  /* Share previews resolve against this. On a preview deployment the Vercel
+     hostname is the truth; locally, the environment can say so. */
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://heatt.app')
+  ),
   title: {
-    default: 'heatt — where ideas burn',
+    default: 'heatt — a room, not a feed',
     template: '%s · heatt',
   },
   description:
-    'heatt is a dark editorial space for short notes, full stories, thoughtful reading, and beautiful sharing.',
+    'heatt is a black, reading-first room: short notes that grow into full stories, a reader that never redirects you, and a share worth sending.',
   openGraph: {
-    title: 'heatt — where ideas burn',
+    title: 'heatt — a room, not a feed',
     description:
-      'Short notes and full stories in one calm room. Read, save, and share without leaving the app.',
+      'Short notes and full stories in one black room. Read, heat what matters, keep it, send it.',
     type: 'website',
-    images: [{ url: '/art/hero-forge.jpg', width: 1200, height: 627, alt: 'heatt — short sparks and full-length forges' }],
+    images: [{ url: '/art/nocturne-ui.jpg', width: 1200, height: 627, alt: 'heatt — a black editorial room' }],
     siteName: 'heatt',
   },
-  twitter: { card: 'summary_large_image', title: 'heatt — a room for ideas', description: 'Short notes and full stories in one calm room.' },
+  twitter: { card: 'summary_large_image', title: 'heatt — a room, not a feed', description: 'Short notes and full stories in one black room.' },
   icons: {
     icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
     apple: [{ url: '/icon.svg' }],
@@ -35,19 +40,19 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#050505',
+  themeColor: '#06070A',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="ember" data-density="normal" data-measure="normal" data-serif="true" data-reduce-motion="false">
+    <html lang="en" data-theme="nocturne" data-density="normal" data-measure="normal" data-serif="true" data-reduce-motion="false">
       <head>
         <link rel="preconnect" href="https://dev.to" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://media2.dev.to" crossOrigin="anonymous" />
       </head>
       <body className="ht-grain antialiased">
         <ShellProviders>
-          <div className="relative min-h-[100dvh] bg-[var(--ht-void)]">
+          <div className="relative min-h-[100dvh] bg-[var(--void)]">
             <BootLayer>{children}</BootLayer>
           </div>
         </ShellProviders>

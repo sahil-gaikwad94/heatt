@@ -1,62 +1,70 @@
 'use client';
 /* ============================================================================
-   components/reader/ArticleReader — the full-article environment.
+   components/reader/ArticleReader — the reading environment.
 
-   Everything about this file exists to answer one question: can someone finish
-   a 2,000-word piece inside a social app without leaving, without layout
-   shift, without a single missing image, and with the crowd's attention
-   visible beside the text?
+   The whole file answers one question: can somebody finish a 2,000-word piece
+   inside this app without leaving, without a redirect, without a layout shift,
+   and without a single piece of chrome that is not earning its place?
 
-   • fluid type via clamp(), 3 densities, serif↔sans, measure control
-   • heat-warmed progress bar (cool at the top → white-hot at 100%)
-   • Heat Spine: per-paragraph crowd heat, click to jump, hold to heat a paragraph
-   • attribution card for syndicated pieces + "Read original" (new tab only)
-   • resume: reading position is persisted per article
+     · obsidian paper, fluid type, a 68ch measure, 1.72 line-height
+     · a 2px progress rail at the very top and nothing else pinned
+     · chrome that fades in when you settle, and leaves when you scroll
+     · keep · heat · share, and a byline that credits the real writer
+     · resume: position is remembered per story, capped, never rounded down
    ==========================================================================*/
 
 import * as React from 'react';
-import Link from 'next/link';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { AnimatePresence, motion, useScroll, useSpring, useTransform } from 'framer-motion';
 import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
 import { Markdown, parseMarkdown, type ParsedDoc } from '@/lib/markdown';
 import type { ArticleBlock } from '@/lib/types';
-import { CodeBlock } from '@/lib/markdown';
 import { Avatar } from '@/components/ui/primitives';
 import { HeatButton } from '@/components/heat/HeatButton';
-import { FireOverlay, EmberTrail } from '@/components/heat/FireOverlay';
-import { cls, compact, prettyDate, timeAgo } from '@/lib/util';
-import { getUser } from '@/lib/seed/users';
+import { FireOverlay } from '@/components/heat/FireOverlay';
+import { cls, compact, coverFallback, plain, prettyDate, timeAgo } from '@/lib/util';
 import { fetchBody } from '@/lib/syndicate';
+import { EASE_OUT } from '@/lib/motion';
 import type { Post } from '@/lib/feed';
 
 export function ArticleReader({ post, onClose }: { post: Post; onClose: () => void }) {
   const app = useApp();
   const s = useStore();
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
-  const bodyRef = React.useRef<HTMLDivElement | null>(null);
-  const blockEls = React.useRef<Map<number, HTMLElement>>(new Map());
   const [pct, setPct] = React.useState(0);
-  const [start] = React.useState(() => Date.now());
-  const [elapsed, setElapsed] = React.useState(0);
-  const [syndicated, setSyndicated] = React.useState<{ state: 'idle' | 'loading' | 'ok' | 'off'; doc?: ParsedDoc; meta?: any }>({ state: 'idle' });
-  const [panel, setPanel] = React.useState<null | 'type'>(null);
+  const [syndicated, setSyndicated] = React.useState<{
+    state: 'idle' | 'loading' | 'ok' | 'off';
+    doc?: ParsedDoc;
+    canonical?: string;
+    author?: { name: string; handle: string; avatar?: string };
+  }>({ state: 'idle' });
+  const [typeOpen, setTypeOpen] = React.useState(false);
+  const [chrome, setChrome] = React.useState(true);
+  const [attempt, setAttempt] = React.useState(0);
+
   const burning = !!app.igniting[post.id];
   const level = app.heatOf(post.id);
-  const heat = post.heat!;
+  const heat = post.heatScore?.heat ?? 0;
+  const counts = app.countOf(post);
+  const saved = !!s.saved[post.id];
+  const mine = post.authorHandle === (s.me?.handle ?? 'you');
 
   const doc = React.useMemo(() => (post.markdown ? parseMarkdown(post.markdown) : null), [post.markdown]);
 
-  /* syndicated body, fetched per view and cached ephemerally (spec §6.2) */
-  const [attempt, setAttempt] = React.useState(0);
+  const { scrollYProgress } = useScroll({ container: scrollRef });
+  const railScale = useSpring(scrollYProgress, { stiffness: 220, damping: 40, mass: 0.4 });
+  const barOpacity = useTransform(scrollYProgress, [0, 0.012, 0.985, 1], [0, 1, 1, 0.85]);
+
+  /* ------------------------------------------------------- syndicated body */
   React.useEffect(() => {
     if (post.origin !== 'wire' || doc) return;
     let alive = true;
     setSyndicated((x) => ({ ...x, state: 'loading' }));
-    fetchBody(post.id, { ...(post as any), id: post.id } as any).then((b: any) => {
+    fetchBody(post.id, { ...(post as unknown as Record<string, unknown>), author: post.authorName } as never).then((b) => {
       if (!alive) return;
-      if (b.ok && b.markdown) setSyndicated({ state: 'ok', doc: parseMarkdown(b.markdown), meta: b });
-      else setSyndicated({ state: 'off', meta: b });
+      if (b.ok && b.markdown)
+        setSyndicated({ state: 'ok', doc: parseMarkdown(b.markdown), canonical: b.canonical, author: b.author });
+      else setSyndicated({ state: 'off', canonical: b.canonical, author: b.author });
     });
     return () => {
       alive = false;
@@ -66,777 +74,440 @@ export function ArticleReader({ post, onClose }: { post: Post; onClose: () => vo
 
   const blocks: ArticleBlock[] | null = post.blocks ?? null;
   const md: ParsedDoc | null = doc ?? syndicated.doc ?? null;
-  const blockCount = blocks?.length ?? md?.blocks ?? 12;
 
   /* ------------------------------------------------ progress + persistence */
   React.useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    /* hand the page back to the reader at the point they left it — once */
+    const savedPct = s.reads[post.id]?.pct ?? 0;
+    if (savedPct > 4 && savedPct < 96) {
+      window.setTimeout(() => {
+        const max = el.scrollHeight - el.clientHeight;
+        if (max > 200) el.scrollTo({ top: (savedPct / 100) * max, behavior: 'auto' });
+      }, 60);
+    } else {
+      /* a different story starts where a story should: at the top */
+      el.scrollTop = 0;
+      setPct(0);
+    }
     let raf = 0;
+    let idle = 0;
     const onScroll = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const max = el.scrollHeight - el.clientHeight;
-        const p = max > 40 ? Math.min(100, Math.max(0, (el.scrollTop / max) * 100)) : 0;
+        const p = max > 40 ? Math.max(0, Math.min(100, (el.scrollTop / max) * 100)) : 100;
         setPct(p);
-        if (p > (s.reads[post.id]?.pct ?? 0)) s.setRead(post.id, Math.round(p), 0);
       });
+      setChrome(false);
+      window.clearTimeout(idle);
+      idle = window.setTimeout(() => setChrome(true), 900);
     };
     el.addEventListener('scroll', onScroll, { passive: true });
-    const tick = window.setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
-    onScroll();
-    // resume
-    const saved = s.reads[post.id]?.pct ?? 0;
-    if (saved > 4 && saved < 96) {
-      window.setTimeout(() => {
-        const max = el.scrollHeight - el.clientHeight;
-        el.scrollTo({ top: (saved / 100) * max, behavior: 'auto' });
-      }, 240);
-    }
     return () => {
       el.removeEventListener('scroll', onScroll);
       cancelAnimationFrame(raf);
-      clearInterval(tick);
-      const finalPct = pctRef.current;
-      if (finalPct > 0) useStore.getState().setRead(post.id, Math.round(finalPct), Math.max(1, Math.round(elapsedRef.current / 60)));
+      window.clearTimeout(idle);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post.id]);
 
-  const pctRef = React.useRef(0);
-  const elapsedRef = React.useRef(0);
-  pctRef.current = pct;
-  elapsedRef.current = elapsed;
+  React.useEffect(() => {
+    const t = window.setTimeout(() => useStore.getState().setRead(post.id, pct, post.minutes ?? 6), 400);
+    return () => window.clearTimeout(t);
+  }, [pct, post.id, post.minutes]);
 
-  /* --------------------------------------------------------- keyboard */
+  React.useEffect(() => {
+    useStore.getState().setRead(post.id, pct, post.minutes ?? 6);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post.id]);
+
+  /* ------------------------------------------------------------- shortcuts */
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const el = scrollRef.current;
-      if (!el) return;
-      const typing = ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName);
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
-      if (typing) return;
-      if (e.key === 'j') el.scrollBy({ top: 120, behavior: 'smooth' });
-      if (e.key === 'k') el.scrollBy({ top: -120, behavior: 'smooth' });
-      if (e.key === 'h') app.setHeat(post.id, 1, { title: post.title, author: post.authorHandle });
-      if (e.key === 'b') {
-        s.toggleSave(post.id);
-        app.toast(s.saved[post.id] ? 'Removed from library' : 'Saved · available offline', s.saved[post.id] ? 'cool' : 'heat');
-      }
-      if (e.key === 's') app.setShare(post.id);
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'Escape') onClose();
+      if (e.key === 's' || e.key === 'S') app.toggleKeep(post.id);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [post.id, onClose]);
+  }, [app, onClose, post.id, saved]);
 
-  const jumpTo = (i: number) => {
-    const el = blockEls.current.get(i);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el?.classList.add('ht-block--target');
-    window.setTimeout(() => el?.classList.remove('ht-block--target'), 1500);
-  };
+  /* What to read next. Shared topics first, then heat — never the piece you
+     just finished, and never a wall of them. */
+  const nextUp = React.useMemo(() => {
+    const tags = new Set(post.tags ?? []);
+    return app.posts
+      .filter((p) => p.id !== post.id)
+      .map((p) => {
+        const shared = (p.tags ?? []).filter((t) => tags.has(t)).length;
+        return { p, score: shared * 1000 + (p.heatScore?.heat ?? 0) + (p.origin === 'mine' ? -30 : 0) };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((x) => x.p);
+  }, [app.posts, post.id, post.tags]);
 
-  const measure = s.prefs.measure;
-  const remaining = Math.max(0, Math.round((post.minutes ?? 6) * (1 - pct / 100)));
+  const authorName = syndicated.author?.name ?? post.authorName;
+  const authorHandle = syndicated.author?.handle ?? post.authorHandle;
+  const authorAvatar = syndicated.author?.avatar ?? post.authorAvatar;
 
   return (
-    <div ref={scrollRef} className="reader-new fixed inset-0 z-[120] overflow-y-auto overscroll-contain" style={{ animation: 'ht-read-in .6s cubic-bezier(.2,1,.3,1)' }}>
-      {/* ------------------------------- sticky chrome */}
-      <div className="reader-new__bar sticky top-0 z-30 -mb-px backdrop-blur-2xl">
-        <div className="mx-auto flex h-[54px] max-w-[1180px] items-center gap-2 px-3 sm:px-5">
-          <button onClick={onClose} className="ht-btn ht-btn--ghost !px-2.5" aria-label="Close reader">
-            ←
-          </button>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="ht-label">
-                {post.origin === 'wire' ? 'syndicated forge' : post.origin === 'user' ? 'your forge' : 'heatt original'}
-              </span>
-              <span className="text-ink-faint">·</span>
-              <span className="ht-num text-[11.5px] text-ink-mute">{Math.round(pct)}% through</span>
-            </div>
-          </div>
-          <button onClick={() => setPanel(panel === 'type' ? null : 'type')} className={cls('ht-btn ht-btn--ghost !px-2.5', panel === 'type' && '!text-ember-300')} aria-label="Reading controls">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-              <path d="M4 7V5h8v2M8 5v14m-3 0h6M14 12v-1.5h6v1.5M17 10.5V19m-2 0h4" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button
-            onClick={() => {
-              s.toggleSave(post.id);
-              app.toast(s.saved[post.id] ? 'Removed from library' : 'Saved · available offline', s.saved[post.id] ? 'cool' : 'heat');
-            }}
-            className={cls('ht-btn ht-btn--ghost !px-2.5', !!s.saved[post.id] && '!text-ember-300')}
-            aria-label="Save to library"
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill={s.saved[post.id] ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7">
-              <path d="M18.5 3.5H5.5A1.5 1.5 0 0 0 4 5v15.5l8-4.6 8 4.6V5a1.5 1.5 0 0 0-1.5-1.5Z" />
-            </svg>
-          </button>
-          <button onClick={() => app.setShare(post.id)} className="ht-btn ht-btn--heat !px-3 !py-1.5 !text-[12.5px]">
-            Share
-          </button>
-        </div>
+    <div className="relative flex h-[100dvh] flex-col bg-void">
+      {/* progress rail: two pixels, at the very top, always */}
+      <div className="ht-progress-rail" role="progressbar" aria-label="Reading progress" aria-valuenow={Math.round(pct)}>
+        <motion.span className="ht-progress-rail__fill block" style={{ scaleX: railScale, opacity: barOpacity }} />
       </div>
+
+      {/* floating chrome — leaves while you read, returns when you settle */}
+      <motion.header
+        className="absolute inset-x-0 top-0 z-40 flex items-center gap-2 px-4 py-3"
+        initial={false}
+        animate={{ y: chrome ? 0 : -58, opacity: chrome ? 1 : 0 }}
+        transition={{ duration: 0.4, ease: EASE_OUT }}
+        style={{ background: 'linear-gradient(180deg, rgba(6,7,10,.92), rgba(6,7,10,0))' }}
+      >
+        <button onClick={onClose} className="ht-icon-btn" aria-label="Close reader">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[12.5px] font-medium text-ink-2">{post.title}</span>
+          <span className="ht-num block text-[10.5px] text-ink-4">
+            {Math.round(pct)}% · {Math.max(1, Math.round((post.minutes ?? 6) * (1 - pct / 100)))} min left
+          </span>
+        </span>
+        <button onClick={() => setTypeOpen((v) => !v)} className="ht-icon-btn" aria-label="Reading settings" aria-expanded={typeOpen}>
+          <span className="text-[13px] font-semibold" aria-hidden>
+            Aa
+          </span>
+        </button>
+        <button
+          onClick={() => app.toggleKeep(post.id)}
+          className="ht-icon-btn"
+          data-active={saved || undefined}
+          aria-label={saved ? 'Remove from library' : 'Keep in library'}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-3.8L5.5 20.5v-16a1 1 0 0 1 1-1Z" />
+          </svg>
+        </button>
+        <button onClick={() => app.setShare(post.id)} className="ht-icon-btn" aria-label="Share as a story">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 15V4m0 0L8.5 7.5M12 4l3.5 3.5M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5" />
+          </svg>
+        </button>
+      </motion.header>
 
       <AnimatePresence>
-        {panel === 'type' && <TypePanel onClose={() => setPanel(null)} />}
+        {typeOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.24, ease: EASE_OUT }}
+            className="absolute right-4 top-[64px] z-40 w-[236px] p-3.5 ht-sheet"
+          >
+            <p className="ht-label mb-2 !text-[9px]">text size</p>
+            <div className="ht-tabrail !p-1">
+              {(['dense', 'normal', 'cozy'] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => app.setPrefs({ density: d })}
+                  aria-pressed={s.prefs.density === d}
+                  className={cls('ht-tab !px-2.5 !text-[12px]', s.prefs.density === d && 'bg-white/[.08] text-ink')}
+                >
+                  {d === 'dense' ? 'A' : d === 'normal' ? 'A' : 'A'}
+                  <span className="ht-ink-4">{d === 'dense' ? 's' : d === 'normal' ? 'm' : 'l'}</span>
+                </button>
+              ))}
+            </div>
+            <p className="ht-label mb-2 mt-3.5 !text-[9px]">measure</p>
+            <div className="ht-tabrail !p-1">
+              {(['narrow', 'normal', 'wide'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => app.setPrefs({ measure: m })}
+                  aria-pressed={s.prefs.measure === m}
+                  className={cls('ht-tab !px-2.5 !text-[12px]', s.prefs.measure === m && 'bg-white/[.08] text-ink')}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => app.setPrefs({ serif: !s.prefs.serif })}
+              className="ht-btn ht-btn--quiet mt-3.5 !h-8 w-full !text-[12px]"
+              aria-pressed={s.prefs.serif}
+            >
+              {s.prefs.serif ? 'Serif body · on' : 'Serif body · off'}
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
 
-      <div className="pointer-events-none fixed right-4 top-1/2 z-40 hidden -translate-y-1/2 md:block" aria-label={`Reading progress ${Math.round(pct)} percent`}>
-        <div className="ht-glass flex h-32 w-2 flex-col justify-end overflow-hidden !rounded-full p-[2px]">
-          <motion.span className="block w-full rounded-full" style={{ height: `${Math.max(3, pct)}%`, background: 'linear-gradient(180deg,var(--ht-whitehot),var(--ht-ember))' }} />
-        </div>
-        <span className="mt-2 block text-center text-[9px] font-bold text-ink-mute">{Math.round(pct)}%</span>
-      </div>
-
-      {/* ------------------------------- article */}
-      <article
-        className={cls('mx-auto px-5 pb-[26vh] pt-8 sm:pt-12', measure === 'narrow' ? 'max-w-[620px]' : measure === 'wide' ? 'max-w-[860px]' : 'max-w-[740px]')}
-        style={{ fontFamily: s.prefs.serif ? undefined : 'Inter Variable, sans-serif' }}
-      >
-        {/* the hero expands out of the card you tapped */}
-        <motion.div
-          initial={{ opacity: 0, scale: 1.045, y: 12 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
-          style={{ transformOrigin: '50% 30%' }}
-        >
-          <Cover post={post} burning={burning} />
-        </motion.div>
-
-        {/* byline + heat live on the dark room, above the page */}
-        <div className="mt-7">
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href={`/u/${post.authorHandle}`} onClick={onClose} className="flex items-center gap-2.5">
-              <Avatar name={post.authorName} handle={post.authorHandle} src={post.authorAvatar} size={40} />
-              <span>
-                <span className="block text-[14px] font-bold leading-tight hover:underline">{post.authorName}</span>
-                <span className="block text-[12px] text-ink-mute">
-                  @{post.authorHandle}
-                  {post.org ? ` · ${post.org}` : ''} · {prettyDate(post.date)}
-                </span>
-              </span>
-            </Link>
-            <span className="flex-1" />
-            <span className="hidden items-center gap-3 text-[11.5px] text-ink-mute sm:flex">
-              <span className="ht-num font-semibold">{post.minutes ?? 6} min read</span>
-              <span aria-hidden className="h-2.5 w-px bg-white/[.1]" />
-              <span className="ht-num font-semibold">{post.tags.length} themes</span>
-            </span>
-            <span className="hidden h-6 w-px bg-white/10 sm:block" />
-            <div className="relative">
-              <HeatButton
-                level={level}
-                count={app.countOf(post)}
-                temp={heat.temp}
-                size="lg"
-                onChange={(lv, meta) => app.setHeat(post.id, lv, { ignited: meta.ignited, title: post.title, author: post.authorHandle })}
-              />
-              <FireOverlay active={burning} />
+      {/* --------------------------------------------------------------- text */}
+      <div ref={scrollRef} className="ht-no-scrollbar flex-1 overflow-y-auto overscroll-contain">
+        <article className="mx-auto w-full max-w-[var(--measure,760px)] px-5 pb-32 pt-[92px] sm:px-8">
+          <header className="mb-9">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="ht-chip ht-chip--heat">{post.minutes ?? 6} min read</span>
+              {heat > 0 && <span className="ht-chip ht-chip--gold">{heat}° heat</span>}
+              {post.origin === 'wire' && <span className="ht-chip">Dev.to</span>}
             </div>
-          </div>
 
-          {post.origin === 'wire' && <Attribution post={post} />}
-        </div>
+            <h1 className="ht-display mt-5 text-[clamp(1.85rem,1.5rem+2.6vw,3.1rem)] text-ink">{post.title}</h1>
+            {post.dek && <p className="ht-lead mt-4 max-w-[58ch] text-[15.5px]">{post.dek}</p>}
 
-        {/* the page itself: an obsidian sheet lifted out of the black room */}
-        <div className="ht-paper mt-7 px-5 py-9 sm:px-10 sm:py-12">
-          <header>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {post.tags.slice(0, 4).map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/explore?tag=${encodeURIComponent(tag)}`}
-                  onClick={onClose}
-                  className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-ember-200 transition-colors hover:border-ember-400"
-                  style={{ borderColor: 'rgba(255,180,84,.26)', background: 'rgba(255,180,84,.08)' }}
+            <div className="mt-7 flex items-center gap-3 border-y border-line py-4">
+              <Avatar name={authorName} handle={authorHandle} src={authorAvatar} size={40} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] font-semibold text-ink">{authorName}</p>
+                <p className="truncate text-[11.5px] text-ink-faint">
+                  @{authorHandle} · {prettyDate(post.date)} · {timeAgo(post.date)} ago
+                </p>
+              </div>
+              {!mine && (
+                <button
+                  onClick={() => app.toggleFollow(authorHandle)}
+                  className={cls('ht-chip shrink-0', app.follows.includes(authorHandle) && 'ht-chip--heat')}
                 >
-                  #{tag}
-                </Link>
-              ))}
-              <span
-                className="rounded-full border border-white/[.1] px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-dim"
-              >
-                {post.minutes ?? 6} min read
-              </span>
+                  {app.follows.includes(authorHandle) ? 'Following' : 'Follow'}
+                </button>
+              )}
             </div>
 
-            <h1
-              className="ht-title mt-4 text-[clamp(2rem,1.2rem+3.4vw,3.4rem)] leading-[1.04] text-white"
-              style={{ textWrap: 'balance' as any }}
-            >
-              {post.title}
-            </h1>
-
-            {post.dek && (
-              <p className="mt-4 text-[clamp(1.05rem,1rem+.4vw,1.3rem)] leading-[1.55] text-ink-dim" style={{ textWrap: 'pretty' as any }}>
-                {post.dek}
-              </p>
+            {post.cover && (
+              <figure className="mt-7 overflow-hidden rounded-[var(--r-lg)] border border-line">
+                <img src={post.cover} alt="" loading="lazy" decoding="async" onError={coverFallback(post.id)} className="w-full object-cover" />
+              </figure>
             )}
-
-            <div className="mt-6 flex items-center gap-3 border-t border-white/[.08] pt-4 text-[11.5px] text-ink-faint">
-              <span className="ht-num font-bold uppercase tracking-[0.12em] text-ember-300">{post.minutes ?? 6} min read</span>
-              <span className="h-1 w-1 rounded-full bg-white/20" />
-              <span>{prettyDate(post.date)}</span>
-              <span className="flex-1" />
-              <span className="ht-num">{(blocks?.length ?? 0) || 0} sections</span>
-            </div>
           </header>
 
-          <div ref={bodyRef} className="ht-prose relative mt-9">
-          {blocks ? (
-            blocks.map((b, i) => (
-              <BlockWithHeat
-                key={i}
-                index={i}
-                postId={post.id}
-                block={b}
-                onRef={(el) => {
-                  if (el) blockEls.current.set(i, el);
-                  else blockEls.current.delete(i);
-                }}
-                onClose={onClose}
-              />
-            ))
+          {post.origin === 'wire' && (!md || syndicated.state === 'loading') ? (
+            <div className="space-y-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <span key={i} className="ht-skeleton block h-4" style={{ width: `${70 + ((i * 7) % 28)}%` }} />
+              ))}
+            </div>
           ) : md ? (
-            <Markdown
-              doc={md}
-              opts={{
-                blockHeat: () => 0,
-                onBlockRef: (i, el) => {
-                  if (el) blockEls.current.set(i, el);
-                  else blockEls.current.delete(i);
-                },
-                onInternalLink: () => app.toast('Internal link — kept in-app', 'cool'),
-              }}
-            />
-          ) : syndicated.state === 'loading' ? (
-            <LoadingBody />
+            <Markdown doc={md} />
+          ) : blocks ? (
+            <Blocks blocks={blocks} />
           ) : (
-            <OfflineBody
-              post={post}
-              meta={syndicated.meta}
-              onRetry={() => {
-                setSyndicated({ state: 'loading' });
-                setAttempt((a) => a + 1);
-              }}
-            />
-          )}
-
-          {(level >= 2 || burning) && <EmberTrail active count={12} />}
-          </div>
-
-          <footer className="mt-10 flex flex-wrap items-center gap-3 border-t border-white/[.08] pt-5">
-            <span className="ht-num text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">end of article</span>
-            <span className="flex-1" />
-            <button onClick={() => app.setShare(post.id)} className="ht-btn ht-btn--heat !py-2 !text-[12.5px]">
-              Share as a story
-            </button>
-          </footer>
-        </div>
-
-        <EndBar post={post} onClose={onClose} />
-      </article>
-
-      {/* the only reading chrome: one small bar hovering over the page */}
-      <ReadingBar pct={pct} onJump={() => jumpTo(0)} />
-
-      <style>{`
-        @keyframes ht-read-in{from{opacity:0;transform:translateY(10px) scale(.995);filter:blur(8px)}to{opacity:1;transform:none;filter:blur(0)}}
-        @keyframes ht-cover-out{to{opacity:0;transform:translateY(-20px)}}
-      `}</style>
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------- cover */
-
-function Cover({ post, burning }: { post: Post; burning: boolean }) {
-  const { scrollY } = useScroll();
-  const y = useTransform(scrollY, [0, 420], [0, -70]);
-  const scale = useTransform(scrollY, [0, 420], [1.04, 1.16]);
-  const [ok, setOk] = React.useState(true);
-  const src = post.cover;
-  return (
-    <motion.div
-      className="relative overflow-hidden rounded-[22px] border border-white/[.07]"
-      style={{ y, background: 'linear-gradient(140deg,#141414,#050505)', boxShadow: burning ? '0 40px 120px -30px rgba(255,180,84,.5)' : '0 40px 90px -50px rgba(0,0,0,1)' }}
-    >
-      {src && ok ? (
-        <motion.img
-          src={src}
-          alt={post.title ?? ''}
-          loading="eager"
-          onError={() => setOk(false)}
-          className="block aspect-[16/8] w-full object-cover"
-          style={{ scale, filter: `saturate(${burning ? 1.35 : 1.06}) brightness(${burning ? 1.1 : 1})`, transition: 'filter .6s' }}
-        />
-      ) : (
-        <div className="grid aspect-[16/8] w-full place-items-center" style={{ background: 'radial-gradient(80% 100% at 20% 110%, rgba(255,180,84,.22), transparent 62%), linear-gradient(140deg,#1a1208,#050505)' }}>
-          <span className="ht-title ht-heat-text text-[clamp(1.6rem,1rem+3vw,3rem)]">{post.authorName}</span>
-        </div>
-      )}
-      <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.15) 20%,rgba(0,0,0,.86))' }} />
-      {/* over-image chrome, the detail-screen idiom: glass discs bottom-left */}
-      <div className="absolute bottom-4 left-4 flex items-center gap-2">
-        <span className="rounded-full border border-white/[.14] bg-black/50 px-3 py-1.5 text-[11px] font-semibold text-white/90 backdrop-blur-md">
-          {post.origin === 'wire' ? 'syndicated · attributed' : post.kind === 'forge' ? 'long-form' : 'spark'}
-        </span>
-        {(post.tags ?? []).slice(0, 2).map((t) => (
-          <span key={t} className="rounded-full border border-white/[.14] bg-black/50 px-3 py-1.5 text-[11px] font-semibold text-white/80 backdrop-blur-md">
-            #{t}
-          </span>
-        ))}
-      </div>
-      <FireOverlay active={burning} />
-    </motion.div>
-  );
-}
-
-function Attribution({ post }: { post: Post }) {
-  return (
-    <div className="mt-5 flex flex-wrap items-center gap-3 rounded-[16px] border border-cryo-teal/20 bg-[rgba(99,216,245,.045)] p-3">
-      <span className="ht-chip !border-cryo-teal/35 !text-cryo-teal">syndicated</span>
-      <p className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-ink-dim">
-        Published freely by <b className="text-ink">{post.authorName}</b>
-        {post.org ? ` of ${post.org}` : ''} on {prettyDate(post.date)}. heatt renders it in its own typography and never stores the text —{' '}
-        <a href={post.canonical} target="_blank" rel="noopener noreferrer" className="text-cryo-teal underline-offset-2 hover:underline">
-          read the original
-        </a>
-        .
-      </p>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------ block view */
-
-/* Paragraphs render plainly. There is no per-paragraph heat counter, no crowd
-   number in the margin — the article is text, and the bar at the bottom is the
-   only thing that reports anything back to you. */
-function BlockWithHeat(props: {
-  index: number;
-  postId: string;
-  block: ArticleBlock;
-  onRef: (el: HTMLElement | null) => void;
-  onClose: () => void;
-}) {
-  const { block, onRef, onClose } = props;
-  return (
-    <div
-      ref={(el) => onRef(el)}
-      className="ht-block relative"
-    >
-      <BlockView block={block} onClose={onClose} />
-    </div>
-  );
-}
-
-function BlockView({ block, onClose }: { block: ArticleBlock; onClose: () => void }) {
-  switch (block.t) {
-    case 'h':
-      return <h2 id={block.id}>{block.text}</h2>;
-    case 'p':
-      return <p>{block.text}</p>;
-    case 'quote':
-      return (
-        <blockquote>
-          {block.text}
-          {block.cite && <footer className="mt-2 text-[12px] not-italic text-[#6F6F6F]">— {block.cite}</footer>}
-        </blockquote>
-      );
-    case 'ul':
-      return (
-        <ul>
-          {block.items.map((i, n) => (
-            <li key={n}>{<Inline tokens={i} />}</li>
-          ))}
-        </ul>
-      );
-    case 'ol':
-      return (
-        <ol>
-          {block.items.map((i, n) => (
-            <li key={n}>{<Inline tokens={i} />}</li>
-          ))}
-        </ol>
-      );
-    case 'code':
-      return <CodeBlock lang={block.lang} code={block.code} caption={block.caption} />;
-    case 'img':
-      return (
-        <figure>
-          <img src={block.src} alt={block.alt} loading="lazy" decoding="async" />
-          {(block.caption || block.credit) && (
-            <figcaption>
-              {block.caption}
-              {block.credit ? ` · ${block.credit}` : ''}
-            </figcaption>
-          )}
-        </figure>
-      );
-    case 'hr':
-      return <hr />;
-    case 'callout': {
-      const tone =
-        block.kind === 'heat'
-          ? { b: 'rgba(255,180,84,.3)', bg: 'linear-gradient(100deg,rgba(255,180,84,.12),rgba(255,203,120,.05))', c: 'var(--ht-flare)' }
-          : block.kind === 'warn'
-            ? { b: 'rgba(255,203,120,.26)', bg: 'linear-gradient(100deg,rgba(255,203,120,.08),transparent)', c: '#FFC978' }
-            : { b: 'rgba(99,216,245,.24)', bg: 'linear-gradient(100deg,rgba(99,216,245,.07),transparent)', c: 'var(--ht-cryo-teal)' };
-      return (
-        <aside className="my-[1.6em] rounded-[16px] border p-4" style={{ borderColor: tone.b, background: tone.bg }}>
-          <div className="mb-1.5 flex items-center gap-2">
-            <span style={{ color: tone.c }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
-                <path d="M12 3.2c1 2.6.2 3.9-1 5.2-1.3 1.4-2.8 2.6-2.8 5.2A4.4 4.4 0 0 0 16.4 18c.1-2.2-1.3-3.6-1.8-5.6 2 1.9 3.2 4 3.2 6.4A5.8 5.8 0 1 1 5.4 11C5.4 6.9 9.6 4.4 12 3.2Z" />
-              </svg>
-            </span>
-            <b className="text-[13px] uppercase tracking-[0.1em]" style={{ color: tone.c }}>
-              {block.title}
-            </b>
-          </div>
-          <p className="text-[14px] leading-relaxed text-ink-dim">{block.text}</p>
-        </aside>
-      );
-    }
-    case 'links':
-      return (
-        <aside className="my-[1.8em] rounded-[16px] border border-white/[.08] bg-white/[.03] p-4">
-          <div className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.22em] text-ink-faint">Further reading</div>
-          <ul className="space-y-2.5 !mt-0">
-            {block.items.map((l) => (
-              <li key={l.href} className="!mt-0">
-                <a href={l.href} target="_blank" rel="noopener noreferrer" className="flex items-baseline gap-2 text-[14px] no-underline">
-                  <span className="text-ember-300">↗</span>
-                  <span className="font-semibold text-white transition-colors hover:text-ember-200">{l.label}</span>
-                  {l.note && <span className="text-[12px] text-[#6F6F6F]">— {l.note}</span>}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      );
-    default:
-      return null;
-  }
-}
-
-/** bold/inline-code parser for the seed block strings (no markdown import) */
-function Inline({ tokens }: { tokens: string }) {
-  const parts = tokens.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
-  return (
-    <>
-      {parts.map((p, i) => {
-        if (p.startsWith('**') && p.endsWith('**')) return <strong key={i}>{p.slice(2, -2)}</strong>;
-        if (p.startsWith('`') && p.endsWith('`')) return <code key={i}>{p.slice(1, -1)}</code>;
-        const [text, link] = p.split(/ \[|\]\(/);
-        if (link) {
-          const href = link.replace(/\)$/, '');
-          const label = `${text}${p.includes('](') ? '' : ''}`.replace(/\[$/, '');
-          return (
-            <a key={i} href={href} target="_blank" rel="noopener noreferrer">
-              {label.replace(/[\[].*$/, '')}
-            </a>
-          );
-        }
-        return <React.Fragment key={i}>{p}</React.Fragment>;
-      })}
-    </>
-  );
-}
-
-/* --------------------------------------------------------------- spine */
-
-/* One small bar hovers over the page and says how far in you are. Nothing else
-   reports anything back while you read. */
-function ReadingBar({ pct, onJump }: { pct: number; onJump: () => void }) {
-  const done = pct >= 97;
-  return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[max(16px,env(safe-area-inset-bottom))] z-40 flex justify-center px-4">
-      <div
-        className="ht-glass pointer-events-auto flex w-[min(420px,90vw)] items-center gap-3 !rounded-full px-3 py-2.5"
-        role="progressbar"
-        aria-label="Reading progress"
-        aria-valuenow={Math.round(pct)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <button
-          onClick={onJump}
-          aria-label="Back to the top of the article"
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/[.12] text-[12px] text-ink-dim transition-colors hover:text-white"
-        >
-          ↑
-        </button>
-        <span className="relative h-[4px] flex-1 overflow-hidden rounded-full bg-white/[.09]">
-          <span
-            className="absolute inset-y-0 left-0 rounded-full"
-            style={{
-              width: `${Math.min(100, pct)}%`,
-              background: 'linear-gradient(90deg,var(--ht-flame),var(--ht-ember))',
-              boxShadow: '0 0 12px rgba(255,180,84,.55)',
-              transition: 'width .2s linear',
-            }}
-          />
-        </span>
-        <span className="ht-num shrink-0 text-[11.5px] font-semibold text-ink-dim">{Math.round(pct)}%</span>
-      </div>
-    </div>
-  );
-}
-
-/* --------------------------------------------------------- type controls */
-
-function TypePanel({ onClose }: { onClose: () => void }) {
-  const s = useStore();
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      className="fixed right-3 top-[64px] z-40 w-[268px] rounded-[18px] border border-white/[.09] bg-[#0d0d0d]/95 p-3 backdrop-blur-2xl"
-      style={{ boxShadow: '0 30px 80px -30px rgba(0,0,0,1)' }}
-    >
-      <div className="mb-2 flex items-center justify-between">
-        <span className="ht-label">Reading environment</span>
-        <button onClick={onClose} className="text-ink-mute hover:text-ink">
-          ✕
-        </button>
-      </div>
-      <Seg
-        label="Density"
-        value={s.prefs.density}
-        options={[
-          { v: 'dense', l: 'Dense' },
-          { v: 'normal', l: 'Normal' },
-          { v: 'cozy', l: 'Cozy' },
-        ]}
-        onChange={(v) => s.setPrefs({ density: v as any })}
-      />
-      <Seg
-        label="Measure"
-        value={s.prefs.measure}
-        options={[
-          { v: 'narrow', l: '68ch' },
-          { v: 'normal', l: '74ch' },
-          { v: 'wide', l: '84ch' },
-        ]}
-        onChange={(v) => s.setPrefs({ measure: v as any })}
-      />
-      <Seg
-        label="Face"
-        value={s.prefs.serif ? 'serif' : 'sans'}
-        options={[
-          { v: 'serif', l: 'Newsreader' },
-          { v: 'sans', l: 'Inter' },
-        ]}
-        onChange={(v) => s.setPrefs({ serif: v === 'serif' })}
-      />
-      <Seg
-        label="Ignition FX"
-        value={s.prefs.ignitionFx}
-        options={[
-          { v: 'full', l: 'Full' },
-          { v: 'subtle', l: 'Subtle' },
-          { v: 'off', l: 'Off' },
-        ]}
-        onChange={(v) => s.setPrefs({ ignitionFx: v as any })}
-      />
-      <button
-        onClick={() => s.setPrefs({ reduceMotion: !s.prefs.reduceMotion })}
-        className={cls('mt-2 flex w-full items-center justify-between rounded-[12px] border px-3 py-2 text-[13px] font-semibold transition-colors', s.prefs.reduceMotion ? 'border-ember-500/45 bg-ember-500/10 text-ember-200' : 'border-white/[.07] text-ink-dim hover:border-white/20')}
-      >
-        Reduce motion
-        <span className={cls('ht-num text-[11px]', s.prefs.reduceMotion ? 'text-ember-300' : 'text-ink-faint')}>{s.prefs.reduceMotion ? 'on' : 'off'}</span>
-      </button>
-    </motion.div>
-  );
-}
-
-function Seg({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { v: string; l: string }[];
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="mb-2.5">
-      <span className="ht-label mb-1.5 block !text-[9px]">{label}</span>
-      <div className="flex gap-1">
-        {options.map((o) => (
-          <button
-            key={o.v}
-            onClick={() => onChange(o.v)}
-            className={cls('flex-1 rounded-[10px] border px-2 py-1.5 text-[12px] font-bold transition-all', value === o.v ? 'border-ember-500/50 bg-ember-500/12 text-ember-100' : 'border-white/[.07] text-ink-mute hover:border-white/20 hover:text-ink')}
-          >
-            {o.l}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------ end states */
-
-function LoadingBody() {
-  return (
-    <div className="space-y-4 pt-2">
-      {[92, 100, 86, 96, 70].map((w, i) => (
-        <div key={i} className="space-y-2">
-          <motion.div className="h-3.5 rounded bg-white/[.055]" animate={{ opacity: [0.4, 0.85, 0.4] }} transition={{ duration: 1.7, repeat: Infinity, delay: i * 0.13 }} style={{ width: `${w}%` }} />
-          <motion.div className="h-3.5 rounded bg-white/[.035]" animate={{ opacity: [0.4, 0.85, 0.4] }} transition={{ duration: 1.7, repeat: Infinity, delay: 0.1 + i * 0.13 }} style={{ width: `${Math.max(40, w - 22)}%` }} />
-        </div>
-      ))}
-      <p className="pt-3 text-[13px] text-ink-mute">
-        Fetching the article body from the publisher’s public API and rendering it in heatt type… nothing is stored on our side.
-      </p>
-    </div>
-  );
-}
-
-function OfflineBody({ post, meta, onRetry }: { post: Post; meta?: any; onRetry: () => void }) {
-  return (
-    <div className="rounded-[18px] border border-ember-500/25 bg-[linear-gradient(140deg,rgba(255,180,84,.07),transparent_60%)] p-5">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="ht-chip !border-ember-500/40 !text-ember-200">body offline</span>
-        <span className="text-[12px] text-ink-mute">the wire is unreachable from this network</span>
-      </div>
-      <h2 className="ht-title text-[22px]">{post.title}</h2>
-      <p className="mt-2 text-[14.5px] leading-relaxed text-ink-dim">{post.dek}</p>
-      {meta?.excerpt && <p className="mt-3 border-l-2 border-ember-500/40 pl-3 text-[13.5px] italic leading-relaxed text-ink-mute">{meta.excerpt}</p>}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button onClick={onRetry} className="ht-btn ht-btn--heat !py-2 !text-[13px]">
-          Retry fetch
-        </button>
-        <a href={post.canonical} target="_blank" rel="noopener noreferrer" className="ht-btn !py-2 !text-[13px]">
-          Read original ↗
-        </a>
-        <span className="text-[12px] text-ink-faint">cached for 24h in your browser after a successful read</span>
-      </div>
-    </div>
-  );
-}
-
-function EndBar({ post, onClose }: { post: Post; onClose: () => void }) {
-  const app = useApp();
-  const s = useStore();
-  const author = post.author ?? getUser(post.authorHandle);
-  const related = React.useMemo(
-    () => app.posts.filter((p) => p.id !== post.id && p.tags.some((tg) => post.tags.includes(tg))).slice(0, 3),
-    [app.posts, post]
-  );
-  const replyCount = s.replies.filter((r) => r.postId === post.id).length;
-
-  return (
-    <div className="mt-12">
-      {/* a piece ends with the person who wrote it, not with a scoreboard */}
-      <div className="ht-panel flex flex-wrap items-center gap-4 p-4">
-        <Avatar name={author.name} handle={author.handle} src={author.avatar} size={54} />
-        <div className="min-w-0 flex-1">
-          <div className="text-[15px] font-bold text-white">{author.name}</div>
-          <div className="text-[12.5px] text-ink-mute">@{author.handle} · {compact(author.followers)} followers</div>
-          <p className="mt-1 line-clamp-2 text-[13px] text-ink-dim">{author.bio}</p>
-        </div>
-        <button onClick={() => app.toggleFollow(author.handle)} className={cls('ht-btn', s.follows.includes(author.handle) ? '' : 'ht-btn--heat')}>
-          {s.follows.includes(author.handle) ? 'Following' : 'Follow'}
-        </button>
-        <HeatButton
-          level={app.heatOf(post.id)}
-          count={app.countOf(post)}
-          temp={post.heat?.temp ?? 0}
-          onChange={(lv, meta) => app.setHeat(post.id, lv, { ignited: meta.ignited, title: post.title, author: post.authorHandle })}
-        />
-      </div>
-
-      {/* replies */}
-      <div className="mt-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="ht-title text-[18px]">Replies {replyCount > 0 && <span className="text-ink-mute">({replyCount})</span>}</h3>
-          <span className="text-[12px] text-ink-mute">discussion stays attached to the piece</span>
-        </div>
-        <div className="space-y-3">
-          {s.replies.filter((r) => r.postId === post.id).map((r) => {
-            const u = getUser(r.author);
-            return (
-              <div key={r.id} className="flex gap-3 rounded-[16px] border border-white/[.06] p-3">
-                <Avatar name={u.name} handle={u.handle} src={u.avatar} size={30} />
-                <div>
-                  <div className="text-[12.5px] text-ink-mute">
-                    <b className="text-ink">{u.name}</b> · {timeAgo(r.at)}
-                  </div>
-                  <p className="mt-1 text-[14px] leading-relaxed text-ink-dim">{r.text}</p>
+            <div className="ht-panel p-6">
+              <p className="text-[14px] text-ink-2">
+                {post.text ?? 'This piece has no body yet.'}
+              </p>
+              {post.canonical && (
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <a href={post.canonical} target="_blank" rel="noopener noreferrer" className="ht-btn ht-btn--quiet">
+                    Read it on the original site ↗
+                  </a>
+                  <button onClick={() => setAttempt((a) => a + 1)} className="ht-btn ht-btn--ghost !px-3">
+                    Try again
+                  </button>
                 </div>
-              </div>
-            );
-          })}
-          <ReplyBox postId={post.id} onClose={onClose} />
-        </div>
-      </div>
+              )}
+            </div>
+          )}
 
-      {related.length > 0 && (
-        <div className="mt-8">
-          <h3 className="ht-title mb-3 text-[18px]">Next up</h3>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {related.map((r) => (
-              <button key={r.id} onClick={() => app.openPost(r.id)} className="ht-card p-3.5 text-left">
-                <span className="ht-label">{r.kind === 'forge' ? `${r.minutes} min` : 'spark'}</span>
-                <span className="mt-1.5 line-clamp-3 block text-[13.5px] font-semibold leading-snug text-ink">{r.title ?? r.text}</span>
-                <span className="mt-2 block text-[11.5px] text-ink-mute">@{r.authorHandle}</span>
+          {/* ------------------------------------------------------- outro */}
+          <footer className="mt-14 border-t border-line pt-7">
+            <div className="flex flex-wrap items-center gap-3">
+              <HeatButton level={level} count={counts.reactions} heat={heat} size="lg" onChange={(l, m) => app.setHeat(post.id, l, { title: post.title, author: authorHandle, ...m })} />
+              <button
+                onClick={() => app.setThread(post.id)}
+                className="ht-btn ht-btn--quiet"
+                aria-label={`${counts.comments} replies`}
+              >
+                {counts.comments} replies
               </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+              <button onClick={() => app.setShare(post.id)} className="ht-btn ht-btn--heat">
+                Share as a story
+              </button>
+              <span className="flex-1" />
+              <button
+                onClick={() => app.toggleKeep(post.id)}
+                className="ht-icon-btn"
+                data-active={saved || undefined}
+                aria-label={saved ? 'Remove from library' : 'Keep in library'}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-3.8L5.5 20.5v-16a1 1 0 0 1 1-1Z" />
+                </svg>
+              </button>
+            </div>
 
-function ReplyBox({ postId, onClose }: { postId: string; onClose: () => void }) {
-  const app = useApp();
-  const s = useStore();
-  const [text, setText] = React.useState('');
-  return (
-    <div className="flex gap-3 rounded-[16px] border border-white/[.07] bg-black/25 p-3">
-      <Avatar name={app.me?.name ?? 'Guest'} handle={app.me?.handle ?? 'guest'} src={app.me?.avatar} size={30} />
-      <div className="flex-1">
-        <textarea
-          rows={2}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Reply — threads live at the end of the piece, never inside it"
-          className="ht-input resize-none !bg-transparent !px-0 !text-[14px] focus:!shadow-none"
-        />
-        <div className="flex justify-end">
-          <button
-            disabled={!text.trim()}
-            onClick={() => {
-              s.addReply({ postId, author: app.me?.handle ?? 'you', text: text.trim() });
-              setText('');
-              app.toast('Reply posted to the thread', 'heat');
-              onClose();
-            }}
-            className="ht-btn ht-btn--heat !py-1.5 !text-[12.5px] disabled:opacity-40"
-          >
-            Reply
-          </button>
-        </div>
+            <div className="mt-7 flex items-start gap-3 rounded-[var(--r-lg)] border border-line bg-white/[.015] p-4">
+              <Avatar name={authorName} handle={authorHandle} src={authorAvatar} size={44} />
+              <div className="min-w-0">
+                <p className="text-[13.5px] font-semibold text-ink">{authorName}</p>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-ink-mute">
+                  {post.origin === 'wire'
+                    ? 'Published by ' + authorName + ' on Dev.to and syndicated here. The canonical version stays on their site.'
+                    : post.origin === 'mine'
+                      ? 'Written by you, on this device.'
+                      : 'Written by the house for heatt Originals.'}
+                </p>
+                {post.canonical && (
+                  <a href={post.canonical} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-[12px] text-ember-300 hover:text-ember-200">
+                    Open the original ↗
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {post.tags.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {post.tags.map((t) => (
+                  <button key={t} onClick={() => app.go(`/explore?q=${encodeURIComponent(t)}`)} className="ht-chip">
+                    #{t}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {nextUp.length > 0 && (
+              <section className="mt-10">
+                <span className="ht-eyebrow">next in the room</span>
+                <div className="mt-3.5 space-y-2.5">
+                  {nextUp.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => app.openPost(p.id)}
+                      className="ht-nextrow"
+                      aria-label={`Read next: ${p.title ?? plain(p.text ?? '').slice(0, 40)}`}
+                    >
+                      {p.cover ? (
+                        <img src={p.cover} alt="" loading="lazy" decoding="async" onError={coverFallback(p.id)} className="ht-nextrow__art" />
+                      ) : (
+                        <span className="ht-nextrow__art ht-nextrow__art--text" aria-hidden>
+                          #
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13.5px] font-semibold text-ink">
+                          {p.title ?? plain(p.text ?? '').slice(0, 70)}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11.5px] text-ink-faint">
+                          {p.authorName} · {p.kind === 'forge' ? `${p.minutes ?? 6} min read` : 'note'}
+                        </span>
+                      </span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-ink-4" aria-hidden>
+                        <path d="M5 12h13M13 6l6 6-6 6" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+          </footer>
+        </article>
       </div>
+
+      <FireOverlay active={burning} variant="subtle" />
     </div>
   );
 }
 
-/* The reader is a route (/read/[id]) rather than a floating overlay, so the
-   URL is shareable and the browser back gesture cools you out of an article
-   the way it should. `openPost()` pushes here. */
+/* ------------------------------------------------------ structured blocks */
+
+function Blocks({ blocks }: { blocks: ArticleBlock[] }) {
+  return (
+    <div className="ht-prose">
+      {blocks.map((b, i) => {
+        if (b.t === 'h') return <h2 key={i} id={b.id}>{b.text}</h2>;
+        if (b.t === 'p') return <p key={i}>{b.text}</p>;
+        if (b.t === 'quote')
+          return (
+            <blockquote key={i}>
+              {b.text}
+              {b.cite && <cite>{b.cite}</cite>}
+            </blockquote>
+          );
+        if (b.t === 'ul')
+          return (
+            <ul key={i}>
+              {b.items.map((it) => (
+                <li key={it}>{it}</li>
+              ))}
+            </ul>
+          );
+        if (b.t === 'ol')
+          return (
+            <ol key={i}>
+              {b.items.map((it) => (
+                <li key={it}>{it}</li>
+              ))}
+            </ol>
+          );
+        if (b.t === 'hr') return <hr key={i} />;
+        if (b.t === 'img')
+          return (
+            <figure key={i}>
+              <img src={b.src} alt={b.alt} />
+              {(b.caption || b.credit) && <figcaption>{b.caption ?? b.credit}</figcaption>}
+            </figure>
+          );
+        if (b.t === 'code') return <CodeBlock key={i} lang={b.lang} code={b.code} caption={b.caption} />;
+        if (b.t === 'callout')
+          return (
+            <aside key={i} className="ht-block ht-block--warm my-7 rounded-[var(--r-md)] border border-line bg-white/[.02] p-4">
+              <p className="ht-label !text-[9.5px] text-ember-300">{b.kind === 'heat' ? 'note on heat' : b.kind === 'warn' ? 'careful' : 'aside'}</p>
+              <p className="mt-2 font-sans text-[14px] font-semibold text-ink">{b.title}</p>
+              <p className="mt-1.5 font-sans text-[13.5px] leading-relaxed text-ink-dim">{b.text}</p>
+            </aside>
+          );
+        if (b.t === 'links')
+          return (
+            <div key={i} className="my-7 space-y-2">
+              {b.items.map((l) => (
+                <a
+                  key={l.label}
+                  href={l.href}
+                  className="flex items-center justify-between gap-4 rounded-[var(--r-md)] border border-line px-4 py-3 transition-colors hover:border-line-2 hover:bg-white/[.02]"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-sans text-[13.5px] font-semibold text-ink">{l.label}</span>
+                    {l.note && <span className="block truncate font-sans text-[12px] text-ink-4">{l.note}</span>}
+                  </span>
+                  <span className="shrink-0 text-ember-300">→</span>
+                </a>
+              ))}
+            </div>
+          );
+        return null;
+      })}
+    </div>
+  );
+}
+
+export { compact };
+
+/** Article-block code with a language chip and an optional caption. */
+function CodeBlock({ lang, code, caption }: { lang?: string; code: string; caption?: string }) {
+  return (
+    <div className="ht-codegroup">
+      <div className="ht-codegroup__head">
+        <span className="ht-num text-[10.5px] uppercase tracking-[0.12em] text-ink-4">{lang || 'code'}</span>
+      </div>
+      <pre className="ht-code">
+        <code>
+          {code.split('\n').map((line, i) => (
+            <span key={i} className="ht-cline">
+              <span className="ht-lineno" aria-hidden>
+                {i + 1}
+              </span>
+              <span className="ht-linetext">{line}</span>
+            </span>
+          ))}
+        </code>
+      </pre>
+      {caption && <p className="ht-caption">{caption}</p>}
+    </div>
+  );
+}

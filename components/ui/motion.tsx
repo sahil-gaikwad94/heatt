@@ -2,56 +2,72 @@
 /* ============================================================================
    components/ui/motion — the motion primitives.
 
-   These are the only places scroll observation, parallax, gyro response and
-   3D tilt are implemented. Screens compose them; they never re-invent them.
-   Each one degrades to a static, fully-visible state when the device, the
-   browser or the user declines motion — including in jsdom, where
-   IntersectionObserver does not exist.
+   The only place scroll observation, parallax, pointer tilt and count-ups are
+   implemented. Screens compose these; they never re-invent them. Every one of
+   them degrades to a static, fully visible state when the API is missing
+   (jsdom, very old browsers) or when the user asked for less motion — a
+   reveal must never be load-bearing for whether text is on screen.
    ==========================================================================*/
 
 import * as React from 'react';
-import {
-  motion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-  useScroll,
-  type MotionStyle,
-  type Variants,
-} from 'framer-motion';
-import { EASE, EASE_CINEMA, plateIn, stagger, wordFade, useMotionPrefs } from '@/lib/motion';
+import { motion, useInView, type Variants } from 'framer-motion';
+import { EASE, EASE_OUT, IN_VIEW, rise, stagger } from '@/lib/motion';
 import { cls } from '@/lib/util';
 
-/* ------------------------------------------------------------ in-view hook */
+/* ------------------------------------------------------------ motion prefs */
+
+export function useMotionPrefs() {
+  const [reduced, setReduced] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const attr = document.documentElement.dataset.reduceMotion === 'true';
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(attr || mq.matches);
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, []);
+  return { reduced };
+}
+
+/* -------------------------------------------------------------- in-view ref */
 
 /**
- * IntersectionObserver with a hard guarantee: if the API is missing (jsdom,
- * very old browsers) or motion is reduced, content is simply visible. A
- * reveal animation must never be load-bearing for whether text is on screen.
+ * `useInView` that is safe everywhere: framer's hook needs an IntersectionObserver,
+ * which jsdom and very old browsers lack — there we simply report "seen" so the
+ * content is present rather than hidden behind an animation that never fires.
  */
-export function useInViewSafe<T extends HTMLElement>(margin = '-12% 0px -8% 0px') {
+export function useInViewSafe<T extends HTMLElement = HTMLDivElement>(
+  margin: string = IN_VIEW.margin
+): { ref: React.RefObject<T | null>; seen: boolean } {
   const ref = React.useRef<T | null>(null);
   const [seen, setSeen] = React.useState(false);
-
+  const supported = React.useMemo(() => typeof window !== 'undefined' && 'IntersectionObserver' in window, []);
   React.useEffect(() => {
-    if (seen) return;
+    if (!supported || seen) return;
     const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === 'undefined') {
+    if (!el) {
       setSeen(true);
       return;
     }
     const io = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) if (e.isIntersecting) setSeen(true);
+        if (entries.some((e) => e.isIntersecting)) {
+          setSeen(true);
+          io.disconnect();
+        }
       },
-      { rootMargin: margin, threshold: 0.08 }
+      { rootMargin: margin }
     );
     io.observe(el);
-    return () => io.disconnect();
-  }, [margin, seen]);
-
-  return { ref, seen };
+    /* never let a reveal keep content off screen */
+    const t = window.setTimeout(() => setSeen(true), 900);
+    return () => {
+      io.disconnect();
+      window.clearTimeout(t);
+    };
+  }, [supported, seen, margin]);
+  return { ref, seen: seen || !supported };
 }
 
 /* ----------------------------------------------------------------- Reveal */
@@ -59,54 +75,44 @@ export function useInViewSafe<T extends HTMLElement>(margin = '-12% 0px -8% 0px'
 export function Reveal({
   children,
   delay = 0,
-  y = 18,
+  y = 16,
   className,
   as = 'div',
-  once = true,
 }: {
   children: React.ReactNode;
   delay?: number;
   y?: number;
   className?: string;
-  as?: 'div' | 'section' | 'li' | 'article';
-  once?: boolean;
+  as?: 'div' | 'section' | 'li' | 'article' | 'header';
 }) {
-  const { ref, seen } = useInViewSafe<HTMLDivElement>();
-  const { reduced } = useMotionPrefs();
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const seen = useInView(ref, IN_VIEW);
   const Tag = motion[as] as typeof motion.div;
-  const show = seen || reduced;
-
   return (
     <Tag
       ref={ref}
-      initial={false}
-      animate={show ? { opacity: 1, y: 0, filter: 'blur(0px)' } : { opacity: 0, y, filter: 'blur(10px)' }}
-      transition={{ duration: reduced ? 0 : 0.72, ease: EASE, delay: reduced ? 0 : delay }}
+      initial={{ opacity: 0, y, filter: 'blur(8px)' }}
+      animate={seen ? { opacity: 1, y: 0, filter: 'blur(0px)' } : undefined}
+      transition={{ duration: 0.7, ease: EASE_OUT, delay }}
       className={className}
-      data-revealed={show ? 'true' : 'false'}
-      // `once` is intentionally not used to unmount: the observer disconnects
-      // itself after first intersection, so this stays cheap.
-      style={once ? undefined : { willChange: 'transform' }}
     >
       {children}
     </Tag>
   );
 }
 
-/* -------------------------------------------------------------- SplitText */
+/* -------------------------------------------------------------- WordReveal */
 
-/** Words resolve out of a blur, in order. Used for cinematic headlines. */
-export function SplitText({
+/** Words resolve out of a blur, in order. One gesture, used sparingly. */
+export function WordReveal({
   text,
   className,
-  wordClassName,
   delay = 0,
-  each = 0.075,
+  each = 0.06,
   play = true,
 }: {
   text: string;
   className?: string;
-  wordClassName?: string;
   delay?: number;
   each?: number;
   play?: boolean;
@@ -116,280 +122,223 @@ export function SplitText({
   return (
     <span className={cls('inline-block', className)}>
       {words.map((w, i) => (
-        <motion.span
-          key={`${w}-${i}`}
-          className={cls('inline-block', wordClassName)}
-          initial={false}
-          animate={play || reduced ? 'show' : 'hidden'}
-          variants={wordFade}
-          transition={{ delay: reduced ? 0 : delay + i * each, duration: 0.8, ease: EASE }}
-        >
-          {w}
-          {i < words.length - 1 ? '\u00A0' : ''}
-        </motion.span>
+        <span key={`${w}-${i}`} className="inline-block overflow-hidden align-bottom">
+          <motion.span
+            className="inline-block"
+            initial={reduced ? false : { y: '108%', opacity: 0 }}
+            animate={play ? { y: '0%', opacity: 1 } : undefined}
+            transition={{ duration: 0.9, ease: EASE_OUT, delay: delay + i * each }}
+          >
+            {w}
+            {i < words.length - 1 ? '\u00A0' : ''}
+          </motion.span>
+        </span>
       ))}
     </span>
   );
 }
 
-/* -------------------------------------------------------------- Parallax */
+/* ------------------------------------------------------------------ Stagger */
 
-/**
- * Scroll-driven depth. `speed` is how far the layer travels over the scroll
- * range in pixels — negative moves against the scroll (the "far" plane).
- */
-export function Parallax({
+export function Stagger({
   children,
-  speed = -40,
-  range = ['start end', 'end start'],
+  each = 0.05,
+  delay = 0,
   className,
-  style,
 }: {
   children: React.ReactNode;
-  speed?: number;
-  range?: [string, string];
+  each?: number;
+  delay?: number;
   className?: string;
-  style?: MotionStyle;
+}) {
+  return (
+    <motion.div
+      className={className}
+      variants={stagger(each, delay)}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: '-8% 0px' }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+export const item: Variants = rise;
+
+/* ---------------------------------------------------------------- Parallax */
+
+export function Parallax({
+  children,
+  distance = 60,
+  className,
+}: {
+  children: React.ReactNode;
+  distance?: number;
+  className?: string;
+}) {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const seen = useInView(ref, { margin: '20% 0px 20% 0px' });
+  const { reduced } = useMotionPrefs();
+  const [offset, setOffset] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!seen || reduced) return;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = ref.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const progress = 1 - (rect.top + rect.height / 2) / (window.innerHeight + rect.height / 2);
+        setOffset((progress - 0.5) * distance);
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [seen, distance, reduced]);
+
+  return (
+    <div ref={ref} className={className}>
+      <div style={{ transform: `translate3d(0,${offset.toFixed(1)}px,0)`, willChange: 'transform' }}>{children}</div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------------- Tilt */
+
+/** Pointer-driven 3D tilt. Transform only, disabled on touch and reduced motion. */
+export function Tilt({
+  children,
+  intensity = 6,
+  lift = 2,
+  className,
+}: {
+  children: React.ReactNode;
+  intensity?: number;
+  lift?: number;
+  className?: string;
 }) {
   const ref = React.useRef<HTMLDivElement | null>(null);
   const { reduced } = useMotionPrefs();
-  const { scrollYProgress } = useScroll({ target: ref, offset: range as never });
-  const y = useTransform(scrollYProgress, [0, 1], [0, reduced ? 0 : speed]);
+  const [t, setT] = React.useState({ x: 0, y: 0, active: false });
 
-  return (
-    <motion.div ref={ref} style={{ y, ...style }} className={className}>
-      {children}
-    </motion.div>
-  );
-}
-
-/* ------------------------------------------------------- Gyro / pointer drift */
-
-/**
- * one source of "the world is physical": the device gyroscope where it exists
- * (phones, tablets) and pointer position everywhere else, so a floating badge
- * always answers to *something* with no permission prompt.
- */
-export function useDrift(enabled = true) {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const sx = useSpring(x, { stiffness: 60, damping: 18, mass: 0.6 });
-  const sy = useSpring(y, { stiffness: 60, damping: 18, mass: 0.6 });
-  const { reduced } = useMotionPrefs();
-
-  React.useEffect(() => {
-    if (!enabled || reduced || typeof window === 'undefined') return;
-    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
-    const onOrientation = (e: DeviceOrientationEvent) => {
-      if (e.gamma == null && e.beta == null) return;
-      x.set(clamp((e.gamma ?? 0) / 26));
-      y.set(clamp(((e.beta ?? 0) - 45) / 30));
-    };
-    const onPointer = (e: PointerEvent) => {
-      x.set(clamp((e.clientX / window.innerWidth) * 2 - 1));
-      y.set(clamp((e.clientY / window.innerHeight) * 2 - 1));
-    };
-    window.addEventListener('deviceorientation', onOrientation);
-    window.addEventListener('pointermove', onPointer, { passive: true });
-    return () => {
-      window.removeEventListener('deviceorientation', onOrientation);
-      window.removeEventListener('pointermove', onPointer);
-    };
-  }, [enabled, reduced, x, y]);
-
-  return { x: sx, y: sy };
-}
-
-/**
- * A floating metal badge around the profile portrait. Depth comes from the
- * size of the drift and the drop shadow, not from a cartoon sticker.
- */
-export function FloatingBadge({
-  depth = 1,
-  className,
-  children,
-  label,
-  tone = 'metal',
-  delay = 0,
-  size = 44,
-}: {
-  depth?: number;
-  className?: string;
-  children: React.ReactNode;
-  label: string;
-  tone?: 'metal' | 'hot' | 'cold';
-  delay?: number;
-  size?: number;
-}) {
-  const drift = useDrift();
-  const { reduced } = useMotionPrefs();
-  const x = useTransform(drift.x, (v) => v * 14 * depth);
-  const y = useTransform(drift.y, (v) => v * 11 * depth);
-
-  return (
-    <motion.span
-      className={cls(
-        'ht-badge',
-        tone === 'hot' && 'ht-badge--hot',
-        tone === 'cold' && 'ht-badge--cold',
-        className
-      )}
-      style={{
-        x,
-        y,
-        width: size,
-        height: size,
-        fontSize: size * 0.42,
-        animation: reduced ? undefined : `badge-drift 7s ease-in-out ${delay}s infinite`,
-      }}
-      title={label}
-      aria-hidden
-    >
-      {children}
-    </motion.span>
-  );
-}
-
-/* ------------------------------------------------------------------- Tilt */
-
-/** 3D pointer tilt for a card or a tile. Falls back to flat on touch. */
-export function Tilt({
-  children,
-  className,
-  intensity = 6,
-  lift = 6,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  intensity?: number;
-  lift?: number;
-}) {
-  const rx = useMotionValue(0);
-  const ry = useMotionValue(0);
-  const z = useMotionValue(0);
-  const srx = useSpring(rx, { stiffness: 180, damping: 22 });
-  const sry = useSpring(ry, { stiffness: 180, damping: 22 });
-  const sz = useSpring(z, { stiffness: 200, damping: 24 });
-  const { reduced } = useMotionPrefs();
-
-  const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (reduced || e.pointerType === 'touch') return;
-    const r = e.currentTarget.getBoundingClientRect();
+  const onMove = (e: React.PointerEvent) => {
+    if (reduced || e.pointerType !== 'mouse') return;
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
     const px = (e.clientX - r.left) / r.width - 0.5;
     const py = (e.clientY - r.top) / r.height - 0.5;
-    ry.set(px * intensity * 2);
-    rx.set(-py * intensity * 2);
-  };
-  const reset = () => {
-    rx.set(0);
-    ry.set(0);
-    z.set(0);
+    setT({ x: -py * intensity, y: px * intensity, active: true });
   };
 
   return (
-    <motion.div
+    <div
+      ref={ref}
+      className={className}
       onPointerMove={onMove}
-      onPointerEnter={() => z.set(lift)}
-      onPointerLeave={reset}
-      style={{ rotateX: srx, rotateY: sry, z: sz, transformPerspective: 900 }}
-      className={cls('will-change-transform', className)}
+      onPointerLeave={() => setT({ x: 0, y: 0, active: false })}
+      style={{
+        transform: `perspective(900px) rotateX(${t.x}deg) rotateY(${t.y}deg) translateY(${t.active ? -lift : 0}px)`,
+        transition: 'transform 420ms cubic-bezier(.22,1,.36,1)',
+        willChange: 'transform',
+      }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
-/* ------------------------------------------------------------ PressBloom */
+/* ------------------------------------------------------------------ CountUp */
 
-/**
- * The micro-interaction every tappable thing answers with: a short amber
- * bloom that expands from the contact point and fades. Purely decorative —
- * it is layered above the child and never intercepts a pointer.
- */
-export function PressBloom({ tone = 'hot' }: { tone?: 'hot' | 'cold' }) {
-  const [bursts, setBursts] = React.useState<{ id: number; x: number; y: number }[]>([]);
-  const { reduced } = useMotionPrefs();
-  const idRef = React.useRef(0);
-
-  const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
-    if (reduced) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const id = ++idRef.current;
-    setBursts((b) => [...b.slice(-2), { id, x: e.clientX - r.left, y: e.clientY - r.top }]);
-    window.setTimeout(() => setBursts((b) => b.filter((x) => x.id !== id)), 640);
-  };
-
-  const color = tone === 'hot' ? 'rgba(255,180,84,.5)' : 'rgba(99,216,245,.45)';
-
-  return (
-    <>
-      <span
-        aria-hidden
-        onPointerDown={onPointerDown as never}
-        style={{ position: 'absolute', inset: 0, zIndex: 1 }}
-      />
-      {bursts.map((b) => (
-        <motion.span
-          key={b.id}
-          aria-hidden
-          initial={{ opacity: 0.75, scale: 0 }}
-          animate={{ opacity: 0, scale: 1 }}
-          transition={{ duration: 0.62, ease: EASE_CINEMA }}
-          className="pointer-events-none absolute rounded-full"
-          style={{
-            left: b.x,
-            top: b.y,
-            width: 260,
-            height: 260,
-            marginLeft: -130,
-            marginTop: -130,
-            background: `radial-gradient(circle, ${color}, transparent 62%)`,
-            mixBlendMode: 'screen',
-          }}
-        />
-      ))}
-    </>
-  );
-}
-
-/* ---------------------------------------------------------------- CountUp */
-
-/** Numbers that travel to their value. Tabular, so layout never jitters. */
+/** Counts on first view. Mono, tabular, no bounce. */
 export function CountUp({
   value,
+  format = (n) => String(Math.round(n)),
   duration = 900,
   className,
-  format = (n: number) => String(Math.round(n)),
 }: {
   value: number;
+  format?: (n: number) => string;
   duration?: number;
   className?: string;
-  format?: (n: number) => string;
 }) {
-  const [shown, setShown] = React.useState(value);
-  const from = React.useRef(value);
+  const ref = React.useRef<HTMLSpanElement | null>(null);
+  const seen = useInView(ref, { once: true, margin: '-10% 0px' });
   const { reduced } = useMotionPrefs();
+  const [n, setN] = React.useState(reduced ? value : 0);
 
   React.useEffect(() => {
+    if (!seen) return;
     if (reduced) {
-      setShown(value);
+      setN(value);
       return;
     }
-    const start = performance.now();
-    const a = from.current;
     let raf = 0;
-    const loop = (now: number) => {
-      const p = Math.min(1, (now - start) / duration);
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - t0) / duration);
       const eased = 1 - Math.pow(1 - p, 3);
-      setShown(a + (value - a) * eased);
-      if (p < 1) raf = requestAnimationFrame(loop);
-      else from.current = value;
+      setN(value * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(loop);
+    raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [value, duration, reduced]);
+  }, [seen, value, duration, reduced]);
 
-  return <span className={cls('ht-num', className)}>{format(shown)}</span>;
+  return (
+    <span ref={ref} className={className}>
+      {format(n)}
+    </span>
+  );
 }
 
-export { plateIn, stagger, wordFade };
+/* --------------------------------------------------------------- PressBloom */
+
+/** A single expanding ring from the contact point. Used on the heat control. */
+export function PressBloom({ tone = 'heat' }: { tone?: 'heat' | 'cool' }) {
+  const color = tone === 'heat' ? 'rgba(232,211,164,.55)' : 'rgba(107,162,255,.5)';
+  return (
+    <motion.span
+      aria-hidden
+      className="pointer-events-none absolute inset-0 rounded-[inherit]"
+      initial={{ opacity: 0.8, scale: 0.92 }}
+      animate={{ opacity: 0, scale: 1.3 }}
+      transition={{ duration: 0.6, ease: EASE }}
+      style={{ boxShadow: `0 0 0 1px ${color}, 0 0 26px 4px ${color}` }}
+    />
+  );
+}
+
+/* ---------------------------------------------------------------- AmbientGlow */
+
+/** The one looping element in the app: a slow, oversized room light. */
+export function AmbientGlow({
+  className,
+  tone = 'cool',
+  size = 620,
+}: {
+  className?: string;
+  tone?: 'cool' | 'warm';
+  size?: number;
+}) {
+  const c = tone === 'warm' ? 'rgba(232,211,164,.16)' : 'rgba(107,162,255,.16)';
+  return (
+    <span
+      aria-hidden
+      className={cls('pointer-events-none absolute rounded-full ht-breathe', className)}
+      style={{
+        width: size,
+        height: size,
+        background: `radial-gradient(circle, ${c}, transparent 68%)`,
+        filter: 'blur(50px)',
+      }}
+    />
+  );
+}

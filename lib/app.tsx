@@ -1,23 +1,29 @@
 'use client';
 /* ============================================================================
-   lib/app.tsx — the app-level context: navigation, ignition orchestration,
-   toasts, sheet/modal state, live feed data (syndication) and prefs effects.
+   lib/app.tsx — the app-level context.
 
-   One provider, no prop drilling: cards need heat state, the reader needs the
-   post, the shell needs the nav, and every action can raise a toast or start a
-   burn. Centralising it also lets us queue ignitions so 12 simultaneous
-   combustions never jank the main thread.
+   Owns navigation, the live wire, ranking for the current view, the heat
+   action, the share/compose overlays and toasts. One provider, no prop
+   drilling: cards need heat state, the reader needs the post, the shell needs
+   the nav, and any action can raise a toast.
    ==========================================================================*/
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { useStore, streakOf, type LocalArticle } from './store';
-import { assemble, rank, type Post, type RankMode } from './feed';
+import { useStore, type LocalArticle } from './store';
+import { assemble, rank, type Post, type RankMode, type Tab } from './feed';
 import { loadWire, type WireItem } from './syndicate';
 import { getUser } from './seed/users';
-import type { HeatLevel, Notification, User } from './types';
+import type { HeatLevel, User } from './types';
 
-export type Toast = { id: number; text: string; tone?: 'heat' | 'cool' | 'plain'; icon?: React.ReactNode };
+export type Toast = {
+  id: number;
+  text: string;
+  tone?: 'heat' | 'cool' | 'plain';
+  icon?: React.ReactNode;
+  /** one tap that takes the action back — used for keeps */
+  action?: { label: string; run: () => void };
+};
 
 export type Ctx = {
   posts: Post[];
@@ -25,24 +31,33 @@ export type Ctx = {
   live: boolean;
   loading: boolean;
   refresh: (force?: boolean) => void;
-  /** ranked view for the current tab/mode */
+  /** stories fetched in the background but not yet shown — the board never
+      reorders under a reader; they arrive when the pill is tapped */
+  pending: WireItem[];
+  newCount: number;
+  adoptNew: () => void;
   ranked: Post[];
-  tab: string;
-  setTab: (t: string) => void;
+  tab: Tab;
+  setTab: (t: Tab) => void;
   mode: RankMode;
   setMode: (m: RankMode) => void;
   query: string;
   setQuery: (q: string) => void;
 
-  open: string | null;
   openPost: (id: string) => void;
-  closePost: () => void;
 
   ignite: (id: string) => void;
   igniting: Record<string, number>;
-  setHeat: (id: string, level: HeatLevel, opts?: { ignited?: boolean; title?: string; author?: string }) => void;
+  setHeat: (id: string, level: HeatLevel, opts?: { title?: string; author?: string }) => void;
 
-  toast: (text: string, tone?: Toast['tone'], icon?: React.ReactNode) => void;
+  toast: (text: string, tone?: Toast['tone'], icon?: React.ReactNode, action?: Toast['action']) => void;
+  /** keep or unkeep, with an undo on the toast */
+  toggleKeep: (id: string) => void;
+  /** take your own piece back — reversible from the toast */
+  deletePost: (id: string) => void;
+  deleteReply: (id: string) => void;
+  /** is this piece yours to delete? */
+  isMine: (id: string) => boolean;
   toasts: Toast[];
   dismissToast: (id: number) => void;
 
@@ -56,11 +71,19 @@ export type Ctx = {
   paletteOpen: boolean;
   setPalette: (v: boolean) => void;
 
+  shortcutsOpen: boolean;
+  setShortcuts: (v: boolean) => void;
+
+  online: boolean;
+
+  threadId: string | null;
+  setThread: (id: string | null) => void;
+
   go: (href: string) => void;
   push: (href: string) => void;
 
   heatOf: (id: string) => HeatLevel;
-  countOf: (p: Post) => number;
+  countOf: (p: Post) => { reactions: number; comments: number };
 
   me: User | null;
   ensureMe: () => User;
@@ -69,12 +92,20 @@ export type Ctx = {
 
   prefs: ReturnType<typeof useStore.getState>['prefs'];
   setPrefs: (p: Partial<ReturnType<typeof useStore.getState>['prefs']>) => void;
-  streak: { current: number; longest: number };
-  notifications: Notification[];
-  notify: (n: Omit<Notification, 'id' | 'at' | 'read'>) => void;
-  markAll: () => void;
   ready: boolean;
 };
+
+const BOARD_KEY = 'heatt-board-v1';
+
+/** The board remembers its view between visits — tab and ranking mode. */
+function readBoard(): { tab?: Tab; mode?: RankMode } {
+  try {
+    const raw = localStorage.getItem(BOARD_KEY);
+    return raw ? (JSON.parse(raw) as { tab?: Tab; mode?: RankMode }) : {};
+  } catch {
+    return {};
+  }
+}
 
 const AppCtx = React.createContext<Ctx | null>(null);
 export const useApp = () => {
@@ -87,23 +118,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const s = useStore();
   const [wire, setWire] = React.useState<WireItem[]>([]);
+  const [held, setHeld] = React.useState<WireItem[]>([]);
   const [live, setLive] = React.useState(false);
+  const [online, setOnline] = React.useState(true);
   const [loading, setLoading] = React.useState(true);
-  const [tab, setTab] = React.useState<string>('for-you');
-  const [mode, setMode] = React.useState<RankMode>('heat');
+  const [tab, setTab] = React.useState<Tab>('all');
+  const [mode, setMode] = React.useState<RankMode>('for-you');
+  const boardReady = React.useRef(false);
+
+  /* restore the remembered view after mount (never during SSR), then keep it */
+  React.useEffect(() => {
+    const b = readBoard();
+    if (b.tab) setTab(b.tab);
+    if (b.mode) setMode(b.mode);
+    boardReady.current = true;
+  }, []);
+
+  React.useEffect(() => {
+    if (!boardReady.current) return;
+    try {
+      localStorage.setItem(BOARD_KEY, JSON.stringify({ tab, mode }));
+    } catch {/* storage can be full or blocked — the board still works */}
+  }, [tab, mode]);
   const [query, setQuery] = React.useState('');
-  const [open, setOpen] = React.useState<string | null>(null);
   const [igniting, setIgniting] = React.useState<Record<string, number>>({});
   const [toasts, setToasts] = React.useState<Toast[]>([]);
   const [composerOpen, setComposerOpen] = React.useState(false);
   const [composerSeed, setComposerSeed] = React.useState<Ctx['composerSeed']>({});
   const [shareId, setShareId] = React.useState<string | null>(null);
   const [paletteOpen, setPalette] = React.useState(false);
+  const [shortcutsOpen, setShortcuts] = React.useState(false);
+  const [threadId, setThread] = React.useState<string | null>(null);
   const [ready, setReady] = React.useState(false);
 
   React.useEffect(() => setReady(true), []);
 
-  /* ------------------------------------------------------------ hydration */
   React.useEffect(() => {
     if (!s.booted) useStore.getState().setBooted(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,65 +165,113 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     el.dataset.measure = s.prefs.measure;
     el.dataset.serif = String(s.prefs.serif);
     el.dataset.reduceMotion = String(s.prefs.reduceMotion);
-    el.dataset.theme = s.prefs.customTheme;
-    if (s.prefs.density === 'cozy') el.style.fontSize = '17px';
-    else if (s.prefs.density === 'dense') el.style.fontSize = '15px';
-    else el.style.fontSize = '16px';
-  }, [s.prefs.density, s.prefs.measure, s.prefs.serif, s.prefs.reduceMotion, s.prefs.customTheme]);
+    el.dataset.theme = s.prefs.theme;
+    el.style.fontSize = s.prefs.density === 'cozy' ? '17px' : s.prefs.density === 'dense' ? '15px' : '16px';
+  }, [s.prefs]);
 
   /* --------------------------------------------------------- syndication */
-  const refresh = React.useCallback(async (force = false) => {
+  const wireIds = React.useRef<Set<string>>(new Set());
+
+  /**
+   * `adopt` swaps what the board is showing. Background refreshes never do:
+   * new stories are held until the reader asks for them, so the list under
+   * the cursor cannot move while they are reading it.
+   */
+  const refresh = React.useCallback(async (adopt = false) => {
     setLoading(true);
-    const res = await loadWire(force);
-    setWire(res.items);
+    const res = await loadWire(adopt);
+    const known = wireIds.current;
+    const fresh = res.items.filter((x) => !known.has(x.id));
+    if (adopt || known.size === 0) {
+      wireIds.current = new Set(res.items.map((x) => x.id));
+      setWire(res.items);
+      setHeld([]);
+    } else if (fresh.length) {
+      setHeld(fresh);
+    }
     setLive(res.live);
     setLoading(false);
   }, []);
 
   React.useEffect(() => {
-    void refresh(false);
+    void refresh(true);
     const id = window.setInterval(() => void refresh(false), 5 * 60 * 1000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ------------------------------------------------------------- toasts */
-  const toast = React.useCallback((text: string, tone: Toast['tone'] = 'plain', icon?: React.ReactNode) => {
-    const id = Date.now() + Math.floor(Math.random() * 1000);
-    setToasts((t) => [...t.slice(-2), { id, text, tone, icon }]);
-    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
+  /* ------------------------------------------------------- connectivity */
+  React.useEffect(() => {
+    const up = () => {
+      setOnline(true);
+      toast('Back online — checking the wire', 'plain');
+      void refresh(false);
+    };
+    const down = () => {
+      setOnline(false);
+      toast('Offline — your library, keeps and drafts still work', 'plain');
+    };
+    setOnline(typeof navigator === 'undefined' ? true : navigator.onLine !== false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => {
+      window.removeEventListener('online', up);
+      window.removeEventListener('offline', down);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* ------------------------------------------------------------- toasts */
+  const toast = React.useCallback(
+    (text: string, tone: Toast['tone'] = 'plain', icon?: React.ReactNode, action?: Toast['action']) => {
+      const id = Date.now() + Math.floor(Math.random() * 1000);
+      setToasts((t) => [...t.slice(-2), { id, text, tone, icon, action }]);
+      /* anything with an undo gets longer to be undone */
+      window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), action ? 6000 : 3000);
+    },
+    []
+  );
   const dismissToast = React.useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
-  /* ------------------------------------------------------------ ranking */
-  /* Every input assemble()/rank() reads has to be a dependency — mute was
-     missing once, which made hiding an author a no-op until the next reload. */
-  const posts = React.useMemo(() => assemble(s as any, wire), [
-    wire,
-    s.mySparks,
-    s.myArticles,
-    s.heat,
-    s.saved,
-    s.reads,
-    s.shares,
-    s.heatCounts,
-    s.me,
-    s.follows,
-    s.muted,
-    s.interests,
-  ]);
+  const toggleKeep = React.useCallback(
+    (id: string) => {
+      const store = useStore.getState();
+      const was = !!store.saved[id];
+      store.toggleSave(id);
+      const undo = { label: 'Undo', run: () => useStore.getState().toggleSave(id) };
+      if (was) toast('Removed from your library', 'plain', undefined, undo);
+      else toast('Kept — it is waiting in your library', 'heat', undefined, undo);
+    },
+    [toast]
+  );
 
-  const ranked = React.useMemo(() => {
-    const r = rank(posts, s as any, { mode, tab: tab as any, query: query || undefined });
-    return r.items;
-  }, [posts, mode, tab, query, s]);
+  const adoptNew = React.useCallback(() => {
+    setWire((cur) => {
+      const seen = new Set(cur.map((x) => x.id));
+      const merged = [...held, ...cur];
+      wireIds.current = new Set(merged.map((x) => x.id));
+      return merged.filter((x, i) => merged.findIndex((y) => y.id === x.id) === i);
+    });
+    setHeld([]);
+    toast('Showing the newest stories', 'plain');
+  }, [held, toast]);
+
+
+  /* ------------------------------------------------------------ ranking */
+  const posts = React.useMemo(
+    () => assemble(s as never, wire),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [wire, s.mySparks, s.myArticles, s.heat, s.saved, s.reads, s.shares, s.me, s.follows, s.muted]
+  );
+
+  const ranked = React.useMemo(() => rank(posts, s as never, { mode, tab, query: query || undefined }).items, [posts, mode, tab, query, s]);
 
   /* ---------------------------------------------------------- ignition */
   const igniteQueue = React.useRef<string[]>([]);
   const burning = React.useRef(0);
 
   const pumpIgnition = React.useCallback(() => {
-    // at most 2 concurrent burns: spectacular, not a slideshow hazard
+    /* at most two burns at once — spectacular, never a hazard */
     while (burning.current < 2 && igniteQueue.current.length) {
       const id = igniteQueue.current.shift()!;
       burning.current += 1;
@@ -187,7 +284,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return n;
         });
         pumpIgnition();
-      }, 2400);
+      }, 2100);
     }
   }, []);
 
@@ -196,35 +293,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       igniteQueue.current.unshift(id);
       pumpIgnition();
       try {
-        if (navigator.vibrate && useStore.getState().prefs.haptics) navigator.vibrate([18, 26, 44]);
-      } catch {/* unsupported */}
+        if (navigator.vibrate && useStore.getState().prefs.haptics) navigator.vibrate([14, 22, 38]);
+      } catch {
+        /* unsupported */
+      }
     },
     [pumpIgnition]
   );
 
   /* -------------------------------------------------------------- heat */
   const setHeat = React.useCallback(
-    (id: string, level: HeatLevel, opts?: { ignited?: boolean; title?: string; author?: string }) => {
+    (id: string, level: HeatLevel, opts?: { title?: string; author?: string }) => {
       const store = useStore.getState();
       const prev = store.heat[id]?.level ?? 0;
       store.setHeat(id, level);
-      if (level > prev) store.bumpHeatCount(id, level === 3 ? 3 : level === 2 ? 2 : 1);
-      if (level < prev) store.bumpHeatCount(id, -Math.max(1, prev));
-
-      if (level === 3 || opts?.ignited) {
+      if (level === 3 && prev < 3) {
         ignite(id);
-        store.notify({
-          type: 'ignite',
-          actor: store.me?.handle ?? 'you',
-          text: `You ignited ${opts?.author ? `@${opts.author}` : 'a post'}${opts?.title ? ` — “${truncate(opts.title, 42)}”` : ''}`,
-          postId: id,
-          level: 3,
-        });
-        toast('Ignition · inferno injected into the ranker', 'heat');
+        toast(opts?.title ? `Ignited · “${truncate(opts.title, 34)}”` : 'Ignited', 'heat');
       } else if (level === 2 && prev < 2) {
-        toast('Blaze · heat doubled on this post', 'heat');
+        toast('Blazing', 'heat');
+      } else if (level === 1 && prev === 0) {
+        toast('Heated', 'heat');
       } else if (level === 0 && prev > 0) {
-        toast('Cooled down', 'cool');
+        toast('Heat removed', 'cool');
       }
     },
     [ignite, toast]
@@ -234,43 +325,72 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const go = React.useCallback((href: string) => router.push(href), [router]);
   const push = React.useCallback((href: string) => router.push(href), [router]);
 
-  const openPost = React.useCallback((id: string) => {
-    const p = posts.find((x) => x.id === id);
-    if (!p) return;
-    if (p.kind === 'forge') {
-      setOpen(id);
-      router.push(`/read/${encodeURIComponent(id)}`);
-    } else {
-      toast('Spark opened', 'plain');
-      setOpen(id);
-    }
-  }, [posts, router, toast]);
+  const openPost = React.useCallback(
+    (id: string) => {
+      const p = posts.find((x) => x.id === id);
+      if (!p) return;
+      if (p.kind === 'forge') router.push(`/read/${encodeURIComponent(id)}`);
+      else setThread(id);
+    },
+    [posts, router]
+  );
 
-  const closePost = React.useCallback(() => setOpen(null), []);
+  const isMine = React.useCallback(
+    (id: string) => {
+      const store = useStore.getState();
+      return (
+        store.mySparks.some((x) => x.id === id) ||
+        store.myArticles.some((x) => x.id === id) ||
+        (!!store.me && posts.some((p) => p.id === id && p.authorHandle === store.me?.handle))
+      );
+    },
+    [posts]
+  );
+
+  const deletePost = React.useCallback(
+    (id: string) => {
+      const store = useStore.getState();
+      const spark = store.removeSpark(id);
+      const article = spark ? undefined : store.removeArticle(id);
+      if (!spark && !article) return;
+      toast(article ? 'Story deleted' : 'Note deleted', 'plain', undefined, {
+        label: 'Undo',
+        run: () => {
+          if (spark) useStore.getState().restoreSpark(spark);
+          if (article) useStore.getState().restoreArticle(article);
+        },
+      });
+      /* a deleted story should not stay open in the reader */
+      if (typeof window !== 'undefined' && window.location.pathname === `/read/${encodeURIComponent(id)}`) {
+        push('/feed');
+      }
+    },
+    [toast, push]
+  );
+
+  const deleteReply = React.useCallback(
+    (id: string) => {
+      const reply = useStore.getState().removeReply(id);
+      if (!reply) return;
+      toast('Reply deleted', 'plain', undefined, {
+        label: 'Undo',
+        run: () => useStore.getState().restoreReply(reply),
+      });
+    },
+    [toast]
+  );
+
 
   const heatOf = React.useCallback((id: string) => s.heat[id]?.level ?? 0, [s.heat]);
   const countOf = React.useCallback(
-    (p: Post) => (p.reactions ?? 0) + (s.heatCounts[p.id] ?? 0) + ((s.heat[p.id]?.level ?? 0) > 0 ? (s.heat[p.id]?.level ?? 0) : 0),
-    [s.heatCounts, s.heat]
+    (p: Post) => ({
+      reactions: p.reactions + (s.heat[p.id] && (s.heat[p.id].level ?? 0) > 0 ? 1 : 0),
+      comments: p.comments + s.replies.filter((r) => r.postId === p.id).length,
+    }),
+    [s.heat, s.replies]
   );
 
-  const ensureMe = React.useCallback((): User => {
-    const st = useStore.getState();
-    if (st.me) return st.me;
-    const guest: User = {
-      handle: 'you',
-      name: 'Guest forger',
-      bio: 'Reading first. Writing later.',
-      joined: new Date().toISOString().slice(0, 10),
-      followers: 0,
-      following: 0,
-      thermalMass: 1,
-    };
-    useStore.setState({ me: guest, onboarded: st.onboarded });
-    return guest;
-  }, []);
-
-  const streak = React.useMemo(() => streakOf(s.activity), [s.activity]);
+  const ensureMe = React.useCallback((): User => useStore.getState().ensureMe(), []);
 
   const value: Ctx = {
     posts,
@@ -278,6 +398,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     live,
     loading,
     refresh,
+    pending: held,
+    newCount: held.length,
+    adoptNew,
     ranked,
     tab,
     setTab,
@@ -285,13 +408,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMode,
     query,
     setQuery,
-    open,
     openPost,
-    closePost,
     ignite,
     igniting,
     setHeat,
     toast,
+    toggleKeep,
+    deletePost,
+    deleteReply,
+    isMine,
     toasts,
     dismissToast,
     composerOpen,
@@ -304,6 +429,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setShare: setShareId,
     paletteOpen,
     setPalette,
+    shortcutsOpen,
+    setShortcuts,
+    online,
+    threadId,
+    setThread,
     go,
     push,
     heatOf,
@@ -315,17 +445,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       s.toggleFollow(h);
       const now = useStore.getState().follows.includes(h);
       toast(now ? `Following @${h}` : `Unfollowed @${h}`, now ? 'heat' : 'cool');
-      if (now) {
-        const u = getUser(h);
-        s.notify({ type: 'follow', actor: h, text: `You started following ${u.name}`, read: false } as any);
-      }
     },
     prefs: s.prefs,
     setPrefs: s.setPrefs,
-    streak,
-    notifications: s.notifications,
-    notify: s.notify,
-    markAll: s.markAllRead,
     ready,
   };
 
@@ -335,3 +457,5 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 function truncate(s: string, n: number) {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
 }
+
+export { getUser };

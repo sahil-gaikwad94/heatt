@@ -1,13 +1,15 @@
 'use client';
 /* ============================================================================
-   heatt client store — single zustand slice persisted to localStorage.
-   Owns: identity, heat ledger, follows, library, notifications, prefs, drafts.
-   Heat is the source of truth for ranking, the heatmap and the streak.
+   heatt client store — one zustand slice persisted to localStorage.
+
+   Owns: identity, the heat ledger, keeps, replies, what you wrote, prefs.
+   That is the whole state surface. No reputation, no streaks, no counters
+   that describe you.
    ==========================================================================*/
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { HeatEvent, HeatLevel, Notification, Prefs, Spark, User } from './types';
+import type { HeatEvent, HeatLevel, Prefs, Spark, User } from './types';
 import { uid } from './util';
 
 export type LocalArticle = {
@@ -34,7 +36,7 @@ export type Reply = {
   parent?: string;
 };
 
-type HeatKey = string; // post id
+type HeatKey = string;
 
 export type State = {
   booted: boolean;
@@ -44,43 +46,45 @@ export type State = {
   prefs: Prefs;
 
   heat: Record<HeatKey, HeatEvent>;
-  heatCounts: Record<HeatKey, number>; // aggregate public heats (+1 when I heat)
   reads: Record<HeatKey, { pct: number; at: number; finished?: boolean }>;
-  saved: Record<HeatKey, number>; // bookmarks / library
+  /** pieces you kept */
+  saved: Record<HeatKey, number>;
   shares: Record<HeatKey, number>;
+  /** poll answers: postId → option index. Tapping the same option again clears it. */
+  votes: Record<HeatKey, number>;
   follows: string[];
   muted: string[];
   replies: Reply[];
   mySparks: Spark[];
   myArticles: LocalArticle[];
-  notifications: Notification[];
-  /** ISO date strings of days with activity → drives the heatmap + streak */
-  activity: Record<string, { reads: number; heats: number; ignites: number; posts: number; minutes: number }>;
   interests: string[];
-  /** live syndication payload cache */
   wire: { at: number; items: unknown[] } | null;
 
-  // actions
   setBooted: (v: boolean) => void;
   setIntroSeen: () => void;
-  completeOnboarding: (patch: Partial<User>, interests: string[]) => void;
+  /** mints the local identity — deliberately separate from onboarding */
+  ensureMe: () => User;
   updateMe: (patch: Partial<User>) => void;
   setPrefs: (patch: Partial<Prefs>) => void;
+  completeOnboarding: (interests: string[]) => void;
   setHeat: (id: HeatKey, level: HeatLevel) => void;
-  bumpHeatCount: (id: HeatKey, delta: number) => void;
   setRead: (id: HeatKey, pct: number, minutes?: number) => void;
   toggleSave: (id: HeatKey) => void;
   addShare: (id: HeatKey) => void;
+  castVote: (id: HeatKey, option: number) => void;
   toggleFollow: (handle: string) => void;
-  /** `muted` holds `@handle` (hide everything by them) and `#tag` (demote a topic) */
   toggleMute: (entry: string) => void;
   isMuted: (entry: string) => boolean;
   addReply: (r: Omit<Reply, 'id' | 'at' | 'heat'>) => void;
+  /** your own writing can be taken back — restore puts the exact piece back */
+  removeReply: (id: string) => Reply | undefined;
+  restoreReply: (r: Reply) => void;
+  removeSpark: (id: string) => Spark | undefined;
+  restoreSpark: (s: Spark) => void;
+  removeArticle: (id: string) => LocalArticle | undefined;
+  restoreArticle: (a: LocalArticle) => void;
   addSpark: (s: Omit<Spark, 'id' | 'date' | 'kind'>) => Spark;
   addArticle: (a: Omit<LocalArticle, 'id' | 'date' | 'kind' | 'minutes'>) => LocalArticle;
-  notify: (n: Omit<Notification, 'id' | 'at' | 'read'>) => void;
-  markAllRead: () => void;
-  logActivity: (kind: 'reads' | 'heats' | 'ignites' | 'posts', minutes?: number) => void;
   setWire: (items: unknown[]) => void;
   reset: () => void;
 };
@@ -91,10 +95,9 @@ const DEFAULT_PREFS: Prefs = {
   serif: true,
   reduceMotion: false,
   ambient: true,
-  autoplayVideo: true,
   haptics: true,
   ignitionFx: 'full',
-  customTheme: 'ember',
+  theme: 'nocturne',
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -108,51 +111,45 @@ export const useStore = create<State>()(
       me: null,
       prefs: DEFAULT_PREFS,
       heat: {},
-      heatCounts: {},
       reads: {},
       saved: {},
       shares: {},
-      follows: ['nyra', 'amara', 'k-vasiliev', 'tobi', 'sena', 'heatt'],
+      votes: {},
+      follows: ['heatt'],
       muted: [],
       replies: [],
       mySparks: [],
       myArticles: [],
-      notifications: [],
-      activity: {},
-      interests: ['design', 'engineering', 'typography', 'ai'],
+      interests: ['design', 'reading', 'craft'],
       wire: null,
 
       setBooted: (v) => set({ booted: v }),
       setIntroSeen: () => set({ introSeen: true }),
 
-      completeOnboarding: (patch, interests) => {
-        const handle = (patch.handle ?? 'you').replace(/^@/, '').toLowerCase();
-        set({
-          onboarded: true,
-          interests,
-          me: {
-            handle,
-            name: patch.name ?? handle,
-            bio: patch.bio ?? 'New on heatt.',
-            avatar: patch.avatar,
-            cover: patch.cover,
-            location: patch.location,
-            site: patch.site,
-            joined: today(),
-            followers: 0,
-            following: 0,
-            thermalMass: 1,
-            traits: interests.slice(0, 4),
-          },
-        });
+      ensureMe: () => {
+        const existing = get().me;
+        if (existing) return existing;
+        const me: User = {
+          handle: 'you',
+          name: 'You',
+          bio: 'Reading, keeping, and occasionally writing things down.',
+          joined: today(),
+          traits: get().interests.slice(0, 3),
+        };
+        set({ me });
+        return me;
       },
 
-      updateMe: (patch) => set({ me: { ...(get().me as User), ...patch } }),
+      updateMe: (patch) => set({ me: { ...(get().me ?? ({ handle: 'you', name: 'You' } as User)), ...patch } }),
 
       setPrefs: (patch) => set({ prefs: { ...get().prefs, ...patch } }),
 
+      /* Onboarding records what you are interested in and nothing else.
+         No handle, no bio, no avatar, no profile — that is a separate,
+         deliberate act from inside the app. */
+      completeOnboarding: (interests) => set({ onboarded: true, interests }),
+
       setHeat: (id, level) => {
-        const cur = get().heat[id]?.level ?? 0;
         if (level === 0) {
           const heat = { ...get().heat };
           delete heat[id];
@@ -160,19 +157,11 @@ export const useStore = create<State>()(
           return;
         }
         set({ heat: { ...get().heat, [id]: { level, at: Date.now() } } });
-        if (level > cur) get().logActivity('heats');
-        if (level === 3 && cur < 3) get().logActivity('ignites');
       },
 
-      bumpHeatCount: (id, delta) =>
-        set({ heatCounts: { ...get().heatCounts, [id]: Math.max(0, (get().heatCounts[id] ?? 0) + delta) } }),
-
       setRead: (id, pct, minutes = 0) => {
-        /* `finished` is edge-triggered: the day gets counted once, the first
-           time you cross 97%, and never un-counted by scrolling back up. */
         const clean = Math.max(0, Math.min(100, Math.round(Number.isFinite(pct) ? pct : 0)));
         const prev = get().reads[id];
-        const crossing = clean >= 97 && !prev?.finished;
         set({
           reads: {
             ...get().reads,
@@ -183,7 +172,7 @@ export const useStore = create<State>()(
             },
           },
         });
-        if (crossing) get().logActivity('reads', minutes);
+        void minutes;
       },
 
       toggleSave: (id) => {
@@ -193,9 +182,13 @@ export const useStore = create<State>()(
         set({ saved });
       },
 
-      addShare: (id) => {
-        set({ shares: { ...get().shares, [id]: (get().shares[id] ?? 0) + 1 } });
-        get().logActivity('posts');
+      addShare: (id) => set({ shares: { ...get().shares, [id]: (get().shares[id] ?? 0) + 1 } }),
+
+      castVote: (id, option) => {
+        const votes = { ...get().votes };
+        if (votes[id] === option) delete votes[id];
+        else votes[id] = option;
+        set({ votes });
       },
 
       toggleFollow: (handle) => {
@@ -209,13 +202,54 @@ export const useStore = create<State>()(
       },
       isMuted: (entry) => get().muted.includes(entry),
 
-      addReply: (r) =>
-        set({ replies: [...get().replies, { ...r, id: uid('re'), at: Date.now(), heat: 0 }] }),
+      addReply: (r) => set({ replies: [...get().replies, { ...r, id: uid('re'), at: Date.now(), heat: 0 }] }),
+
+      removeReply: (id) => {
+        const reply = get().replies.find((r) => r.id === id);
+        if (reply) set({ replies: get().replies.filter((r) => r.id !== id) });
+        return reply;
+      },
+      restoreReply: (r) =>
+        set({ replies: [...get().replies, r].sort((a, b) => a.at - b.at) }),
+
+      removeSpark: (id) => {
+        const spark = get().mySparks.find((x) => x.id === id);
+        if (spark) {
+          set({ mySparks: get().mySparks.filter((x) => x.id !== id) });
+          /* a piece that is gone should not leave heat or a reading position behind */
+          const { heat, saved, reads } = get();
+          const nHeat = { ...heat };
+          const nSaved = { ...saved };
+          const nReads = { ...reads };
+          delete nHeat[id];
+          delete nSaved[id];
+          delete nReads[id];
+          set({ heat: nHeat, saved: nSaved, reads: nReads });
+        }
+        return spark;
+      },
+      restoreSpark: (spark) => set({ mySparks: [spark, ...get().mySparks] }),
+
+      removeArticle: (id) => {
+        const art = get().myArticles.find((x) => x.id === id);
+        if (art) {
+          set({ myArticles: get().myArticles.filter((x) => x.id !== id) });
+          const { heat, saved, reads } = get();
+          const nHeat = { ...heat };
+          const nSaved = { ...saved };
+          const nReads = { ...reads };
+          delete nHeat[id];
+          delete nSaved[id];
+          delete nReads[id];
+          set({ heat: nHeat, saved: nSaved, reads: nReads });
+        }
+        return art;
+      },
+      restoreArticle: (art) => set({ myArticles: [art, ...get().myArticles] }),
 
       addSpark: (s) => {
         const spark: Spark = { ...s, id: uid('sp'), kind: 'spark', date: new Date().toISOString() };
         set({ mySparks: [spark, ...get().mySparks] });
-        get().logActivity('posts');
         return spark;
       },
 
@@ -229,24 +263,7 @@ export const useStore = create<State>()(
           minutes: Math.max(1, Math.round(words / 225)),
         };
         set({ myArticles: [art, ...get().myArticles] });
-        get().logActivity('posts');
         return art;
-      },
-
-      notify: (n) =>
-        set({ notifications: [{ ...n, id: uid('nt'), at: Date.now(), read: false }, ...get().notifications].slice(0, 80) }),
-
-      markAllRead: () => set({ notifications: get().notifications.map((n) => ({ ...n, read: true })) }),
-
-      logActivity: (kind, minutes = 0) => {
-        const d = today();
-        const cur = get().activity[d] ?? { reads: 0, heats: 0, ignites: 0, posts: 0, minutes: 0 };
-        set({
-          activity: {
-            ...get().activity,
-            [d]: { ...cur, [kind]: cur[kind] + 1, minutes: cur.minutes + minutes },
-          },
-        });
       },
 
       setWire: (items) => set({ wire: { at: Date.now(), items } }),
@@ -258,20 +275,18 @@ export const useStore = create<State>()(
           onboarded: false,
           me: null,
           heat: {},
-          heatCounts: {},
           reads: {},
           saved: {},
           shares: {},
+          votes: {},
           replies: [],
           mySparks: [],
           myArticles: [],
-          notifications: [],
-          activity: {},
           wire: null,
         }),
     }),
     {
-      name: 'heatt-store-v1',
+      name: 'heatt-store-v2',
       storage: createJSONStorage(() => (typeof window === 'undefined' ? (undefined as never) : localStorage)),
       partialize: (s) => ({
         booted: s.booted,
@@ -280,7 +295,6 @@ export const useStore = create<State>()(
         me: s.me,
         prefs: s.prefs,
         heat: s.heat,
-        heatCounts: s.heatCounts,
         reads: s.reads,
         saved: s.saved,
         shares: s.shares,
@@ -289,40 +303,25 @@ export const useStore = create<State>()(
         replies: s.replies,
         mySparks: s.mySparks,
         myArticles: s.myArticles,
-        notifications: s.notifications,
-        activity: s.activity,
         interests: s.interests,
       }),
     }
   )
 );
 
-/** Streak helpers — current run, longest run, and 365-day grid data. */
-export function streakOf(activity: State['activity']) {
-  const days = Object.keys(activity).sort();
-  if (!days.length) return { current: 0, longest: 0 };
-  let longest = 1;
-  let run = 1;
-  for (let i = 1; i < days.length; i++) {
-    const prev = new Date(days[i - 1]).getTime();
-    const cur = new Date(days[i]).getTime();
-    if (Math.round((cur - prev) / 86400000) === 1) run++;
-    else run = 1;
-    longest = Math.max(longest, run);
-  }
-  // current run counts back from today, tolerating "not yet logged today"
-  const t = new Date();
-  let current = 0;
-  for (let i = 0; i < 365; i++) {
-    const key = new Date(t.getTime() - i * 86400000).toISOString().slice(0, 10);
-    const a = activity[key];
-    if (a && (a.reads + a.heats + a.posts + a.ignites) > 0) current++;
-    else if (i === 0) continue; // today not yet earned
-    else break;
-  }
-  return { current, longest };
-}
-
 export function heatLevelOf(s: State, id: string): HeatLevel {
   return s.heat[id]?.level ?? 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Two tabs of heatt in the same browser are the same person. When one of them
+   writes, the others rehydrate — otherwise a keep made in one tab is invisible
+   in the one you are actually reading.                                                 */
+const STORE_KEY = 'heatt-store-v2';
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', (e) => {
+    if (e.key !== null && e.key !== STORE_KEY) return;
+    void useStore.persist.rehydrate();
+  });
 }

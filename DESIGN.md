@@ -1,216 +1,252 @@
 # heatt — design system
 
-A dark UI is a **light model**, not a black background. This is the whole system: what the light is,
-where it comes from, and what it is allowed to mean.
+A dark interface is a **light model**, not a black background. This is the whole system: what the light
+is, where it comes from, and what it is allowed to mean.
+
+Everything here is enforced somewhere in the tree — a token in `app/globals.css`, a Tailwind colour in
+`tailwind.config.ts`, or an assertion in `tests/`. If a rule in this document cannot fail a test, it is
+a preference; those are marked as such.
+
+---
+
+## 0. The one-line version
+
+> A cool near-black room, four steps of platinum ink, **glacier** for anything live, **champagne** for
+> heat and commit — and no third colour, no temperature physics, and no number that describes a person.
 
 ---
 
 ## 1. Colour
 
-### The room
+### The room — cool near-black, six close steps
 
 | token | value | use |
 | --- | --- | --- |
-| `--ht-void` | `#000000` | true black, OLED depth. Nothing is drawn on it directly. |
-| `--ht-base` | `#050505` | the floor everything readable sits above |
-| `--ht-panel` | `#121212` | first elevation: frosted glass |
-| `--ht-elev` | `#1A1A1A` | raised surfaces, nav rail, modals |
-| `--ht-lift` | `#1E1E1E` | hover / active elevation, control tops |
-| `--ht-raise` | `#242424` | the top of a gradient, never a flat fill |
-| `--ht-line` | `rgba(255,255,255,.08)` | hairlines, borders |
-| `--ht-line-strong` | `rgba(255,255,255,.16)` | edges that must be read at a glance |
+| `--void` | `#000000` | true black, OLED depth. Nothing readable is drawn directly on it. |
+| `--base` | `#06070A` | the floor everything sits on |
+| `--surface` | `#0B0D12` | first elevation: cards, panels |
+| `--elev` | `#11141A` | raised surfaces, sheets, modals |
+| `--lift` | `#181C23` | hover / active elevation, control tops |
+| `--top` | `#1F242C` | the top of a gradient, never a flat fill |
+| `--wash` | `#272D37` | pressed states, dividers inside a control |
+| `--line` / `--line-2` / `--line-3` | `rgba(255,255,255,.065 / .12 / .2)` | hairline, edge, edge you must read |
 
-### Ink
+The steps are deliberately *cool* (blue-leaning) and close. A warm grey on a black page reads as dirty
+at exactly the sizes we use for metadata.
+
+### Ink — platinum, four steps
 
 | token | value | use |
 | --- | --- | --- |
-| `--ht-ink` | `#FFFFFF` | primary text, and only primary |
-| `--ht-ink-dim` | `#A0A0A0` | secondary: standfirsts, body of a card, descriptions |
-| `--ht-ink-mute` | `#6F6F6F` | metadata: handles, timestamps, counts |
-| `--ht-ink-faint` | `#484848` | whispers: legal, "newest first", footer |
+| `--ink` | `#F2F5FA` | primary text, and only primary |
+| `--ink-2` | `#A3ACBD` | secondary: standfirsts, card body |
+| `--ink-3` | `#6B7486` | metadata: handles, timestamps |
+| `--ink-4` | `#454C5B` | whispers: legal, footer, keyboard hints |
 
-Four steps, deliberately. A dark UI that uses one grey for everything secondary reads as flat no
-matter how good the layout is.
+Four steps, deliberately. One grey for every secondary rank reads flat no matter how good the layout is.
 
-### Signal — two colours, not five
-
-**Molten amber** is the accent. It is reserved for things that are *actually happening*: active state,
-ignition, live numbers, the one button that commits an action.
+### Glacier — the accent (cold, live)
 
 | token | value |
 | --- | --- |
-| `--ht-ember-50 … 900` | `#FFF8ED` → `#FFEFD4` → `#FFDFAC` → `#FFCB7D` → `#FFB454` → `#F59A2B` → `#D97B12` → `#A85C0B` → `#6E3C08` → `#3A2104` |
-| `--ht-ember` | `#FFB454` — **the accent** |
-| `--ht-flame` | `#F59A2B` — burning |
-| `--ht-magma` | `#FFC978` — ignition |
-| `--ht-flare` | `#FFE3B0` — peak |
-| `--ht-whitehot` | `#FFF6E8` — incandescent / read to the end |
-| `--ht-copper` | `#C9743A` — gradients only |
+| `--acc-50 … 900` | `#F2F7FF` → `#E2EEFF` → `#C6DEFF` → `#A3C9FF` → `#86B6FF` → `#6BA2FF` → `#4A7FE0` → `#335BA8` → `#1F3A70` → `#101E3C` |
+| `--acc` | `#6BA2FF` |
+| `--acc-soft` / `--acc-line` / `--acc-glow` | `rgba(107,162,255,.13 / .32 / .4)` |
+| `--acc-ink` | `#04101F` — type printed **on** a glacier fill (used exactly once: the active dock item) |
 
-**Ice cyan** is the counterweight — cooled, settled, archived, unread. Cold means *nothing has
-happened to this yet*; warm means *something is happening now*.
+Glacier means *live*: the active destination, focus rings, links, the wire dot, selection. It is never
+used to mean "hot".
+
+### Champagne — heat, and commit (warm, rare)
 
 | token | value |
 | --- | --- |
-| `--ht-cryo-ice` | `#CFEFFF` |
-| `--ht-cryo-teal` | `#63D8F5` |
-| `--ht-cryo-indigo` | `#8AA6FF` — archived |
-| `--ht-cryo-violet` | `#B98CFF` — decayed |
-| `--ht-jade` | `#EFCB8B` — champagne metal: verified, held, saved |
+| `--champ` | `#E8D3A4` |
+| `--champ-soft` / `--champ-line` | `rgba(232,211,164,.13 / .3)` |
+| `--heat-soft` / `--heat-line` / `--heat-glow` | `rgba(232,211,164,.12 / .34 / .42)` |
+| `--heat-hot-line` | `rgba(244,226,180,.6)` |
 
-**No green. Anywhere.** High-chroma green on black is the most worn-out accent in dark UI, and it
-fights the product's own metaphor — heatt ranks by temperature, so its palette should look like a
-forge, not a terminal. The ramps are also carried into the *generated* content: procedural avatars and
-cover art draw from amber / ice / plasma-violet hue families, so a user cannot accidentally smuggle a
-green identity into the board.
+Champagne is the **only warm value in the building**. It owns two things and nothing else:
 
-### Every colour is data
+1. **Heat** — `.ht-heat-btn` levels, `.ht-spark`, the ignited card's shock, the heat ring around an avatar.
+2. **Commit** — the one button that finishes an action: `.ht-btn--heat`, `.ht-round`, `.ht-dock-fab`,
+   `.ht-share__action[data-primary]`, the swipe-to-start fill, eyebrow rules, chapter numerals.
 
-| temperature | label | colour |
-| --- | --- | --- |
-| ≥ 60 | Incandescent | `#FFF6E8` |
-| ≥ 38 | Molten | `#FFC978` |
-| ≥ 22 | Burning | `#FFB454` |
-| ≥ 10 | Warm | `#F59A2B` |
-| ≥ 4 | Smouldering | `#EFCB8B` |
-| < 4 | Cold | `#63D8F5` |
+If a screen needs emphasis and it is neither heat nor commit, it uses glacier or it uses ink.
+
+### Status
+
+`--pos #7FD0B0` · `--warn #E8C07A` · `--neg #FF8F8F`. These appear only in settings, validation and
+toasts. They are never part of a card's visual language.
+
+### Hard rules
+
+- **No ember/orange.** The warm end of the palette is champagne, at 13–42% opacity, never a fill.
+- **No saturated green.** The cool end is glacier, a blue.
+- **No third hue.** Every gradient in the app interpolates within one hue or between adjacent room steps.
+- **Heat has no physics.** No kelvin, no "cold", no "molten", no temperature, no diffusion, no thermal
+  mass, no reputation multiplier. `tests/heat-model.cjs` and `tests/integrity-audit.cjs` fail if the
+  vocabulary or the maths comes back.
 
 ---
 
 ## 2. Light & elevation
 
-A drop shadow has nothing to cast on black, so elevation is expressed three other ways:
+On black there is no light to cast a shadow, so depth is built from three devices:
 
-1. **Value step** — `#000` → `#050505` → `#121212` → `#1A1A1A` → `#1E1E1E`, a couple of percent of
-   luminance apart, enough to read at arm's length.
-2. **A lit top edge** — `0 1px 0 rgba(255,255,255,.055) inset`. This single line does more for
-   perceived depth than any blur.
-3. **An ambient pool** — a wide, very soft dark shadow below (`0 30px 70px -40px #000`) plus a
-   coloured bleed *only* when the surface is hot: `0 0 0 1px rgba(255,180,84,.3)`.
+1. **A value step** — `surface → elev → lift`, each a few percent apart.
+2. **A lit top edge** — `inset 0 1px 0 rgba(255,255,255,.05–.09)`, the single most important trick in
+   the system: it is what makes a black card look like a *surface* rather than a hole.
+3. **An ambient pool** — a wide, very soft black shadow below (`--shadow-1/2/3`), plus `--shadow-hot`
+   for the one control that is currently committing.
 
-Glass comes in three densities and one blur each: `--glass-1` (thin chrome), `--glass-2` (cards,
-default), `--glass-3` (sheets, modals). Blur is capped at 30px and no more than six blurred surfaces
-are ever on screen at once — a blurred surface costs a compositor pass and buys depth only when
-there's something behind it worth obscuring.
+Glass recipes (`--glass-1/2/3`) are gradients, not `backdrop-filter` alone: the filter blurs, the
+gradient gives the surface an interior. Where `backdrop-filter` is unsupported the gradient still
+carries the panel.
+
+Radii: `--r-xs 8` · `--r-sm 12` · `--r-md 16` · `--r-lg 22` · `--r-xl 28` · `--r-2xl 36`. Cards use
+`--r-lg`, sheets `--r-xl`, media `--r-2xl`. Nothing is a square corner except a hairline.
 
 ---
 
 ## 3. Type
 
-| role | face | notes |
-| --- | --- | --- |
-| display | Bricolage Grotesque Variable | `letter-spacing:-.045em`, `line-height:.9`, `text-wrap:balance` |
-| UI | Inter Variable | 15px base, `-0.005em`, tabular numerals for all data |
-| reading | Newsreader Variable | `line-height:1.78`, 65–75ch measure |
-| data | JetBrains Mono Variable | code, token values |
+| family | role |
+| --- | --- |
+| **Bricolage Grotesque Variable** | display: headlines, wordmark, chapter numbers, titles |
+| **Inter Variable** | interface: every control, every label, every line of metadata |
+| **Newsreader Variable** | reading: long-form prose, pull quotes, the reader's body |
+| **JetBrains Mono** | data: heat numbers, counters, code, timestamps |
 
-A single fluid scale (`clamp()`) does all the work — `micro → tiny → sm → base → lg → xl → 2xl → 3xl
-→ hero` — so hierarchy never snaps at a breakpoint and never collapses on a phone.
+Sizes are fluid (`--fs-micro … --fs-hero`), so a phone gets proportionally larger type than a laptop
+without a single media query. The reader sets body copy at `--fs-base` with a `--measure` of 620 /
+720 / 860px (narrow / normal / wide) and `data-serif="true"` switches prose to Newsreader. Density
+(`data-density="dense|normal|cozy"`) scales the reading sheet, not the chrome.
 
-Three display treatments, used sparingly:
-`ht-heat-text` (molten gradient, for the wordmark and one word per headline),
-`ht-cryo-text` (ice, for cold states), `ht-metal-text` (brushed steel, for chrome).
+Rules: two weights per screen (400 + 600/700); tracking tightens as size grows (`-0.02em` at
+`--fs-lg`, `-0.045em` at `--fs-hero`); numerals in UI are always `font-variant-numeric: tabular-nums`
+via `.ht-num`.
 
 ---
 
 ## 4. Components
 
+Primitives live in `components/ui/primitives.tsx` (visual) and `components/ui/motion.tsx` (behaviour).
+Screens compose them and never re-invent a radius, a duration or a colour.
+
 | primitive | what it is |
 | --- | --- |
-| `.ht-card` | content surface: glass, hairline top light, 2px lift on hover, amber border when hovered |
-| `.ht-glass` / `--thin` / `--heavy` | the three glass densities |
-| `.ht-btn` / `--heat` / `--ghost` / `--glass` | press = 1px drop + short amber bloom (no bounce) |
-| `.ht-icon-btn` | 40px glass disc — every piece of chrome in the app is this shape |
-| `.ht-chip` / `--heat` / `--cryo` | metadata vs. a live trait vs. a cooled one |
-| `.ht-tabrail` / `.ht-tab` | pill filter rail with a masked fade at both ends |
-| `.ht-avatar-ring` | conic sweep amber → copper → hairline → ice, black hairline outside |
-| `.ht-badge` / `--hot` / `--cold` | brushed-metal badge; floats on a gyroscope, not a cartoon sticker |
-| `.ht-stat` | number as the hero, label as a whisper |
-| `.ht-masonry` | CSS-columns board (2 up on phones, 3 on tablet+) |
-| `.ht-dock` / `.ht-dock-item` | floating translucent nav pill; active item slides via shared `layoutId` |
-| `.ht-tile` | media tile: 1.06× image push on hover |
-| `.ht-skeleton` | shimmer placeholder |
-| `.ht-swipe` / `.ht-swipe-fill` | the onboarding control: capsule + amber fill + travelling sheen |
+| `.ht-card` | the one container: hairline, lit top edge, `--r-lg`. `--pad` for internal air. |
+| `.ht-btn` | base button. `--heat` (champagne, commits), `--quiet` (room step), `--ghost`, `--glass` |
+| `.ht-round` | the circular commit control; `--sm` in card footers, full size in the reader |
+| `.ht-chip` | metadata pill; tones `plain`, `--heat` (champagne), `--iris` (glacier) |
+| `.ht-heat-btn` | the gesture: tap → 1, hold 1s → 2, hold 2.2s → ignition (3) + spark shower |
+| `.ht-spark` | the spark particle (champagne, 2.2s, removed after) |
+| `.ht-shock` | the one-frame ring on an ignited card |
+| `.ht-dock` / `.ht-dock-item` | floating pill navigation, white active pill, 52×46 hit area |
+| `.ht-dock-fab` | the single commit FAB (champagne) |
+| `.ht-topbar` | sticky bar that densifies on scroll (blur + border appear) |
+| `.ht-tabrail` / `.ht-tab` | segmented control with a `layoutId` pill |
+| `.ht-input` / `.ht-switch` | form primitives; focus uses glacier, never champagne |
+| `.ht-meter` | progress bar inside a card (reading) |
+| `.ht-reading-pill` | the floating "continue reading" pill |
+| `.ht-progress-rail` | the 2px reading rail; only on `/read/*` |
+| `.ht-prose` / `.ht-code` / `.ht-block` | the reading sheet: measure, rhythm, code, callouts |
+| `.ht-modal` / `.ht-scrim` / `.ht-sheet` | overlay shells |
+| `.ht-masonry` / `.ht-tile` | the profile grid |
+| `.ht-swipe` | swipe-to-start (onboarding) and swipe-to-dismiss |
+| `.ht-badge` / `.ht-avatar-ring` / `.ht-stats` | profile only: floating badges, conic avatar ring, work counts |
+
+Page-level pieces: `TopBar`, `BottomDock`, `PageHead`, `BoardControls`, `WireStatus`, `AvatarCluster`
+(`components/shell/Shell.tsx`), `Reveal`, `WordReveal`, `Stagger`, `Parallax`, `Tilt`, `CountUp`,
+`AmbientGlow`, `useInViewSafe` (`components/ui/motion.tsx`).
+
+Empty states are a component (`Empty`), not a sentence: eyebrow, title, one line of body, one action.
 
 ---
 
 ## 5. Motion
 
-**Rules.** Two easing curves and one spring. Nothing is linear; nothing bounces except where an
-element must *settle* (nav pill, layout morph). Duration scales with distance and mass, not with
-importance. Anything that loops is ambient and ≥ 7s so it never pulses at reading speed. Exits are
-always faster than entrances.
+The rule is **less often, bigger when it happens**. Nothing loops at reading speed.
 
-| token | value | use |
-| --- | --- | --- |
-| `EASE` | `cubic-bezier(.22,1,.36,1)` | the default |
-| `EASE_HEAT` | `cubic-bezier(.16,.9,.2,1)` | press answers |
-| `EASE_EXIT` | `cubic-bezier(.6,0,.2,1)` | everything leaving |
-| `EASE_CINEMA` | `cubic-bezier(.16,1,.3,1)` | plates, headline reveals |
-| `T.micro` 180ms | colour, border, icon swaps |
-| `T.base` 320ms | chips, tabs, hovers, disclosures |
-| `T.slow` 640ms | cards, sheets, section entrances |
-| `T.cinema` 1100ms | plates, hero type, scene handovers |
-| `T.spring` | `stiffness 420 · damping 34` | the nav dock pill |
+| | |
+| --- | --- |
+| easings | `EASE [.22,1,.36,1]`, `EASE_OUT [.16,1,.3,1]`, `EASE_IN [.6,0,.2,1]` |
+| durations | micro `.16` · fast `.24` · base `.34` · slow `.64` · cinema `1.2` |
+| springs | dock pill (460/36), reading rail (220/40), avatar ring (300/22) |
+| entrances | page `.42`, card `.5` with a `min(.18, i × .045)` stagger, intro acts 4.2s total |
+| exits | `.22`, always shorter than the entrance |
 
-**Primitives** (`components/ui/motion.tsx`): `Reveal` (in-view, IntersectionObserver-safe),
-`SplitText` (word-by-word blur-out), `Parallax` (scroll-linked depth), `FloatingBadge` (gyro),
-`Tilt` (3D pointer), `PressBloom` (amber bloom from the contact point), `CountUp`.
+Named moments, in order of size:
 
-**The signature trick** — depth of field. Every cinematic frame is two plates: a heavily blurred far
-layer drifting one way behind a sharp near layer drifting the other, both nudged by gyro/pointer. It
-carries the intro, the onboarding and the hero, and it costs one transform each.
+1. **Cinematic intro** — three acts (VOID → SIGNAL → HANDOFF), 4.2s, one half-resolution canvas, fully
+   skippable by any key, click or the Skip control. Runs once, on a first visit only.
+2. **Onboarding** — four scenes, movement demonstrations (room → reading → heat → sharing), one
+   gesture. 8s per scene, `←/→` to move, `Enter` to finish. **Never asks for anything and never
+   creates a profile.**
+3. **Ignition** — the heat gesture's payoff: a conic charge ring, then a 2.2s spark shower on the card.
+   Once per ignition; the card is still afterwards.
+4. **Share studio** — frames you step through with a 7s auto-advance, pausable by holding.
+
+Loops are ambient and slow (glow drift 18–24s, grain, the wire dot's breathe) and every one of them
+stops when `data-reduce-motion="true"`.
+
+Reduced motion is not a courtesy branch: `useMotionPrefs()` reads both the OS setting and the in-app
+preference, and every reveal degrades to *visible*, every parallax to *static*, and the intro to a
+single state change. `useInViewSafe` falls back to "seen" when `IntersectionObserver` is missing, so a
+reveal can never be load-bearing for whether text is on screen.
 
 ---
 
 ## 6. Screens
 
-**Intro** (`components/intro/CinematicIntro.tsx`) — ~4.6s, three acts. `VOID`: a point of amber
-ignites and blooms. `SPREAD`: the camera pushes through the keyhole plate behind letterbox bars, with
-act ticks on a hairline timeline. `FORM`: the wordmark resolves letter by letter under a specular
-pass and hands the room over. One rAF loop, no canvas. Skip = one click, one key, anywhere.
+| route | what it is |
+| --- | --- |
+| `/` | landing: hero in one light, what the room refuses, three chapters, the palette laid out as evidence |
+| `/feed` | the board: one feature story, then cards behind a single filter rail, then the wire status |
+| `/explore` | real search field, topic rail from the actual corpus, writers, results |
+| `/library` | two shelves — kept, and reading (with progress meters); local-only, said out loud |
+| `/notifications` | "what came back": heat and replies derived from your own pieces, plus a digest |
+| `/settings` | reading (size, measure, serif), motion, ignition, haptics, identity, clear-device |
+| `/u/[handle]` | profile in black: parallax cover, conic avatar ring, floating badges, work counts, tabbed grid |
+| `/read/[id]` | the reader: 2px rail, chrome that fades, type panel, keep/share, ignition, attribution |
 
-**Onboarding** (`components/onboarding/Onboarding.tsx`) — "the reel". Four scenes, each a full-bleed
-depth-of-field stack plus a **live demonstration** rather than a screenshot: light through a gateway,
-a reading sheet filling with ink, a hold-to-heat ring charging to ignition, a heat grid igniting cell
-by cell. Type resolves word by word. The only control is `Swipe to start` — which also answers a
-click, `↵`, `space` and `→`. **No form, no fields, no profile creation**: an identity is minted
-locally and stays editable from the profile.
+The app shell is one bottom dock, one search affordance, one commit FAB. Nothing else is pinned to the
+viewport, so every screen is free to use its whole height.
 
-**Profile** (`app/(shell)/u/[handle]/page.tsx`) — the reference layout, rebuilt in obsidian. Floating
-glass bar that densifies on scroll → parallax cover that cools as content rises → portrait in a conic
-amber→ice ring with a slow orbit tick and gyro-drifting metal badges → name → **one divided stat row**
-(followers · following · streak · reads) with animated counters → trait pills → masonry board behind
-pill tabs. No scoreboard, ever.
-
-**Feed** — ranked cards where a covered forge is *image first, details below*: title, a divided spec
-row (`12 min · 340 reactions · 18 replies · 4 tags · 62° heat`), standfirst, then real prose fading
-into the reader. Over-image glass discs for save/share, amber disc to open.
-
-**Reader** — obsidian sheet within the black room, spec row in the byline, floating glass chrome, a
-progress rail, paragraph heat in the margin.
-
-**Library / Explore / Notifications / Settings** — all on the shared primitives: pill rails, eyebrow +
-display-title headers, one card treatment.
-
-**Landing** (`app/page.tsx`) — cinematic aurora hero with masked line reveals and a scroll-progress
-rail, then the product argument in three moves, and finally `#system`: the real token ramps, live
-component specimens, and the four principles. The design system is the claim, so it is documented
-where people can see it.
+There are **no fake people** in the interface: the house (`@heatt`), real writers syndicated from the
+wire, and you. There are **no stats about you**: the profile counts stories, notes and kept pieces.
+Heat is shown on pieces, never on a person.
 
 ---
 
 ## 7. Accessibility & performance
 
-- Every decorative animation is `transform`/`opacity` only, and everything collapses to its final
-  frame under `prefers-reduced-motion` **or** the in-app reduce-motion switch (`useMotionPrefs()`
-  makes the call once, at the source).
-- A reveal animation is never load-bearing: `useInViewSafe` treats a missing `IntersectionObserver`
-  as "already visible", so text is never hidden because a browser API is absent.
-- One focus ring for the whole product, in amber, never the default blue.
-- Contrast: `#FFFFFF` on `#050505` (21:1) for primary, `#A0A0A0` on `#121212` (7.4:1) for secondary,
-  and glowing accents never sit directly on true black — they sit on `#121212`+, so an accent reads
-  as *light* rather than as a smudge.
-- Caps: blur ≤ 30px, ≤ 6 blurred surfaces on screen, one rAF loop per animated surface.
-- Verified by six suites (`npm test`): model, smoke (102 assertions driving real components in
-  jsdom), style (every rendered class compiles), integrity, a11y, bundle.
+- Every icon-only control has an `aria-label`; every overlay is a labelled dialog; every rail is a
+  `role="tablist"`/`role="progressbar"` with real values (`tests/a11y-audit.cjs`).
+- Focus is always visible and always glacier (`--acc-line`), never champagne — champagne is information,
+  glacier is position.
+- Tap targets are ≥ 44px in the dock, ≥ 36px everywhere else; the heat control is 44px because it is a
+  gesture.
+- Contrast: body copy uses `--ink` / `--ink-2` on `--surface` or darker; `--ink-3` is metadata only;
+  `--ink-4` is never load-bearing.
+- The intro canvas renders at half resolution and stops on `visibilitychange`; the ambient field is
+  pure CSS gradients, so it costs no paint on scroll.
+- Bundle: no icon library, no UI kit, no CSS-in-JS. One `framer-motion`, four fonts, `zustand`, and
+  `unified`/`remark` for markdown. `tests/bundle-audit.cjs` guards against additions here.
+
+---
+
+## 8. How this is verified
+
+| command | what it proves |
+| --- | --- |
+| `npm run test:model` | decay maths, levels, ranker, tabs, store, seeds — and that no thermal-mass physics returns |
+| `npm run test:smoke` | the app is driven in jsdom: intro → tour → board, heat gesture to ignition, muting, replying, publishing, reader, share canvas, ⌘K, settings |
+| `npm run test:styles` | every class actually rendered has a compiled rule in the built CSS; every `.ht-*` primitive exists |
+| `npm run test:integrity` | assets, `rel=noopener`, alt text, store version, heat constants |
+| `npm run test:a11y` | labels, headings, contrast-by-token, modal semantics |
+| `npm run test:bundle` | weight, tree-shaking, inline assets |
+
+A change to colour, motion or type that is not represented in one of those files is a preference, not a
+rule — add the assertion or drop the claim.

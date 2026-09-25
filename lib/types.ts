@@ -1,7 +1,12 @@
 /* ============================================================================
-   heatt — core domain types
+   heatt — domain types.
+
+   One platform, two shapes of writing: a *spark* (a short note) and a *forge*
+   (a full story). Both are authored by a real handle; there are no invented
+   people in the product.
    ==========================================================================*/
 
+/** 0 = no heat. 1 = heated · 2 = blazing · 3 = ignited. */
 export type HeatLevel = 0 | 1 | 2 | 3;
 
 export type ArticleBlock =
@@ -18,28 +23,26 @@ export type ArticleBlock =
 
 export type Article = {
   id: string;
-  kind: 'forge'; // long-form
+  kind: 'forge';
   title: string;
-  dek: string; // standfirst
-  author: string; // handle
+  dek: string;
+  author: string;
   tags: string[];
-  cover: string; // image url
+  cover: string;
   accent?: string;
-  date: string; // ISO
+  date: string;
   minutes: number;
   blocks: ArticleBlock[];
   source?: { name: string; url: string };
   canonical?: string;
   reactions?: number;
   comments?: number;
-  /** markdown body for live-syndicated articles */
-  bodyMarkdown?: string;
-  hot?: boolean;
+  editorsPick?: boolean;
 };
 
 export type Spark = {
   id: string;
-  kind: 'spark'; // microblog post
+  kind: 'spark';
   author: string;
   text: string;
   date: string;
@@ -51,46 +54,51 @@ export type Spark = {
   reactions?: number;
   comments?: number;
   reposts?: number;
-  longRef?: string; // links a spark to an article it "grew from"
+  /** links a note to the story it grew out of */
+  longRef?: string;
 };
 
 export type User = {
   handle: string;
   name: string;
   bio: string;
-  avatar?: string; // url or data uri; procedural gradient avatar when absent
+  avatar?: string;
   cover?: string;
   location?: string;
   site?: string;
   joined: string;
-  followers: number;
-  following: number;
-  thermalMass: number; // reputation — weight multiplier in Heat Diffusion
   traits?: string[];
   verified?: boolean;
   org?: string;
+  /** canonical profile URL when the writer is syndicated from elsewhere */
+  sourceUrl?: string;
+  /** true for the house account */
+  house?: boolean;
 };
 
 export type FeedItem = (Article | Spark) & {
-  /** computed at rank time */
   heat?: number;
-  temp?: number;
-  trend?: number[];
   authorRef?: User;
   heated?: HeatLevel;
 };
 
-export type HeatEvent = { level: HeatLevel; at: number };
-
 export type Notification = {
   id: string;
-  type: 'heat' | 'ignite' | 'follow' | 'reply' | 'mention' | 'milestone' | 'digest';
+  type: 'heat' | 'reply' | 'follow' | 'mention' | 'digest';
   actor: string;
   text: string;
   at: number;
   read: boolean;
   postId?: string;
   level?: HeatLevel;
+};
+
+/** one entry in the local heat ledger */
+export type HeatEvent = {
+  level: HeatLevel;
+  at: number;
+  /** how many times you have heated this piece */
+  count?: number;
 };
 
 export type ReadingProgress = {
@@ -105,9 +113,10 @@ export type Prefs = {
   measure: 'narrow' | 'normal' | 'wide';
   serif: boolean;
   reduceMotion: boolean;
-  ambient: boolean; // WebGL heat field on/off
-  autoplayVideo: boolean;
+  /** animated hero/atmosphere behind the app */
+  ambient: boolean;
   haptics: boolean;
+  /** ember burst when a piece reaches ignition */
   ignitionFx: 'full' | 'subtle' | 'off';
-  customTheme: string;
+  theme: string;
 };

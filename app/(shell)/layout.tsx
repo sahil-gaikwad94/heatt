@@ -1,25 +1,33 @@
 import type { Metadata } from 'next';
 import { AppGate } from '@/components/boot/AppGate';
-import { EditorialDock, MobileTabs, ReferenceHeader } from '@/components/shell/Shell';
-import { ReadingDock } from '@/components/reading/ReadingDock';
+import { BottomDock } from '@/components/shell/Shell';
+import { ReadingDock, ReadingRail } from '@/components/reading/ReadingDock';
+import { RouteFocus } from '@/components/shell/RouteFocus';
 
 export const metadata: Metadata = {
-  title: { default: 'heatt — where ideas burn', template: '%s · heatt' },
+  title: { default: 'heatt — a room, not a feed', template: '%s · heatt' },
 };
 
+/**
+ * The app frame: one bottom dock, one floating reading pill, one progress
+ * rail. Nothing else is pinned to the viewport, so every screen is free to
+ * use its whole height.
+ */
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppGate>
-      <div className="reference-room">
-        <ReferenceHeader />
-        <div className="editorial-workspace">
-          <EditorialDock />
-          <main className="editorial-stage mx-auto min-w-0 w-full max-w-[1080px] px-4 pb-[120px] pt-0 sm:px-6 md:pb-[140px]">{children}</main>
-          <aside className="editorial-aside"><span>THE ROOM IS QUIET</span><p>Save something for later. The best things rarely need to be chased.</p><div className="editorial-aside__line" /></aside>
-        </div>
+      <div className="ht-room">
+        <a href="#main" className="ht-skip-link">
+          Skip to content
+        </a>
+        <main id="main" tabIndex={-1} className="min-h-[100dvh] pb-[116px]">
+          {children}
+        </main>
+        <RouteFocus />
       </div>
-      <MobileTabs />
+      <ReadingRail />
       <ReadingDock />
+      <BottomDock />
     </AppGate>
   );
 }

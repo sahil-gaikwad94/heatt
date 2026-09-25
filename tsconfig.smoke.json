@@ -24,7 +24,9 @@
     "app/(shell)/layout.tsx",
     "components/**/*.tsx",
     "lib/**/*.ts",
-    "lib/**/*.tsx"
+    "lib/**/*.tsx",
+    "app/not-found.tsx",
+    "app/error.tsx"
   ],
   "exclude": ["node_modules", ".next", "app/api", "app/layout.tsx"]
 }

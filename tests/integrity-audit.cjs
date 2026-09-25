@@ -76,6 +76,19 @@ if (missingArt.length) {
   ok(`all ${artRefs.length} /art/* references resolve to real files (${artFiles.length} files in public/art)`);
 }
 
+// The icon is the first thing anyone sees: it must be the room's palette,
+// never the warm one the redesign retired.
+try {
+  const icon = fs.readFileSync(path.join(PUBLIC, 'icon.svg'), 'utf8');
+  const warm = /#FF[0-9A-F]{4}|#F{0,1}[89A-F][0-9A-F]{3}/i.test(icon) && /FF2D12|FF8A1F|ff6|f97316/i.test(icon);
+  if (!/E8D3A4/i.test(icon)) fail('icon.svg lost the champagne mark');
+  else ok('icon.svg carries the champagne mark');
+  if (warm) fail('icon.svg still uses the retired ember palette');
+  else ok('icon.svg has no ember/orange in it');
+} catch {
+  fail('icon.svg missing');
+}
+
 // Check icon.svg and manifest exist
 if (fs.existsSync(path.join(PUBLIC, 'icon.svg'))) ok('public/icon.svg exists');
 else fail('public/icon.svg missing — PWA and favicon will 404');
@@ -234,8 +247,22 @@ else warn(`${todos} TODO/FIXME markers (not failing)`);
 console.log('\n▸ next.config + headers');
 try {
   const cfg = fs.readFileSync(path.join(ROOT, 'next.config.mjs'), 'utf8');
-  if (cfg.includes('s-maxage') && cfg.includes('stale-while-revalidate')) ok('API routes have edge cache headers');
-  else fail('next.config missing cache headers for /api');
+  /* Cache policy lives in the route handlers, where a failure can be told
+     apart from a payload: a blanket config rule would cache a 503 too. */
+  if (!/source: '\/api\/:path\*'[\s\S]{0,200}?Cache-Control/.test(cfg))
+    ok('the config does not blanket-cache /api responses');
+  else fail('a blanket Cache-Control rule on /api would cache failures');
+
+  const apiDir = path.join(ROOT, 'app', 'api');
+  const apiRoutes = fs.existsSync(apiDir)
+    ? fs.readdirSync(apiDir).filter((d) => fs.existsSync(path.join(apiDir, d, 'route.ts')))
+    : [];
+  const withPolicy = apiRoutes.filter((d) =>
+    /cache-control/i.test(fs.readFileSync(path.join(apiDir, d, 'route.ts'), 'utf8'))
+  );
+  if (apiRoutes.length && withPolicy.length === apiRoutes.length)
+    ok(`every API route sets its own cache policy (${withPolicy.length})`);
+  else fail(`API routes without a cache policy: ${apiRoutes.filter((d) => !withPolicy.includes(d)).join(', ') || 'none found'}`);
 
   if (cfg.includes('/art/') && cfg.includes('immutable')) ok('art assets have immutable cache headers');
   else fail('art assets missing immutable cache headers');
@@ -258,7 +285,7 @@ else warn(`art total ${(totalArtSize/1024/1024).toFixed(1)}MB — consider optim
 console.log('\n▸ store');
 try {
   const storeSrc = fs.readFileSync(path.join(ROOT, 'lib/store.ts'), 'utf8');
-  if (storeSrc.includes('heatt-store-v1')) ok('store uses versioned key heatt-store-v1');
+  if (storeSrc.includes('heatt-store-v2')) ok('store uses versioned key heatt-store-v2');
   else fail('store key not versioned');
 
   if (storeSrc.includes('persist')) ok('store uses persist');
@@ -275,8 +302,10 @@ console.log('\n▸ heat model constants');
 try {
   const heatSrc = fs.readFileSync(path.join(ROOT, 'lib/heat.ts'), 'utf8');
   if (heatSrc.includes('τ') || heatSrc.includes('9')) ok('heat model mentions τ=9h');
-  if (heatSrc.includes('HOLD_MS') && heatSrc.includes('2450')) ok('HOLD_MS includes 2450ms ignition');
+  if (heatSrc.includes('HOLD_MS') && heatSrc.includes('2200')) ok('HOLD_MS includes the 2.2s ignition threshold');
   else fail('HOLD_MS missing ignition timing');
+  if (!/thermalMass|diffuse|cliffIndex/.test(heatSrc)) ok('no thermal-mass physics left in the model');
+  else fail('thermal-mass physics still in the model');
 
   if (heatSrc.includes('LEVEL_META')) ok('LEVEL_META defined');
 } catch (e) {

@@ -258,7 +258,18 @@ export type ArticleBody = {
   offline?: boolean;
 };
 
-export async function fetchBody(devId: string, fallback?: WireItem): Promise<ArticleBody> {
+/** The reader hands us a hydrated app Post, so the fallback is whatever shape
+ *  it has — coerce the author rather than trusting the caller. */
+type FallbackWire = Partial<Omit<WireItem, 'author'>> & { author?: string | { name?: string; handle?: string } };
+
+function fallbackAuthor(f: FallbackWire) {
+  const a = f.author;
+  if (!a) return undefined;
+  if (typeof a === 'string') return { name: a, handle: f.handle ?? '', avatar: f.avatar };
+  return { name: a.name ?? f.handle ?? '', handle: a.handle ?? f.handle ?? '', avatar: f.avatar };
+}
+
+export async function fetchBody(devId: string, fallback?: FallbackWire): Promise<ArticleBody> {
   const id = devId.replace(/^dev-/, '');
   const cache = readBodies();
   const hit = cache[id];
@@ -308,7 +319,7 @@ export async function fetchBody(devId: string, fallback?: WireItem): Promise<Art
     tags: fallback?.tags,
     minutes: fallback?.minutes,
     cover: fallback?.cover,
-    author: fallback ? { name: fallback.author, handle: fallback.handle, avatar: fallback.avatar } : undefined,
+    author: fallback ? fallbackAuthor(fallback) : undefined,
     org: fallback?.org,
   };
 }

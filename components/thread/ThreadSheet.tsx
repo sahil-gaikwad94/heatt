@@ -1,157 +1,178 @@
 'use client';
 /* ============================================================================
-   components/thread/ThreadSheet — replies for a spark, with context rail.
-   Opens from the feed (comment button) and from /read for forges.
+   components/thread/ThreadSheet — replies on a note or a story.
+
+   A bottom sheet on phones, a centred panel on desktop. Shows the piece, the
+   replies in order, and one field. Replies are local to this device — there is
+   no stranger on the other end of the wire.
    ==========================================================================*/
 
 import * as React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useApp } from '@/lib/app';
 import { useStore } from '@/lib/store';
-import { Modal, Avatar } from '@/components/ui/primitives';
+import { Avatar, Modal } from '@/components/ui/primitives';
 import { RichText } from '@/components/cards/PostCard';
-import { cls, timeAgo, uid } from '@/lib/util';
-import { getUser } from '@/lib/seed/users';
+import { HeatButton } from '@/components/heat/HeatButton';
+import { cls, plain, timeAgo } from '@/lib/util';
+import { EASE_OUT } from '@/lib/motion';
 
 export function ThreadSheet() {
   const app = useApp();
   const s = useStore();
-  const post = app.open ? app.posts.find((p) => p.id === app.open) : null;
-  const open = !!post && post.kind === 'spark';
+  const id = app.threadId;
+  const post = id ? app.posts.find((p) => p.id === id) : null;
   const [text, setText] = React.useState('');
-  const replies = React.useMemo(() => (post ? s.replies.filter((r) => r.postId === post.id) : []), [post, s.replies]);
-  const me = app.me;
+  const [level, setLevel] = React.useState(0);
+  const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
 
-  const seedReplies = React.useMemo(() => {
-    if (!post) return [];
-    // a small deterministic set so threads are never empty in a demo build
-    const pool = [
-      { handle: 'amara', text: 'The line-length constraint is the whole trick. Once the column is fixed, everything else is decoration.' },
-      { handle: 'tobi', text: 'This is the "we cache at the edge" argument in miniature — the cheap version of the same insight.' },
-      { handle: 'k-vasiliev', text: 'Counterpoint: a signal that costs effort is also a signal that suppresses new voices. Worth holding both.' },
-      { handle: 'sena', text: 'We measured the same thing with streak cells. Cost of action predicts trust in the action.' },
-    ];
-    const n = 1 + (post.id.length % 3);
-    return pool.slice(0, n);
-  }, [post]);
+  const replies = React.useMemo(
+    () => (id ? s.replies.filter((r) => r.postId === id).sort((a, b) => a.at - b.at) : []),
+    [id, s.replies]
+  );
+
+  React.useEffect(() => {
+    if (id) setLevel(app.heatOf(id));
+    else setText('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const close = () => app.setThread(null);
+
+  const send = () => {
+    if (!post || !text.trim()) return;
+    useStore.getState().addReply({
+      postId: post.id,
+      author: s.me?.handle ?? 'you',
+      text: text.trim(),
+    });
+    app.toast('Reply added to the thread', 'heat');
+    setText('');
+    inputRef.current?.focus();
+  };
+
+  if (!post) return null;
+  const counts = app.countOf(post);
+  const mine = post.authorHandle === (s.me?.handle ?? 'you');
 
   return (
-    <Modal open={open} onClose={app.closePost} align="top" wide={false}>
-      {post && (
-        <div className="max-h-[86vh] overflow-y-auto overscroll-contain">
-          <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[.06] bg-[#0a0a0a]/88 px-4 py-3 backdrop-blur-xl">
-            <div className="flex items-center gap-2">
-              <span className="ht-label">Thread</span>
-              <span className="ht-num text-[12px] text-ink-mute">{replies.length + seedReplies.length} replies</span>
+    <AnimatePresence>
+      <Modal open={!!post} onClose={close} label={`Replies on ${post.title ?? 'note'}`} align="center">
+        <div className="flex max-h-[min(84dvh,760px)] flex-col">
+          <header className="flex items-center gap-3 border-b border-line px-5 py-4">
+            <Avatar name={post.authorName} handle={post.authorHandle} src={post.authorAvatar} size={34} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13.5px] font-semibold text-ink">{post.authorName}</p>
+              <p className="truncate text-[11.5px] text-ink-faint">
+                @{post.authorHandle} · {timeAgo(post.date)} ago
+              </p>
             </div>
-            <button onClick={app.closePost} className="ht-btn ht-btn--ghost !px-2.5 !py-1.5" aria-label="Close">
-              ✕
+            <button onClick={close} className="ht-icon-btn !h-8 !w-8" aria-label="Close">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
             </button>
           </header>
 
-          <div className="p-4">
-            <div className="flex items-start gap-3">
-              <Avatar name={post.authorName} handle={post.authorHandle} src={post.authorAvatar} size={42} />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-1.5">
-                  <span className="text-[15px] font-bold">{post.authorName}</span>
-                  <span className="text-[13px] text-ink-mute">@{post.authorHandle}</span>
-                  <span className="text-ink-faint">·</span>
-                  <span className="text-[13px] text-ink-mute">{timeAgo(post.date)}</span>
-                </div>
-                <div className="mt-2">
-                  <RichText text={post.text ?? ''} onTag={(t) => { app.closePost(); app.go(`/explore?tag=${encodeURIComponent(t)}`); }} onMention={() => {}} />
-                </div>
-
-                {post.media?.map((m) => (
-                  <img key={m.url} src={m.url} alt={m.alt} className="mt-3 w-full rounded-[16px] border border-white/[.07]" />
-                ))}
-
-                <div className="mt-3 flex items-center gap-4 border-t border-white/[.06] pt-2 text-[12.5px] text-ink-mute">
-                  <span><b className="ht-num text-ember-300">{app.countOf(post)}</b> heats</span>
-                  <span><b className="ht-num text-ink">{Math.round(post.heat?.temp ?? 0)}°</b> temperature</span>
-                  {post.longRef && (
-                    <button onClick={() => app.openPost(post.longRef!)} className="ml-auto font-bold text-ember-300 hover:underline">
-                      Read the forge →
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* composer */}
-            <div className="mt-5 flex items-start gap-3 rounded-[16px] border border-white/[.07] bg-black/25 p-3">
-              <Avatar name={me?.name ?? 'Guest'} handle={me?.handle ?? 'guest'} src={me?.avatar} size={34} />
-              <div className="min-w-0 flex-1">
-                <textarea
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  rows={2}
-                  placeholder="Add to the thread…"
-                  className="ht-input resize-none !bg-transparent !px-0 !text-[14.5px] focus:!shadow-none"
+          <div className="ht-no-scrollbar flex-1 overflow-y-auto px-5 py-4">
+            <div className="rounded-[var(--r-md)] border border-line bg-white/[.015] p-4">
+              {post.title && <h3 className="ht-title text-[16px] leading-snug text-ink">{post.title}</h3>}
+              <RichText
+                text={post.kind === 'spark' ? post.text ?? '' : plain(post.dek ?? '').slice(0, 320)}
+                className="mt-2 text-[13.5px] leading-relaxed text-ink-dim"
+              />
+              <div className="mt-3.5 flex items-center gap-2">
+                <HeatButton
+                  level={level as never}
+                  count={counts.reactions}
+                  heat={post.heatScore?.heat ?? 0}
+                  size="sm"
+                  onChange={(l, meta) => {
+                    setLevel(l);
+                    app.setHeat(post.id, l, { title: post.title, author: post.authorHandle, ...meta });
+                  }}
                 />
-                <div className="mt-1 flex items-center justify-between">
-                  <span className={cls('ht-num text-[11px]', text.length > 480 ? 'text-ember-300' : 'text-ink-faint')}>{text.length}/500</span>
-                  <button
-                    disabled={!text.trim() || text.length > 500}
-                    onClick={() => {
-                      s.addReply({ postId: post.id, author: me?.handle ?? 'you', text: text.trim() });
-                      s.notify({ type: 'reply', actor: me?.handle ?? 'you', text: `You replied to @${post.authorHandle}`, postId: post.id });
-                      setText('');
-                      app.toast('Reply posted', 'heat');
-                    }}
-                    className="ht-btn ht-btn--heat !py-1.5 !text-[12.5px] disabled:opacity-40"
-                  >
-                    Reply
-                  </button>
-                </div>
+                {!mine && (
+                  <a href={`/u/${post.authorHandle}`} className="ht-chip">
+                    @{post.authorHandle}
+                  </a>
+                )}
               </div>
             </div>
 
-            {/* replies */}
-            <div className="mt-5 space-y-4">
+            <div className="mt-5 space-y-3">
+              {replies.length === 0 && (
+                <p className="text-[13px] text-ink-faint">
+                  No replies yet. Say the thing you would say out loud — it stays on your device.
+                </p>
+              )}
               <AnimatePresence initial={false}>
                 {replies.map((r) => (
-                  <motion.div key={r.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3">
-                    <Avatar name={getUser(r.author).name} handle={r.author} size={32} />
-                    <div>
-                      <div className="flex items-baseline gap-1.5 text-[13px]">
-                        <b>{getUser(r.author).name}</b>
-                        <span className="text-ink-mute">@{r.author}</span>
-                        <span className="text-ink-faint">·</span>
-                        <span className="text-ink-mute">{timeAgo(r.at)}</span>
+                  <motion.div
+                    key={r.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: EASE_OUT }}
+                    className="flex items-start gap-3"
+                  >
+                    <Avatar name={s.me?.name ?? 'You'} handle={r.author} src={s.me?.avatar} size={30} />
+                    <div className="min-w-0 flex-1 rounded-[var(--r-md)] border border-line bg-white/[.02] px-3.5 py-3">
+                      <div className="flex items-center gap-2">
+                        <p className="min-w-0 flex-1 truncate text-[11.5px] text-ink-faint">
+                          @{r.author} · {timeAgo(r.at)} ago
+                        </p>
+                        {r.author === (s.me?.handle ?? 'you') && (
+                          <button
+                            onClick={() => app.deleteReply(r.id)}
+                            className="ht-icon-btn !h-6 !w-6 shrink-0"
+                            aria-label="Delete your reply"
+                            title="Delete your reply"
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+                              <path d="M6 6l12 12M18 6L6 18" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
-                      <p className="mt-1 text-[14px] leading-relaxed text-ink-dim">{r.text}</p>
+                      <RichText text={r.text} className="mt-1.5 text-[13.5px] leading-relaxed text-ink-2" />
                     </div>
                   </motion.div>
                 ))}
               </AnimatePresence>
-              {seedReplies.map((r, i) => {
-                const u = getUser(r.handle);
-                return (
-                  <div key={i} className="flex items-start gap-3">
-                    <Avatar name={u.name} handle={u.handle} src={u.avatar} size={32} />
-                    <div>
-                      <div className="flex items-baseline gap-1.5 text-[13px]">
-                        <b>{u.name}</b>
-                        <span className="text-ink-mute">@{u.handle}</span>
-                        <span className="text-ink-faint">·</span>
-                        <span className="text-ink-mute">{timeAgo(Date.now() - (i + 1) * 3600_000)}</span>
-                      </div>
-                      <p className="mt-1 text-[14px] leading-relaxed text-ink-dim">{r.text}</p>
-                      <div className="mt-1.5 flex items-center gap-3 text-[11.5px] text-ink-mute">
-                        <span>↩ reply</span>
-                        <span>⇄ repost</span>
-                        <span>♡ {12 + i * 7}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </div>
+
+          <footer className="border-t border-line p-3.5">
+            <div className="flex items-end gap-2.5">
+              <textarea
+                ref={inputRef}
+                value={text}
+                onChange={(e) => setText(e.target.value.slice(0, 600))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send();
+                }}
+                rows={2}
+                data-autofocus
+                placeholder="Add to the thread…"
+                aria-label="Add a reply"
+                className="ht-input !h-auto min-h-[54px] resize-none py-2.5"
+              />
+              <button
+                onClick={send}
+                disabled={!text.trim()}
+                className={cls('ht-round shrink-0')}
+                aria-label="Reply"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M5 12h13M13 6l6 6-6 6" />
+                </svg>
+              </button>
+            </div>
+            <p className="mt-2 px-1 text-[11px] text-ink-4">⌘↵ to send · replies live on this device only</p>
+          </footer>
         </div>
-      )}
-    </Modal>
+      </Modal>
+    </AnimatePresence>
   );
 }
