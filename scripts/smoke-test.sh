@@ -5,5 +5,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 rm -rf .tmp-client
-./node_modules/.bin/tsc -p tsconfig.smoke.json
+if [ ! -f "./node_modules/.bin/tsc" ]; then
+  npx tsc -p tsconfig.smoke.json
+else
+  ./node_modules/.bin/tsc -p tsconfig.smoke.json
+fi
 node tests/smoke/run.cjs

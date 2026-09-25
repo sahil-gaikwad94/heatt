@@ -66,6 +66,7 @@ export function TopBar({
 }) {
   const app = useApp();
   const [dense, setDense] = React.useState(false);
+  const unreadMsgCount = useStore((s) => (s.conversations || []).reduce((acc, c) => acc + (c.unreadCount || 0), 0));
 
   React.useEffect(() => {
     const on = () => setDense(window.scrollY > 8);
@@ -112,7 +113,12 @@ export function TopBar({
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-[var(--acc)] shadow-[0_0_6px_var(--acc)]" />
+          {unreadMsgCount > 0 && (
+            <span className="absolute top-1 right-1 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--acc)] opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--acc)] shadow-[0_0_6px_var(--acc)]" />
+            </span>
+          )}
         </Link>
 
         {/* signals: what came back on the things you put in the room */}
@@ -176,6 +182,7 @@ export function BottomDock() {
   const app = useApp();
   const path = usePathnameSafe();
   const handle = app.me?.handle ?? 'you';
+  const unreadMsgCount = useStore((s) => (s.conversations || []).reduce((acc, c) => acc + (c.unreadCount || 0), 0));
 
   const dests: Dest[] = [
     { key: 'feed', href: '/feed', label: 'Board', icon: FeedGlyph },
@@ -195,7 +202,12 @@ export function BottomDock() {
               {d.label}
             </span>
             {active && <motion.span layoutId="dock-active" className="ht-dock-pill" transition={{ type: 'spring', stiffness: 460, damping: 36 }} />}
-            <span className="relative z-[1]">{d.icon}</span>
+            <span className="relative z-[1]">
+              {d.icon}
+              {d.key === 'messages' && unreadMsgCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[var(--acc)] shadow-[0_0_4px_var(--acc)]" />
+              )}
+            </span>
           </Link>
         );
       })}
