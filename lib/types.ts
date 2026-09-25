@@ -120,3 +120,38 @@ export type Prefs = {
   ignitionFx: 'full' | 'subtle' | 'off';
   theme: string;
 };
+
+/* ------------------------------------------------------------------- Chat */
+
+export type ChatMessage = {
+  id: string;
+  conversationId: string;
+  senderHandle: string;
+  senderName: string;
+  text: string;
+  at: number;
+  status: 'sent' | 'delivered' | 'read';
+  heatReactions: number;
+  reactions?: Record<string, number>;
+  quote?: { id: string; senderHandle: string; text: string };
+  mediaUrl?: string;
+  voiceNote?: { durationSec: number; waveform?: number[] };
+  sticker?: {
+    postId: string;
+    title: string;
+    author: string;
+    cover?: string;
+    heat?: number;
+  };
+};
+
+export type Conversation = {
+  id: string;
+  participantHandle: string;
+  participantName: string;
+  participantAvatar?: string;
+  lastMessage?: string;
+  lastMessageAt: number;
+  unreadCount: number;
+  isOnline?: boolean;
+};

@@ -36,11 +36,35 @@ export default function NotificationsPage() {
     [app.posts, s.me]
   );
 
+  const unreadMessagesCount = React.useMemo(() => {
+    return (s.conversations || []).reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+  }, [s.conversations]);
+
   return (
     <>
       <TopBar />
       <div className="ht-stage pt-2">
         <PageHead eyebrow="signals" title="What came back" dek="Heat and replies on the things you put into the room, plus one digest of the board." />
+
+        {unreadMessagesCount > 0 && (
+          <Link
+            href="/messages"
+            className="mb-4 flex items-center justify-between rounded-[var(--r-lg)] border border-[var(--acc-line)] bg-[var(--acc-soft)] px-4 py-3 text-ink transition-all hover:border-[var(--acc)]"
+          >
+            <div className="flex items-center gap-3">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--acc)] text-white shadow-sm">
+                💬
+              </span>
+              <div>
+                <p className="text-[13.5px] font-semibold text-ink">
+                  {unreadMessagesCount} unread {unreadMessagesCount === 1 ? 'message' : 'messages'}
+                </p>
+                <p className="text-[11.5px] text-ink-mute">Writers in the room have reached out to you</p>
+              </div>
+            </div>
+            <span className="ht-chip ht-chip--heat shrink-0">Open Messages →</span>
+          </Link>
+        )}
 
         <section className="space-y-3">
           {mine.length === 0 && (

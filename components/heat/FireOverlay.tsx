@@ -86,11 +86,26 @@ export function FireOverlay({ active, duration = 2100, variant = 'full', onDone,
           const i = y * W + x;
           const v = Math.min(1, field[i] * env);
           const o = i * 4;
-          /* champagne → warm white at the hottest cores */
-          img.data[o] = 236 + v * 19;
-          img.data[o + 1] = 211 + v * 40;
-          img.data[o + 2] = 164 + v * 90;
-          img.data[o + 3] = Math.round(232 * Math.pow(v, 1.35));
+          /* tri-color plasma flame: electric crimson base -> golden solar flame -> white-hot core */
+          if (v < 0.4) {
+            const tNorm = v / 0.4;
+            img.data[o] = Math.round(210 + tNorm * 45); // 210 -> 255
+            img.data[o + 1] = Math.round(25 + tNorm * 65); // 25 -> 90
+            img.data[o + 2] = Math.round(65 + tNorm * 15); // 65 -> 80
+            img.data[o + 3] = Math.round(240 * Math.pow(v, 1.2));
+          } else if (v < 0.8) {
+            const tNorm = (v - 0.4) / 0.4;
+            img.data[o] = 255;
+            img.data[o + 1] = Math.round(90 + tNorm * 94); // 90 -> 184 (gold)
+            img.data[o + 2] = Math.round(30 * (1 - tNorm)); // fades out blue
+            img.data[o + 3] = Math.round(255 * Math.pow(v, 1.05));
+          } else {
+            const tNorm = (v - 0.8) / 0.2;
+            img.data[o] = 255;
+            img.data[o + 1] = Math.round(184 + tNorm * 71); // 184 -> 255
+            img.data[o + 2] = Math.round(tNorm * 255); // -> white
+            img.data[o + 3] = 255;
+          }
         }
       }
       ctx.putImageData(img, 0, 0);
@@ -113,14 +128,14 @@ export function FireOverlay({ active, duration = 2100, variant = 'full', onDone,
     <span aria-hidden className={cls('pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]', className)}>
       <span
         className="absolute inset-0 rounded-[inherit]"
-        style={{ boxShadow: '0 0 0 1px rgba(232,211,164,.55), 0 22px 60px -24px rgba(232,211,164,.5)' }}
+        style={{ boxShadow: '0 0 0 1.5px rgba(255,51,102,.7), 0 0 28px 2px rgba(255,51,102,.5), 0 22px 60px -20px rgba(255,184,0,.7)' }}
       />
       <span className="ht-shock absolute inset-0 rounded-[inherit]" />
       {variant === 'full' && (
         <canvas
           ref={canvasRef}
-          className="absolute inset-x-0 bottom-0 h-[46%] w-full"
-          style={{ filter: 'blur(14px) saturate(140%)', mixBlendMode: 'screen', opacity: 0.9 }}
+          className="absolute inset-x-0 bottom-0 h-[52%] w-full"
+          style={{ filter: 'blur(10px) saturate(180%)', mixBlendMode: 'screen', opacity: 0.95 }}
         />
       )}
     </span>

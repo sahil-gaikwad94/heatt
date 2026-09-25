@@ -146,7 +146,7 @@ export function Modal({
             aria-label="Close"
             tabIndex={-1}
             onClick={onClose}
-            className="ht-scrim absolute inset-0"
+            className="ht-scrim absolute inset-0 z-0"
             style={{ position: 'absolute' }}
           />
           <motion.div
@@ -155,7 +155,7 @@ export function Modal({
             aria-modal="true"
             aria-label={label}
             variants={sheet}
-            className={cls('relative z-[1] mx-4 w-full', !bare && 'ht-modal')}
+            className={cls('relative z-10 mx-4 w-full pointer-events-auto', !bare && 'ht-modal')}
             style={{ maxWidth: 560 }}
           >
             {children}

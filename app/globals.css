@@ -48,45 +48,60 @@
   --ink-3: #6b7486;
   --ink-4: #454c5b;
 
-  /* --- signal: glacier --------------------------------------------------
-     One accent, and it is cold on purpose. Ice blue is what "live" looks
-     like on black: the active destination, the commit button, the number
-     that just moved.                                                        */
-  --acc-50: #f2f7ff;
-  --acc-100: #e2eeff;
-  --acc-200: #c6deff;
-  --acc-300: #a3c9ff;
-  --acc-400: #86b6ff;
-  --acc-500: #6ba2ff;
-  --acc-600: #4a7fe0;
-  --acc-700: #335ba8;
-  --acc-800: #1f3a70;
-  --acc-900: #101e3c;
+  /* --- signal: tri-color signature system ------------------------------
+     Color 1: Electric Crimson / Neon Ember (#FF3366) — heat, actions, ignition
+     Color 2: Cyber Violet / Electric Iris (#8B5CF6) — bookmarks, depth, intellect
+     Color 3: Solar Gold / Amber Flare (#FFB800) — sparks, streaks, highlights
+     Plus Cyber Cyan (#06B6D4) for live signals and read receipts.           */
+  --acc-50: #fff0f3;
+  --acc-100: #ffe2e8;
+  --acc-200: #ffb8c6;
+  --acc-300: #ff85a1;
+  --acc-400: #ff547d;
+  --acc-500: #ff3366;
+  --acc-600: #e6194d;
+  --acc-700: #b80d38;
+  --acc-800: #7a0522;
+  --acc-900: #420010;
 
-  --acc: #6ba2ff;
-  --acc-soft: rgba(107, 162, 255, 0.13);
-  --acc-line: rgba(107, 162, 255, 0.32);
-  --acc-glow: rgba(107, 162, 255, 0.4);
-  --acc-deep: #4a7fe0;
-  --acc-ink: #04101f; /* type printed on a glacier fill */
+  --acc: #ff3366;
+  --acc-soft: rgba(255, 51, 102, 0.14);
+  --acc-line: rgba(255, 51, 102, 0.38);
+  --acc-glow: rgba(255, 51, 102, 0.48);
+  --acc-deep: #e6194d;
+  --acc-ink: #ffffff; /* type printed on an accent fill */
 
-  /* --- secondary: champagne ---------------------------------------------
-     Warm, low-chroma, used sparingly — heat numbers, editorial marks, the
-     "this was kept" state. The only warm colour in the building.            */
-  --champ: #e8d3a4;
-  --champ-soft: rgba(232, 211, 164, 0.13);
-  --champ-line: rgba(232, 211, 164, 0.3);
+  /* --- secondary: cyber violet ------------------------------------------ */
+  --iris: #8b5cf6;
+  --iris-soft: rgba(139, 92, 246, 0.14);
+  --iris-line: rgba(139, 92, 246, 0.36);
+  --iris-glow: rgba(139, 92, 246, 0.45);
+  --iris-deep: #7c3aed;
 
-  /* heat = champagne. These three are the only warm values in the UI, and
-     they are only ever used for heat you can actually see on a piece. */
-  --heat-soft: rgba(232, 211, 164, 0.12);
-  --heat-line: rgba(232, 211, 164, 0.34);
-  --heat-glow: rgba(232, 211, 164, 0.42);
-  --heat-hot-line: rgba(244, 226, 180, 0.6);
+  /* --- tertiary: solar gold & champagne highlights ---------------------- */
+  --solar: #ffb800;
+  --solar-soft: rgba(255, 184, 0, 0.14);
+  --solar-line: rgba(255, 184, 0, 0.38);
+  --solar-glow: rgba(255, 184, 0, 0.45);
 
-  --pos: #7fd0b0;
-  --warn: #e8c07a;
-  --neg: #ff8f8f;
+  --champ: #ffb800;
+  --champ-soft: rgba(255, 184, 0, 0.14);
+  --champ-line: rgba(255, 184, 0, 0.34);
+
+  /* heat values */
+  --heat-soft: rgba(255, 51, 102, 0.14);
+  --heat-line: rgba(255, 51, 102, 0.38);
+  --heat-glow: rgba(255, 51, 102, 0.48);
+  --heat-hot-line: rgba(255, 184, 0, 0.7);
+
+  /* live signal: cyan */
+  --cyan: #06b6d4;
+  --cyan-soft: rgba(6, 182, 212, 0.14);
+  --cyan-line: rgba(6, 182, 212, 0.36);
+
+  --pos: #10b981;
+  --warn: #ffb800;
+  --neg: #ff3366;
 
   /* --- the reading sheet: obsidian paper -------------------------------- */
   --paper: #0a0c11;
@@ -505,17 +520,17 @@ button:disabled {
 
 .ht-btn--heat {
   border-color: transparent;
-  background: linear-gradient(180deg, #f7ead0, var(--champ) 52%, #cbb17c);
-  color: #241a06;
+  background: linear-gradient(135deg, #ff3366 0%, #ff547d 48%, #ffb800 100%);
+  color: #ffffff;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.55) inset,
-    0 14px 34px -16px rgba(232, 211, 164, 0.55);
+    0 1px 0 rgba(255, 255, 255, 0.45) inset,
+    0 14px 34px -14px rgba(255, 51, 102, 0.65);
 }
 .ht-btn--heat:hover {
-  background: linear-gradient(180deg, #fff8e6, #f2e0b6 52%, var(--champ));
+  background: linear-gradient(135deg, #ff4777 0%, #ff6b8e 48%, #ffc226 100%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 18px 44px -16px rgba(232, 211, 164, 0.7);
+    0 18px 44px -14px rgba(255, 51, 102, 0.8);
 }
 
 .ht-btn--ghost {
@@ -773,37 +788,40 @@ a.ht-chip:hover {
   width: 4px;
   height: 4px;
   border-radius: 999px;
-  background: var(--acc);
-  box-shadow: 0 0 10px 2px rgba(232, 211, 164, 0.7);
+  background: radial-gradient(circle, #ffffff 15%, #ffb800 50%, #ff3366 100%);
+  box-shadow: 0 0 12px 3px rgba(255, 51, 102, 0.85), 0 0 6px 1px rgba(255, 184, 0, 0.9);
   pointer-events: none;
-  animation: ht-spark-rise 1.5s var(--ease-out) forwards;
+  animation: ht-spark-rise 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 @keyframes ht-spark-rise {
   0% { opacity: 0; transform: translate3d(0, 4px, 0) scale(0.6); }
-  18% { opacity: 1; }
-  100% { opacity: 0; transform: translate3d(var(--dx, 12px), -46px, 0) scale(0.3); }
+  15% { opacity: 1; transform: translate3d(calc(var(--dx, 12px) * 0.2), -15px, 0) scale(1.2); }
+  50% { opacity: 0.9; transform: translate3d(calc(var(--dx, 12px) * 0.6), -45px, 0) scale(0.9); }
+  100% { opacity: 0; transform: translate3d(var(--dx, 12px), -90px, 0) scale(0.2); }
 }
 
 .ht-ignite-card {
   animation: ht-ignite 900ms var(--ease-out);
 }
 @keyframes ht-ignite {
-  0% { box-shadow: 0 0 0 0 rgba(232, 211, 164, 0); }
-  22% { box-shadow: 0 0 0 2px var(--heat-line), 0 26px 70px -24px rgba(232, 211, 164, 0.7); }
-  100% { box-shadow: 0 0 0 1px var(--acc-line), 0 24px 60px -34px rgba(0, 0, 0, 0.95); }
+  0% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0); transform: scale(1); }
+  22% { box-shadow: 0 0 0 2px var(--acc-line), 0 26px 70px -18px rgba(255, 51, 102, 0.85), 0 0 45px -8px rgba(255, 184, 0, 0.7); transform: scale(1.008); }
+  100% { box-shadow: 0 0 0 1px var(--acc-line), 0 24px 60px -34px rgba(0, 0, 0, 0.95); transform: scale(1); }
 }
 
 .ht-shock {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  border: 1px solid var(--acc);
+  border: 1.5px solid var(--acc);
+  box-shadow: 0 0 24px var(--acc-glow), inset 0 0 20px rgba(255, 184, 0, 0.5);
   opacity: 0;
   pointer-events: none;
-  animation: ht-shock 760ms var(--ease-out);
+  animation: ht-shock 850ms var(--ease-out);
 }
 @keyframes ht-shock {
-  0% { opacity: 0.75; transform: scale(0.99); }
+  0% { opacity: 0.95; transform: scale(0.98); }
+  50% { opacity: 0.65; }
   100% { opacity: 0; transform: scale(1.04); }
 }
 
@@ -2184,10 +2202,10 @@ button.ht-stat:hover {
   transform: scale(0.98);
 }
 .ht-share__action[data-primary='true'] {
-  background: linear-gradient(180deg, #f7ead0, var(--champ) 52%, #cbb17c);
+  background: linear-gradient(135deg, #ff3366 0%, #ff547d 48%, #ffb800 100%);
   border-color: transparent;
-  color: #241a06;
-  box-shadow: 0 14px 32px -16px rgba(232, 211, 164, 0.6);
+  color: #ffffff;
+  box-shadow: 0 14px 32px -16px rgba(255, 51, 102, 0.65);
 }
 
 /* ============================== overlays ================================ */
@@ -2195,13 +2213,15 @@ button.ht-stat:hover {
 .ht-scrim {
   position: fixed;
   inset: 0;
-  z-index: var(--z-sheet);
-  background: rgba(4, 4, 6, 0.72);
+  z-index: 0;
+  background: rgba(4, 4, 6, 0.76);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  pointer-events: auto;
 }
 .ht-modal {
   position: relative;
+  z-index: 10;
   width: 100%;
   max-width: 560px;
   max-height: min(86dvh, 780px);

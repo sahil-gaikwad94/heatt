@@ -475,6 +475,16 @@ export function CardMenu({ post }: { post: Post }) {
               >
                 Share as a story
               </MenuRow>
+              {!mine && (
+                <MenuRow
+                  onClick={() => {
+                    app.go(`/messages?user=${encodeURIComponent(post.authorHandle)}`);
+                    setOpen(false);
+                  }}
+                >
+                  Message @{post.authorHandle}
+                </MenuRow>
+              )}
               {post.origin === 'wire' && post.canonical && (
                 <MenuRow
                   onClick={() => {

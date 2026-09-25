@@ -9,7 +9,8 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { HeatEvent, HeatLevel, Prefs, Spark, User } from './types';
+import type { ChatMessage, Conversation, HeatEvent, HeatLevel, Prefs, Spark, User } from './types';
+import { SEED_CONVERSATIONS, SEED_MESSAGES } from './seed/chat';
 import { uid } from './util';
 
 export type LocalArticle = {
@@ -59,6 +60,25 @@ export type State = {
   myArticles: LocalArticle[];
   interests: string[];
   wire: { at: number; items: unknown[] } | null;
+
+  /* chatting / DM */
+  conversations: Conversation[];
+  chatMessages: Record<string, ChatMessage[]>;
+  sendMessage: (
+    conversationId: string,
+    text: string,
+    extra?: {
+      quote?: { id: string; senderHandle: string; text: string };
+      mediaUrl?: string;
+      voiceNote?: { durationSec: number; waveform?: number[] };
+      sticker?: { postId: string; title: string; author: string; cover?: string; heat?: number };
+    }
+  ) => ChatMessage;
+  reactToMessage: (conversationId: string, messageId: string, emoji: string) => void;
+  heatMessage: (conversationId: string, messageId: string) => void;
+  markConversationRead: (conversationId: string) => void;
+  getOrCreateConversation: (handle: string, name?: string, avatar?: string) => Conversation;
+  deleteConversation: (conversationId: string) => void;
 
   setBooted: (v: boolean) => void;
   setIntroSeen: () => void;
@@ -122,6 +142,123 @@ export const useStore = create<State>()(
       myArticles: [],
       interests: ['design', 'reading', 'craft'],
       wire: null,
+
+      conversations: SEED_CONVERSATIONS,
+      chatMessages: SEED_MESSAGES,
+
+      sendMessage: (conversationId, text, extra) => {
+        const store = get();
+        const me = store.me ?? { handle: 'you', name: 'You' };
+        const msgId = uid('msg');
+        const newMsg: ChatMessage = {
+          id: msgId,
+          conversationId,
+          senderHandle: me.handle,
+          senderName: me.name || me.handle,
+          text: text.trim(),
+          at: Date.now(),
+          status: 'sent',
+          heatReactions: 0,
+          quote: extra?.quote,
+          mediaUrl: extra?.mediaUrl,
+          voiceNote: extra?.voiceNote,
+          sticker: extra?.sticker,
+        };
+
+        const currentMsgs = store.chatMessages[conversationId] || [];
+        const updatedMsgs = [...currentMsgs, newMsg];
+
+        const updatedConvs = store.conversations.map((c) => {
+          if (c.id === conversationId) {
+            return {
+              ...c,
+              lastMessage: text.trim() || (extra?.voiceNote ? 'Voice note' : 'Story sticker'),
+              lastMessageAt: Date.now(),
+            };
+          }
+          return c;
+        });
+
+        set({
+          chatMessages: { ...store.chatMessages, [conversationId]: updatedMsgs },
+          conversations: updatedConvs,
+        });
+
+        return newMsg;
+      },
+
+      reactToMessage: (conversationId, messageId, emoji) => {
+        const store = get();
+        const msgs = store.chatMessages[conversationId] || [];
+        const next = msgs.map((m) => {
+          if (m.id === messageId) {
+            const rx = { ...(m.reactions || {}) };
+            rx[emoji] = (rx[emoji] || 0) + 1;
+            return { ...m, reactions: rx };
+          }
+          return m;
+        });
+        set({ chatMessages: { ...store.chatMessages, [conversationId]: next } });
+      },
+
+      heatMessage: (conversationId, messageId) => {
+        const store = get();
+        const msgs = store.chatMessages[conversationId] || [];
+        const next = msgs.map((m) => {
+          if (m.id === messageId) {
+            return { ...m, heatReactions: (m.heatReactions || 0) + 1 };
+          }
+          return m;
+        });
+        set({ chatMessages: { ...store.chatMessages, [conversationId]: next } });
+      },
+
+      markConversationRead: (conversationId) => {
+        const store = get();
+        const convs = store.conversations.map((c) =>
+          c.id === conversationId ? { ...c, unreadCount: 0 } : c
+        );
+        const msgs = (store.chatMessages[conversationId] || []).map((m) =>
+          m.status !== 'read' ? { ...m, status: 'read' as const } : m
+        );
+        set({
+          conversations: convs,
+          chatMessages: { ...store.chatMessages, [conversationId]: msgs },
+        });
+      },
+
+      getOrCreateConversation: (handle, name, avatar) => {
+        const cleanHandle = handle.replace(/^@/, '').toLowerCase();
+        const store = get();
+        const found = store.conversations.find((c) => c.participantHandle.toLowerCase() === cleanHandle);
+        if (found) return found;
+
+        const newConv: Conversation = {
+          id: `conv-${cleanHandle}`,
+          participantHandle: cleanHandle,
+          participantName: name || cleanHandle,
+          participantAvatar: avatar,
+          lastMessage: 'Conversation opened',
+          lastMessageAt: Date.now(),
+          unreadCount: 0,
+          isOnline: true,
+        };
+
+        set({
+          conversations: [newConv, ...store.conversations],
+          chatMessages: { ...store.chatMessages, [newConv.id]: store.chatMessages[newConv.id] || [] },
+        });
+
+        return newConv;
+      },
+
+      deleteConversation: (conversationId) => {
+        const store = get();
+        const convs = store.conversations.filter((c) => c.id !== conversationId);
+        const msgs = { ...store.chatMessages };
+        delete msgs[conversationId];
+        set({ conversations: convs, chatMessages: msgs });
+      },
 
       setBooted: (v) => set({ booted: v }),
       setIntroSeen: () => set({ introSeen: true }),
@@ -304,6 +441,8 @@ export const useStore = create<State>()(
         mySparks: s.mySparks,
         myArticles: s.myArticles,
         interests: s.interests,
+        conversations: s.conversations,
+        chatMessages: s.chatMessages,
       }),
     }
   )

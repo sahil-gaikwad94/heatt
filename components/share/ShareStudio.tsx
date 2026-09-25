@@ -39,10 +39,10 @@ const FORMAT_LABEL: Record<Fmt, string> = {
 
 type Theme = 'champagne' | 'glacier' | 'obsidian' | 'platinum';
 const THEMES: Record<Theme, { a: string; b: string; c: string; text: string; sub: string; bed: string; label: string }> = {
-  champagne: { a: '#E8D3A4', b: '#8F7A4E', c: '#FFF8E6', text: '#FFFBF2', sub: 'rgba(255,248,230,.68)', bed: '#0A0906', label: 'champagne' },
-  glacier: { a: '#6BA2FF', b: '#2F4C86', c: '#C6DEFF', text: '#F2F7FF', sub: 'rgba(226,238,255,.7)', bed: '#05070C', label: 'glacier' },
-  obsidian: { a: '#8A8F9A', b: '#3A3E47', c: '#D5D9E0', text: '#F4F5F7', sub: 'rgba(255,255,255,.6)', bed: '#08090C', label: 'obsidian' },
-  platinum: { a: '#CFD3DA', b: '#7C8290', c: '#F2F4F8', text: '#FBFCFD', sub: 'rgba(255,255,255,.66)', bed: '#0B0C10', label: 'platinum' },
+  champagne: { a: '#FFB800', b: '#FF3366', c: '#FFF0F5', text: '#FFFFFF', sub: 'rgba(255,240,245,.75)', bed: '#0A0507', label: 'solar ember' },
+  glacier: { a: '#FF3366', b: '#8B5CF6', c: '#DDD6FE', text: '#FFFFFF', sub: 'rgba(245,243,255,.75)', bed: '#07050E', label: 'cyber violet' },
+  obsidian: { a: '#06B6D4', b: '#3B82F6', c: '#E0F2FE', text: '#F4F5F7', sub: 'rgba(255,255,255,.7)', bed: '#04070C', label: 'cyan spark' },
+  platinum: { a: '#FFFFFF', b: '#8B5CF6', c: '#FF3366', text: '#FBFCFD', sub: 'rgba(255,255,255,.7)', bed: '#0B0C10', label: 'tri-color' },
 };
 
 export function ShareStudio() {
@@ -188,48 +188,143 @@ export function ShareStudio() {
     y += fmt === 'card' ? 62 : 86;
 
     if (frame === 0) {
-      /* frame 1 — the cover */
-      if (data.cover && fmt !== 'card') {
-        const ch = H * (fmt === 'story' ? 0.3 : 0.3);
-        try {
-          const img = await load(data.cover);
-          ctx.save();
-          round(ctx, pad, y, innerW, ch, 26);
-          ctx.clip();
-          drawCover(ctx, img, pad, y, innerW, ch);
-          ctx.restore();
-          ctx.strokeStyle = 'rgba(255,255,255,.14)';
-          ctx.lineWidth = 2;
-          round(ctx, pad, y, innerW, ch, 26);
-          ctx.stroke();
-          y += ch + 36;
-        } catch {
-          /* a failed cover must never break the poster */
-        }
-      } else if (fmt !== 'card') {
-        const artH = H * 0.22;
+      /* frame 1 — Story Sticker / Media Sticker (Snapchat & Instagram Stories Foreground Overlay) */
+      const isVertical = fmt === 'story' || fmt === 'feed' || fmt === 'square';
+      if (isVertical) {
+        // Larger, prominent foreground Story Sticker Card
+        const cardW = fmt === 'story' ? 860 : fmt === 'feed' ? 840 : 840;
+        const cardH = fmt === 'story' ? 1040 : fmt === 'feed' ? 920 : 760;
+        const cardX = (W - cardW) / 2;
+        const cardY = fmt === 'story' ? (H - cardH - 140) / 2 : (H - cardH - 90) / 2;
+        const cardR = 36;
+
+        // Card Drop Shadow & Elevation
         ctx.save();
-        round(ctx, pad, y, innerW, artH, 30);
-        const g = ctx.createLinearGradient(pad, y, pad + innerW, y + artH);
-        g.addColorStop(0, hexA(t.a, 0.4));
-        g.addColorStop(0.55, hexA(t.b, 0.22));
-        g.addColorStop(1, hexA(t.c, 0.14));
-        ctx.fillStyle = g;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+        ctx.shadowBlur = 48;
+        ctx.shadowOffsetY = 26;
+        round(ctx, cardX, cardY, cardW, cardH, cardR);
+        ctx.fillStyle = 'rgba(12, 14, 20, 0.94)';
         ctx.fill();
         ctx.restore();
-        y += artH + 36;
+
+        // Card Border
+        round(ctx, cardX, cardY, cardW, cardH, cardR);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Inner Padding
+        const cPad = 32;
+        const innerCardW = cardW - cPad * 2;
+        const innerCardX = cardX + cPad;
+        let curY = cardY + cPad;
+
+        // Visual Artwork Header
+        const artH = fmt === 'story' ? 520 : fmt === 'feed' ? 440 : 360;
+        let imageDrawn = false;
+        if (data.cover) {
+          try {
+            const img = await load(data.cover);
+            ctx.save();
+            round(ctx, innerCardX, curY, innerCardW, artH, 24);
+            ctx.clip();
+            drawCover(ctx, img, innerCardX, curY, innerCardW, artH);
+            ctx.restore();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+            ctx.lineWidth = 1.5;
+            round(ctx, innerCardX, curY, innerCardW, artH, 24);
+            ctx.stroke();
+            imageDrawn = true;
+          } catch {
+            imageDrawn = false;
+          }
+        }
+        if (!imageDrawn) {
+          ctx.save();
+          round(ctx, innerCardX, curY, innerCardW, artH, 24);
+          const g = ctx.createLinearGradient(innerCardX, curY, innerCardX + innerCardW, curY + artH);
+          g.addColorStop(0, hexA(t.a, 0.5));
+          g.addColorStop(0.55, hexA(t.b, 0.38));
+          g.addColorStop(1, hexA(t.c, 0.22));
+          ctx.fillStyle = g;
+          ctx.fill();
+          ctx.restore();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+          ctx.lineWidth = 1.5;
+          round(ctx, innerCardX, curY, innerCardW, artH, 24);
+          ctx.stroke();
+        }
+
+        // Heat pill badge on artwork
+        const heatBadgeW = 92;
+        const heatBadgeH = 34;
+        const heatBadgeX = innerCardX + innerCardW - heatBadgeW - 16;
+        const heatBadgeY = curY + 16;
+        round(ctx, heatBadgeX, heatBadgeY, heatBadgeW, heatBadgeH, 17);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.68)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.font = '700 16px "Inter Variable", sans-serif';
+        ctx.fillStyle = hexA(t.a, 1);
+        ctx.textAlign = 'center';
+        ctx.fillText(`🔥 ${heat}°`, heatBadgeX + heatBadgeW / 2, heatBadgeY + 23);
+        ctx.textAlign = 'left';
+
+        curY += artH + 34;
+
+        // Title on sticker
+        const titleSize = fmt === 'story' ? 54 : fmt === 'feed' ? 46 : 40;
+        ctx.font = `600 ${titleSize}px "Bricolage Grotesque Variable", sans-serif`;
+        ctx.fillStyle = t.text;
+        const titleLines = wrap(ctx, data.title, innerCardW, 2);
+        titleLines.forEach((ln, i) => ctx.fillText(ln, innerCardX, curY + titleSize * 0.95 * i + titleSize * 0.8));
+        curY += titleLines.length * titleSize + 14;
+
+        // Author / Artist attribution row
+        ctx.font = `400 24px "Inter Variable", sans-serif`;
+        ctx.fillStyle = t.sub;
+        ctx.fillText(data.author, innerCardX, curY + 20);
+
+        // Watermark logo in card bottom right
+        ctx.textAlign = 'right';
+        ctx.font = '700 22px "Bricolage Grotesque Variable", sans-serif';
+        ctx.fillStyle = hexA(t.c, 0.85);
+        ctx.fillText('heatt', innerCardX + innerCardW, curY + 20);
+        ctx.textAlign = 'left';
+
+        // Deep Link Attachment Pill (Snapchat / Instagram Story Deep Link Attachment)
+        const pillW = fmt === 'story' ? 420 : 380;
+        const pillH = 70;
+        const pillX = (W - pillW) / 2;
+        const pillY = cardY + cardH + (fmt === 'story' ? 44 : 32);
+        round(ctx, pillX, pillY, pillW, pillH, 35);
+        ctx.fillStyle = 'rgba(26, 30, 42, 0.92)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.font = '600 24px "Inter Variable", sans-serif';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('📎 heatt.app >', W / 2, pillY + 44);
+        ctx.textAlign = 'left';
+      } else {
+        /* horizontal card */
+        const size = 52;
+        ctx.font = `600 ${size}px "Bricolage Grotesque Variable", sans-serif`;
+        ctx.fillStyle = t.text;
+        const lines = wrap(ctx, data.title, innerW, 3);
+        lines.forEach((ln, i) => ctx.fillText(ln, pad, y + size * 0.96 * i + size * 0.78));
+        y += lines.length * size * 0.98 + 22;
+
+        ctx.font = `400 22px "Inter Variable", sans-serif`;
+        ctx.fillStyle = t.sub;
+        wrap(ctx, data.dek, innerW, 3).forEach((ln, i) => ctx.fillText(ln, pad, y + 30 * i + 24));
       }
-
-      const size = fmt === 'story' ? 86 : fmt === 'feed' ? 76 : 52;
-      ctx.font = `600 ${size}px "Bricolage Grotesque Variable", sans-serif`;
-      ctx.fillStyle = t.text;
-      const lines = wrap(ctx, data.title, innerW, fmt === 'card' ? 3 : 5);
-      lines.forEach((ln, i) => ctx.fillText(ln, pad, y + size * 0.96 * i + size * 0.78));
-      y += lines.length * size * 0.98 + 22;
-
-      ctx.font = `400 ${fmt === 'card' ? 20 : 27}px "Inter Variable", sans-serif`;
-      ctx.fillStyle = t.sub;
-      wrap(ctx, data.dek, innerW, fmt === 'story' ? 5 : 3).forEach((ln, i) => ctx.fillText(ln, pad, y + 30 * i + 24));
     } else if (frame === 1) {
       /* frame 2 — the line */
       const size = fmt === 'card' ? 30 : fmt === 'feed' ? 44 : 48;
@@ -275,46 +370,48 @@ export function ShareStudio() {
       ctx.fillText(data.cta, pad, y);
     }
 
-    /* ------------------------------------------------------------- footer */
-    const fy = H - pad;
-    ctx.strokeStyle = 'rgba(255,255,255,.14)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(pad, fy - 58);
-    ctx.lineTo(W - pad, fy - 58);
-    ctx.stroke();
-
-    try {
-      const av = await load(data.avatar);
-      const r = fmt === 'card' ? 24 : 32;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(pad + r, fy - 22, r, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(av, pad, fy - 22 - r, r * 2, r * 2);
-      ctx.restore();
-      ctx.strokeStyle = hexA(t.a, 0.85);
+    if (frame !== 0 || fmt === 'card') {
+      /* ------------------------------------------------------------- footer */
+      const fy = H - pad;
+      ctx.strokeStyle = 'rgba(255,255,255,.14)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(pad + r, fy - 22, r, 0, Math.PI * 2);
+      ctx.moveTo(pad, fy - 58);
+      ctx.lineTo(W - pad, fy - 58);
       ctx.stroke();
-    } catch {
-      /* the procedural avatar always loads; this is belt and braces */
+
+      try {
+        const av = await load(data.avatar);
+        const r = fmt === 'card' ? 24 : 32;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(pad + r, fy - 22, r, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(av, pad, fy - 22 - r, r * 2, r * 2);
+        ctx.restore();
+        ctx.strokeStyle = hexA(t.a, 0.85);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pad + r, fy - 22, r, 0, Math.PI * 2);
+        ctx.stroke();
+      } catch {
+        /* the procedural avatar always loads; this is belt and braces */
+      }
+
+      ctx.font = `600 ${fmt === 'card' ? 18 : 24}px "Inter Variable", sans-serif`;
+      ctx.fillStyle = t.text;
+      ctx.fillText(data.author, pad + (fmt === 'card' ? 62 : 82), fy - 28);
+      ctx.font = `400 ${fmt === 'card' ? 14 : 18}px "Inter Variable", sans-serif`;
+      ctx.fillStyle = t.sub;
+      ctx.fillText(data.handleLine, pad + (fmt === 'card' ? 62 : 82), fy - 4);
+
+      ctx.textAlign = 'right';
+      ctx.font = `700 ${fmt === 'card' ? 16 : 20}px "Inter Variable", sans-serif`;
+      ctx.fillStyle = hexA(t.c, 0.95);
+      ctx.fillText('heatt', W - pad, fy - 12);
+      ctx.textAlign = 'left';
     }
-
-    ctx.font = `600 ${fmt === 'card' ? 18 : 24}px "Inter Variable", sans-serif`;
-    ctx.fillStyle = t.text;
-    ctx.fillText(data.author, pad + (fmt === 'card' ? 62 : 82), fy - 28);
-    ctx.font = `400 ${fmt === 'card' ? 14 : 18}px "Inter Variable", sans-serif`;
-    ctx.fillStyle = t.sub;
-    ctx.fillText(data.handleLine, pad + (fmt === 'card' ? 62 : 82), fy - 4);
-
-    ctx.textAlign = 'right';
-    ctx.font = `700 ${fmt === 'card' ? 16 : 20}px "Inter Variable", sans-serif`;
-    ctx.fillStyle = hexA(t.c, 0.95);
-    ctx.fillText('heatt', W - pad, fy - 12);
-    ctx.textAlign = 'left';
   }
 
   function payload() {
@@ -335,22 +432,40 @@ export function ShareStudio() {
       };
     }
     const p = post!;
+    const isForge = p.kind === 'forge';
+    const flareCover =
+      p.cover ||
+      (p.tags?.includes('ai')
+        ? '/art/shader-flames.jpg'
+        : p.tags?.includes('interface')
+        ? '/art/obsidian-atelier.jpg'
+        : p.tags?.includes('design')
+        ? '/art/hero-forge.jpg'
+        : p.tags?.includes('craft')
+        ? '/art/quiet-type.jpg'
+        : '/art/ember-signal.jpg');
+
     const prose =
-      p.kind === 'forge'
+      isForge
         ? (p.blocks ?? [])
             .filter((b) => b.t === 'p')
             .map((b) => ('text' in b ? b.text : ''))
             .join(' ') || plain(p.markdown ?? '') || p.dek || ''
         : p.text ?? '';
+
+    const flareTitle = isForge
+      ? (p.title ?? 'A piece on heatt')
+      : (plain(p.text ?? '').slice(0, 90) || 'Hot take on the wire');
+
     return {
-      title: p.kind === 'forge' ? p.title ?? 'A piece on heatt' : p.authorName,
-      dek: p.kind === 'forge' ? p.dek ?? '' : plain(p.text ?? '').slice(0, 220),
+      title: flareTitle,
+      dek: isForge ? (p.dek ?? '') : plain(p.text ?? '').slice(0, 220),
       quote: plain(prose).replace(/\s+/g, ' ').trim().slice(0, 210) || plain(p.text ?? '').slice(0, 210),
-      chip: p.kind === 'forge' ? `${p.minutes ?? 6} min read` : 'note',
+      chip: isForge ? `${p.minutes ?? 6} min read` : 'flare',
       author: p.authorName,
       handleLine: `@${p.authorHandle} · heatt`,
       avatar: p.authorAvatar ?? avatarDataUri(p.authorName, p.authorHandle),
-      cover: p.cover,
+      cover: flareCover,
       cta: 'Read it in heatt →',
     };
   }
