@@ -119,7 +119,7 @@ export function CommandPalette() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <button className="ht-scrim absolute inset-0" aria-label="Close search" onClick={close} />
+          <button className="ht-scrim absolute inset-0 z-0" aria-label="Close search" onClick={close} />
           <motion.div
             role="dialog"
             aria-label="Search and commands"
@@ -127,7 +127,7 @@ export function CommandPalette() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.99 }}
             transition={{ duration: 0.26, ease: EASE_OUT }}
-            className="ht-modal relative z-[1] !max-h-[70dvh]"
+            className="ht-modal relative z-10 !max-h-[70dvh] pointer-events-auto"
           >
             <div className="flex items-center gap-3 border-b border-line px-4 py-3">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="text-ink-4" aria-hidden>

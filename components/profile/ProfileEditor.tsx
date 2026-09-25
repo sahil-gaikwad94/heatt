@@ -8,7 +8,7 @@
    ==========================================================================*/
 
 import * as React from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useStore } from '@/lib/store';
 import { useApp } from '@/lib/app';
 import { avatarDataUri, cls, coverDataUri } from '@/lib/util';
@@ -142,7 +142,7 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
         </header>
 
         <div className="ht-no-scrollbar flex-1 overflow-y-auto">
-          {/* cover */}
+          {/* cover with animated transition */}
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -150,17 +150,28 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
             }}
             onDragLeave={() => setDrag(null)}
             onDrop={drop('cover')}
-            className="relative h-[150px] overflow-hidden"
+            className="relative h-[150px] overflow-hidden bg-black/40"
             style={{ outline: drag === 'cover' ? '2px dashed var(--champ)' : 'none', outlineOffset: -6 }}
           >
-            <img src={cover} alt="" className="h-full w-full object-cover" />
-            <span aria-hidden className="absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.9))' }} />
-            <div className="absolute inset-x-4 bottom-3 flex flex-wrap items-center gap-2">
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={cover}
+                src={cover}
+                alt=""
+                initial={{ opacity: 0, scale: 1.08, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                className="h-full w-full object-cover"
+              />
+            </AnimatePresence>
+            <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.9))' }} />
+            <div className="absolute inset-x-4 bottom-3 z-10 flex flex-wrap items-center gap-2">
               {COVERS.slice(0, 4).map((c) => (
                 <button
                   key={c}
                   onClick={() => setCover(c)}
-                  className={cls('h-9 w-12 overflow-hidden rounded-[8px] border transition-all', cover === c ? 'border-[var(--champ)]' : 'border-line-2 hover:border-line-3')}
+                  className={cls('h-9 w-12 overflow-hidden rounded-[8px] border transition-all', cover === c ? 'border-[var(--champ)] ring-2 ring-amber-400/40 scale-105' : 'border-line-2 hover:border-line-3')}
                   aria-label="Use this cover"
                 >
                   <img src={c} alt="" className="h-full w-full object-cover" />
@@ -188,12 +199,21 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
                 className="relative shrink-0"
                 style={{ outline: drag === 'avatar' ? '2px dashed var(--champ)' : 'none', outlineOffset: 4, borderRadius: 999 }}
               >
-                <img
-                  src={avatar ?? avatarDataUri(name || 'you', handle)}
-                  alt=""
-                  className="h-[76px] w-[76px] rounded-full border border-line object-cover"
-                />
-                <label className="absolute inset-x-0 -bottom-1 mx-auto w-max cursor-pointer rounded-full border border-line-2 bg-elev px-2.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-2 hover:text-ink">
+                <div className="relative h-[76px] w-[76px] overflow-hidden rounded-full border border-line bg-surface shadow-xl">
+                  <AnimatePresence mode="wait">
+                    <motion.img
+                      key={avatar ?? handle}
+                      src={avatar ?? avatarDataUri(name || 'you', handle)}
+                      alt=""
+                      initial={{ scale: 0.72, rotate: -20, opacity: 0, filter: 'brightness(1.5)' }}
+                      animate={{ scale: 1, rotate: 0, opacity: 1, filter: 'brightness(1)' }}
+                      exit={{ scale: 0.8, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 360, damping: 22 }}
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  </AnimatePresence>
+                </div>
+                <label className="absolute inset-x-0 -bottom-1 z-10 mx-auto w-max cursor-pointer rounded-full border border-line-2 bg-elev px-2.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-2 hover:text-ink hover:border-[var(--acc-line)] shadow-md">
                   photo
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && readFile(e.target.files[0], 'avatar')} />
                 </label>

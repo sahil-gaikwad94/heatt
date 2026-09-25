@@ -25,6 +25,7 @@ import { getUser, HOUSE_HANDLE, HOUSE_COVER } from '@/lib/seed/users';
 import {avatarDataUri, cls, compact, coverDataUri, coverFallback, prettyDate, timeAgo, plain } from '@/lib/util';
 import { Empty, Stat } from '@/components/ui/primitives';
 import { ProfileEditor } from '@/components/profile/ProfileEditor';
+import { ActivityHeatmap } from '@/components/profile/ActivityHeatmap';
 import { TopBar } from '@/components/shell/Shell';
 import { CountUp, Tilt, useInViewSafe } from '@/components/ui/motion';
 import { tileIn } from '@/lib/motion';
@@ -70,6 +71,29 @@ export default function ProfilePage() {
   const isHouse = handle === HOUSE_HANDLE;
   const cover = user.cover ?? (isHouse ? HOUSE_COVER : coverDataUri(handle));
   const displayName = user.name;
+
+  // Profile stats: strictly (heats, followers, following)
+  const totalHeats = React.useMemo(() => {
+    const fromPosts = posts.reduce((sum, p) => sum + (p.heatScore?.heat ?? 0), 0);
+    if (fromPosts > 0) return fromPosts;
+    if (isHouse) return 1420;
+    if (isMe) {
+      const emitted = Object.keys(s.heat).length * 12;
+      return emitted > 0 ? emitted : 320;
+    }
+    return 360;
+  }, [posts, isHouse, isMe, s.heat]);
+
+  const followersCount = React.useMemo(() => {
+    const base = isHouse ? 1280 : isMe ? 84 : 340;
+    const extra = !isMe && s.follows.includes(handle) ? 1 : 0;
+    return base + extra;
+  }, [isHouse, isMe, s.follows, handle]);
+
+  const followingCount = React.useMemo(() => {
+    if (isMe) return Math.max(12, s.follows.length);
+    return isHouse ? 42 : 128;
+  }, [isMe, s.follows.length, isHouse]);
 
   return (
     <div className="mx-auto w-full max-w-[900px] pb-32">
@@ -137,24 +161,6 @@ export default function ProfilePage() {
               style={{ boxShadow: '0 26px 60px -24px rgba(0,0,0,1)' }}
             />
           </span>
-
-          <Badge label={`${forges.length} stories`} className="-left-[38px] top-[6px]" delay={0}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M20 3c-6 0-11 4-13 10l-3 8 8-3c6-2 10-7 8-15ZM7 13l4 4" />
-            </svg>
-          </Badge>
-          <Badge label={`${notes.length} notes`} className="-right-[40px] top-[44px]" delay={0.8} tone="cool">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M12 3v5M12 16v5M3 12h5M16 12h5M6.5 6.5l3 3M14.5 14.5l3 3M17.5 6.5l-3 3M9.5 14.5l-3 3" />
-            </svg>
-          </Badge>
-          {isMe && (
-            <Badge label="kept pieces" className="-bottom-1 right-1" delay={1.5}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-3.8L5.5 20.5v-16a1 1 0 0 1 1-1Z" />
-              </svg>
-            </Badge>
-          )}
         </div>
 
         {/* ---------------------------------------------------------- identity */}
@@ -166,17 +172,11 @@ export default function ProfilePage() {
         </p>
         {user.bio && <p className="mx-auto mt-4 max-w-[52ch] text-[14px] leading-relaxed text-ink-dim">{user.bio}</p>}
 
-        {/* ------------------------------------------------------------ stats */}
-        <div className="ht-stats mx-auto mt-6 max-w-[460px]">
-          <Stat k="stories" v={forges.length} />
-          <Stat k="notes" v={notes.length} />
-          <Stat k="kept" v={isMe ? Object.keys(s.saved).length : forges.length + notes.length} />
-          <div className="ht-stat">
-            <span className="ht-stat-v">
-              <CountUp value={0} format={() => (user.joined ? prettyDate(user.joined).split(',')[0] : '—')} />
-            </span>
-            <span className="ht-stat-k">since</span>
-          </div>
+        {/* ------------------------------------------------------------ stats (heats, followers, following) */}
+        <div className="ht-stats mx-auto mt-6 max-w-[420px]">
+          <Stat k="heats" v={totalHeats} />
+          <Stat k="followers" v={followersCount} />
+          <Stat k="following" v={followingCount} />
         </div>
 
         {user.traits && user.traits.length > 0 && (
@@ -205,6 +205,9 @@ export default function ProfilePage() {
               <button onClick={() => app.setComposer(true)} className="ht-btn ht-btn--quiet">
                 Write something
               </button>
+              <Link href="/messages" className="ht-btn ht-btn--quiet">
+                Messages
+              </Link>
             </>
           ) : (
             <>
@@ -215,6 +218,15 @@ export default function ProfilePage() {
               >
                 {app.follows.includes(user.handle) ? 'Following' : 'Follow'}
               </button>
+              <Link
+                href={`/messages?user=${encodeURIComponent(user.handle)}`}
+                className="ht-btn ht-btn--quiet inline-flex items-center gap-1.5"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                Message
+              </Link>
               <button
                 onClick={() => app.setComposer(true, { quote: `@${user.handle} ` })}
                 className="ht-btn ht-btn--quiet"
@@ -224,6 +236,9 @@ export default function ProfilePage() {
             </>
           )}
         </div>
+
+        {/* ------------------------------------------------ activity heatmap */}
+        <ActivityHeatmap handle={handle} posts={posts} className="mt-8 text-left" />
 
         {/* --------------------------------------------------------- the work */}
         <div className="mt-12 text-left">
@@ -287,37 +302,6 @@ export default function ProfilePage() {
 
       <AnimatePresence>{editing && <ProfileEditor onClose={() => setEditing(false)} />}</AnimatePresence>
     </div>
-  );
-}
-
-/* ------------------------------------------------------------------ parts */
-
-function Badge({
-  label,
-  children,
-  className,
-  delay = 0,
-  tone = 'hot',
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-  tone?: 'hot' | 'cool';
-}) {
-  return (
-    <motion.span
-      title={label}
-      aria-label={label}
-      className={cls('ht-badge h-[40px] w-[40px]', className)}
-      data-tone={tone === 'hot' ? 'hot' : undefined}
-      initial={{ opacity: 0, scale: 0.7 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.35 + delay, type: 'spring', stiffness: 300, damping: 22 }}
-      style={{ animation: `ht-float 9s ease-in-out ${delay}s infinite` }}
-    >
-      {children}
-    </motion.span>
   );
 }
 

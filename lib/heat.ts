@@ -105,9 +105,9 @@ export const LEVEL_META: Record<
   { name: string; hold: number; ring: string; copy: string }
 > = {
   0: { name: 'Quiet', hold: 0, ring: 'rgba(255,255,255,.2)', copy: 'No heat yet' },
-  1: { name: 'Heated', hold: 0, ring: '#CBB17C', copy: 'Heated' },
-  2: { name: 'Blazing', hold: 1000, ring: '#E8D3A4', copy: 'Blazing' },
-  3: { name: 'Ignited', hold: 2200, ring: '#F7EAD0', copy: 'Ignited' },
+  1: { name: 'Heated', hold: 0, ring: '#FF3366', copy: 'Heated' },
+  2: { name: 'Blazing', hold: 1000, ring: '#FFB800', copy: 'Blazing' },
+  3: { name: 'Ignited', hold: 2200, ring: '#FFFFFF', copy: 'Ignited' },
 };
 
 /** hold durations in ms to reach level 2 / 3 */

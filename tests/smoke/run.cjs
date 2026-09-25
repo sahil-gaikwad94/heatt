@@ -458,7 +458,7 @@ async function until(fn, ms = 4000, label = 'condition') {
   await mountApp(page('app/(shell)/u/[handle]/page.js'));
   const body = doc.body.textContent || '';
   ok('the profile renders identity in black', /heatt/i.test(body) && body.length > 600, `${body.length} chars`);
-  ok('counts are about work, not about status', /stories/i.test(body) && !/followers/i.test(body));
+  ok('profile displays heats, followers, following', /heats/i.test(body) && /followers/i.test(body) && /following/i.test(body));
   ok('the tab rail filters work', U.qa('[role="tab"]').length >= 2);
   const follow = U.byText('button', /^Follow$/);
   ok('follow is a local graph toggle', !!follow);

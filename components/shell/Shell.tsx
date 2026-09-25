@@ -107,6 +107,14 @@ export function TopBar({
 
         {right}
 
+        {/* direct messages */}
+        <Link href="/messages" className="ht-icon-btn relative" aria-label="Messages">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-[var(--acc)] shadow-[0_0_6px_var(--acc)]" />
+        </Link>
+
         {/* signals: what came back on the things you put in the room */}
         <Link href="/notifications" className="ht-icon-btn" aria-label="Signals">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -147,6 +155,11 @@ const ShelfGlyph = (
     <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-3.8L5.5 20.5v-16a1 1 0 0 1 1-1Z" />
   </svg>
 );
+const ChatGlyph = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
 const YouGlyph = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d="M12 12a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4ZM4.2 20.4a7.8 7.8 0 0 1 15.6 0" />
@@ -167,6 +180,7 @@ export function BottomDock() {
   const dests: Dest[] = [
     { key: 'feed', href: '/feed', label: 'Board', icon: FeedGlyph },
     { key: 'explore', href: '/explore', label: 'Explore', icon: ExploreGlyph },
+    { key: 'messages', href: '/messages', label: 'Chat', icon: ChatGlyph },
     { key: 'shelf', href: '/library', label: 'Library', icon: ShelfGlyph },
     { key: 'you', href: `/u/${handle}`, label: 'You', icon: YouGlyph },
   ];
